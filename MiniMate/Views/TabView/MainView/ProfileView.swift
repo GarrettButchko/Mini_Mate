@@ -180,57 +180,6 @@ struct ProfileView: View {
                         }
                     }
                     
-                    Section("Admin") {
-                        if (authModel.userModel?.adminType) == nil{
-                            Button("Login As Admin") {
-                                showAdminLogin = true
-                            }
-                            .alert("Use your admin code to login", isPresented: $showAdminLogin) {
-                                TextField("Admin Code", text: $adminCode)
-                                Button("Login") {
-                                    courseRepo.findCourseIDWithPassword(withPassword: adminCode) { courseId in
-                                        if let courseId = courseId {
-                                            authModel.userModel?.adminType = courseId
-                                            userRepo.saveRemote(id: authModel.currentUserIdentifier!, userModel: authModel.userModel!) { _ in }
-                                            if let userId = authModel.userModel?.id {
-                                                courseRepo.addAdminIDtoCourse(adminID: userId, courseID: courseId) { _ in }
-                                            }
-                                            adminSignInMessage = ""
-                                        } else {
-                                            adminSignInMessage = "Wrong Password Please Try Again"
-                                        }
-                                    }
-                                }
-                                Button("Cancel", role: .cancel) {}
-                            } message: {
-                                Text("This will log you into your admin account.")
-                            }
-                            
-                        } else {
-                            Text("Admin of: \(authModel.userModel?.adminType ?? "Unknown")")
-                            
-                            if authModel.userModel?.adminType != "CREATOR" {
-                                Button("Logout of Admin Account") {
-                                    
-                                    if let courseID = authModel.userModel?.adminType, let userId = authModel.userModel?.id{
-                                        courseRepo.addAdminIDtoCourse(adminID: userId, courseID: courseID) { complete in
-                                            if complete {
-                                                adminSignInMessage = ""
-                                                authModel.userModel?.adminType = nil
-                                                userRepo.saveRemote(id: authModel.currentUserIdentifier!, userModel: authModel.userModel!) { _ in }
-                                            } else {
-                                                adminSignInMessage = "Could not log you out"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if adminSignInMessage != "" {
-                            Text(adminSignInMessage)
-                        }
-                    }
-                    
                     // Account Management Section
                     Section("Account Management") {
                         

@@ -291,7 +291,7 @@ struct MainView: View {
                         Spacer()
                         
                         // Donation Button
-                        if let userModel = authModel.userModel, !userModel.isPro {
+                        if let userModel = authModel.userModel, !userModel.isPro && NetworkChecker.shared.isConnected {
                             HStack {
                                 Spacer()
                                 Button {

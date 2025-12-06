@@ -9,6 +9,7 @@ struct Course: Codable, Identifiable, Equatable {
     var id: String
     var name: String
     var password: String
+    var isClaimed: Bool
     
     var supported: Bool
     
@@ -22,7 +23,7 @@ struct Course: Codable, Identifiable, Equatable {
     var tier: Int?
     var adminIDs: [String]?
     
-    var adActive: Bool
+    var customAdActive: Bool
     var adTitle: String?
     var adDescription: String?
     var adLink: String?
@@ -55,29 +56,31 @@ struct Course: Codable, Identifiable, Equatable {
         peakAnalytics: PeakAnalytics = PeakAnalytics(),
         holeAnalytics: HoleAnalytics = HoleAnalytics(),
         roundTimeAnalytics: RoundTimeAnalytics = RoundTimeAnalytics(),
-        tier: Int? = 0,
-        adminIDs: [String]? = []
+        tier: Int? = 1,
+        adminIDs: [String]? = [],
+        isClaimed: Bool = false
     ) {
-        self.id = id
-        self.name = name
-        self.supported = supported
-        self.logo = logo
-        self.scoreCardColorDT = scoreCardColorDT
-        self.link = link
-        self.pars = pars
-        self.adActive = adActive
-        self.adTitle = adTitle
-        self.adDescription = adDescription
-        self.adLink = adLink
-        self.adImage = adImage
-        self.emails = emails
-        self.dailyCount = dailyCount
-        self.peakAnalytics = peakAnalytics
-        self.holeAnalytics = holeAnalytics
-        self.roundTimeAnalytics = roundTimeAnalytics
-        self.tier = tier
-        self.password = password
-        self.adminIDs = adminIDs
+            self.id = id
+            self.name = name
+            self.supported = supported
+            self.logo = logo
+            self.scoreCardColorDT = scoreCardColorDT
+            self.link = link
+            self.pars = pars
+            self.customAdActive = adActive
+            self.adTitle = adTitle
+            self.adDescription = adDescription
+            self.adLink = adLink
+            self.adImage = adImage
+            self.emails = emails
+            self.dailyCount = dailyCount
+            self.peakAnalytics = peakAnalytics
+            self.holeAnalytics = holeAnalytics
+            self.roundTimeAnalytics = roundTimeAnalytics
+            self.tier = tier
+            self.password = password
+            self.adminIDs = adminIDs
+            self.isClaimed = isClaimed
     }
     
     static func == (lhs: Course, rhs: Course) -> Bool {
@@ -100,7 +103,8 @@ struct Course: Codable, Identifiable, Equatable {
         lhs.password == rhs.password &&
         lhs.supported == rhs.supported &&
         lhs.adminIDs == rhs.adminIDs &&
-        lhs.adActive == rhs.adActive
+        lhs.customAdActive == rhs.customAdActive &&
+        lhs.isClaimed == rhs.isClaimed
     }
     
     var scoreCardColor: Color? {

@@ -17,6 +17,7 @@
 		21583BC62DD2E48200EFB400 /* ConfettiSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 21583BC52DD2E48200EFB400 /* ConfettiSwiftUI */; };
 		2177134D2DDE6AC700AF367E /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 2177134C2DDE6AC700AF367E /* GoogleMobileAds */; };
 		21A0A6AA2ECFCEE60060A93D /* MarqueeText in Frameworks */ = {isa = PBXBuildFile; productRef = 21A0A6A92ECFCEE60060A93D /* MarqueeText */; };
+		21E19BC32EE4B23E005C1193 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 21E19BC22EE4B23E005C1193 /* FirebaseDatabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,6 +47,7 @@
 		210340022DBC4D5100F78FBF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		213F26F62D4D639100579FAE /* MiniMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiniMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		21A75C562DED16D100F32112 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		21E19BB22EE4A3CE005C1193 /* MiniMate Manager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MiniMate Manager.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -56,6 +58,17 @@
 			);
 			target = 213F26F52D4D639100579FAE /* MiniMate */;
 		};
+		21E19BC52EE4B254005C1193 /* Exceptions for "MiniMate" folder in "MiniMate Manager" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Controllers/Auth/AuthViewModel.swift,
+				DataModels/Course.swift,
+				DataModels/Game.swift,
+				DataModels/Hole.swift,
+				DataModels/Player.swift,
+			);
+			target = 21E19BB12EE4A3CE005C1193 /* MiniMate Manager */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -63,8 +76,14 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				211D233B2D55707100558873 /* Exceptions for "MiniMate" folder in "MiniMate" target */,
+				21E19BC52EE4B254005C1193 /* Exceptions for "MiniMate" folder in "MiniMate Manager" target */,
 			);
 			path = MiniMate;
+			sourceTree = "<group>";
+		};
+		21E19BB32EE4A3CE005C1193 /* MiniMate Manager */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "MiniMate Manager";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -87,6 +106,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		21E19BAF2EE4A3CE005C1193 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21E19BC32EE4B23E005C1193 /* FirebaseDatabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -103,6 +130,7 @@
 			isa = PBXGroup;
 			children = (
 				213F26F82D4D639100579FAE /* MiniMate */,
+				21E19BB32EE4A3CE005C1193 /* MiniMate Manager */,
 				21033FFF2DBC4D5100F78FBF /* Frameworks */,
 				213F26F72D4D639100579FAE /* Products */,
 			);
@@ -112,6 +140,7 @@
 			isa = PBXGroup;
 			children = (
 				213F26F62D4D639100579FAE /* MiniMate.app */,
+				21E19BB22EE4A3CE005C1193 /* MiniMate Manager.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -153,6 +182,29 @@
 			productReference = 213F26F62D4D639100579FAE /* MiniMate.app */;
 			productType = "com.apple.product-type.application";
 		};
+		21E19BB12EE4A3CE005C1193 /* MiniMate Manager */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 21E19BBA2EE4A3D0005C1193 /* Build configuration list for PBXNativeTarget "MiniMate Manager" */;
+			buildPhases = (
+				21E19BAE2EE4A3CE005C1193 /* Sources */,
+				21E19BAF2EE4A3CE005C1193 /* Frameworks */,
+				21E19BB02EE4A3CE005C1193 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				21E19BB32EE4A3CE005C1193 /* MiniMate Manager */,
+			);
+			name = "MiniMate Manager";
+			packageProductDependencies = (
+				21E19BC22EE4B23E005C1193 /* FirebaseDatabase */,
+			);
+			productName = "MiniMate Manager";
+			productReference = 21E19BB22EE4A3CE005C1193 /* MiniMate Manager.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -160,11 +212,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1630;
+				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					213F26F52D4D639100579FAE = {
 						CreatedOnToolsVersion = 16.2;
+					};
+					21E19BB12EE4A3CE005C1193 = {
+						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
 			};
@@ -190,6 +245,7 @@
 			projectRoot = "";
 			targets = (
 				213F26F52D4D639100579FAE /* MiniMate */,
+				21E19BB12EE4A3CE005C1193 /* MiniMate Manager */,
 			);
 		};
 /* End PBXProject section */
@@ -202,10 +258,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		21E19BB02EE4A3CE005C1193 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		213F26F22D4D639100579FAE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21E19BAE2EE4A3CE005C1193 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -411,6 +481,73 @@
 			};
 			name = Release;
 		};
+		21E19BBB2EE4A3D0005C1193 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PCUSPZK2L4;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.garrettbutchko.MiniMate-Manager";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		21E19BBC2EE4A3D0005C1193 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PCUSPZK2L4;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.garrettbutchko.MiniMate-Manager";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -428,6 +565,15 @@
 			buildConfigurations = (
 				213F27052D4D639200579FAE /* Debug */,
 				213F27062D4D639200579FAE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		21E19BBA2EE4A3D0005C1193 /* Build configuration list for PBXNativeTarget "MiniMate Manager" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				21E19BBB2EE4A3D0005C1193 /* Debug */,
+				21E19BBC2EE4A3D0005C1193 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -527,6 +673,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 21A0A6A82ECFCEE60060A93D /* XCRemoteSwiftPackageReference "MarqueeText" */;
 			productName = MarqueeText;
+		};
+		21E19BC22EE4B23E005C1193 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 210BDE4B2D4DDFB80012E465 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -21,7 +21,6 @@ enum ViewType {
 @MainActor
 class ViewManager: ObservableObject{
     
-
     @Published var currentView: ViewType
 
     init() {

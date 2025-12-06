@@ -67,5 +67,4 @@ struct MapItemDTO: Codable, Equatable {
 
         return item
     }
-    
 }

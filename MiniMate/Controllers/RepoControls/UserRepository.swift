@@ -149,7 +149,7 @@ final class UserRepository {
         let db = Firestore.firestore()
         let ref = db.collection("users").document(id)
         
-        var updatedUser = userModel
+        let updatedUser = userModel
             updatedUser.lastUpdated = Date()
         
         do {

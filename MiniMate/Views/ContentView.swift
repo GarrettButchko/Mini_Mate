@@ -36,7 +36,6 @@ struct ContentView: View {
                 course: nil
             )
         )
-        
     }
     
     var body: some View {
@@ -136,13 +135,6 @@ struct MainTabView: View {
                 CourseView(viewManager: viewManager, authModel: authModel, locationHandler: locationHandler)
                     .tabItem { Label("Courses", systemImage: "figure.golf") }
                     .tag(2)
-            }
-            if NetworkChecker.shared.isConnected {
-                if authModel.userModel?.adminType != nil{
-                    AdminView(viewManager: viewManager, authModel: authModel)
-                        .tabItem { Label("Admin", systemImage: "lock.shield") }
-                        .tag(3)
-                }
             }
         }
         .onAppear {
