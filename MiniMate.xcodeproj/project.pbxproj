@@ -61,7 +61,7 @@
 		21E19BC52EE4B254005C1193 /* Exceptions for "MiniMate" folder in "MiniMate Manager" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Controllers/Auth/AuthViewModel.swift,
+				Controllers/ViewModels/AuthViewModel.swift,
 				DataModels/Course.swift,
 				DataModels/Game.swift,
 				DataModels/Hole.swift,

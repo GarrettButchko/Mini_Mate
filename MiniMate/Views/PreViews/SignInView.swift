@@ -147,7 +147,7 @@ struct StartButtons: View {
                 authModel.signInWithGoogle(context: context) { result in
                     switch result {
                     case .success(let firebaseUser):
-                        createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
+                        authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
                     case .failure(let error):
                         errorMessage = error.localizedDescription
                     }
@@ -182,7 +182,7 @@ struct StartButtons: View {
                         case .failure(let err):
                             errorMessage = err.localizedDescription
                         case .success(let firebaseUser):
-                            createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
+                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
                         }
                     }
                 }
@@ -194,15 +194,4 @@ struct StartButtons: View {
     }
 }
 
-func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: ViewManager, user: User?, errorMessage: Binding<String?>) {
-
-    errorMessage.wrappedValue = nil
-    let repo = UserRepository(context: context)
-    repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user) { userModel in
-        authModel.setUserModel(userModel)
-        Task { @MainActor in
-            viewManager.navigateToMain(1)
-        }
-    }
-}
 

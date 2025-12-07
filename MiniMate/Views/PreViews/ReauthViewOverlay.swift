@@ -87,8 +87,7 @@ struct ReauthViewOverlay: View {
 
                 // Confirm Deletion
                 Button(action: {
-                    let credential = EmailAuthProvider.credential(withEmail: email, password: password)
-                    authModel.deleteAccount(reauthCredential: credential) { result in
+                    authModel.deleteAccount(email: email, password: password) { result in
                         switch result {
                         case .success:
                             withAnimation {
@@ -96,7 +95,9 @@ struct ReauthViewOverlay: View {
                                 isSheetPresent = false
                                 viewManager.navigateToWelcome()
                             }
-                            userRepo.deleteLocal(id: authModel.currentUserIdentifier!) { _ in }
+                            if let id = authModel.currentUserIdentifier {
+                                userRepo.deleteLocal(id: id) { _ in }
+                            }
                         case .failure(let error):
                             errorMessage = error.localizedDescription
                         }

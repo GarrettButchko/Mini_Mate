@@ -17,9 +17,9 @@ struct CourseView: View {
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var locationHandler: LocationHandler
     
+    @StateObject private var courseViewModel = CourseViewModel()
     @StateObject private var viewModel = LookAroundViewModel()
-    let courseRepo = CourseRepository()
-    
+
     @State var position: MapCameraPosition = .automatic
     @State var isUpperHalf: Bool = false
     @State private var hasAppeared = false
@@ -122,30 +122,12 @@ struct CourseView: View {
         }
     }
     
-    @State private var nameExists: [String: Bool] = [:]
-    
-    
-    func preloadNameChecks() {
-        for item in locationHandler.mapItems {
-            let name = item.name ?? ""
-            
-            // Avoid re-checking names we already resolved
-            if nameExists[name] != nil { continue }
-            
-            courseRepo.courseNameExistsAndSupported(name) { exists in
-                DispatchQueue.main.async {
-                    nameExists[name] = exists
-                }
-            }
-        }
-    }
-    
     var mapView: some View {
         Map(position: $position, selection: locationHandler.bindingForSelectedItem()) {
             withAnimation(){
                 ForEach(locationHandler.mapItems, id: \.self) { item in
                     let name = item.name ?? "Unknown"
-                    let exists = nameExists[name] ?? false
+                    let exists = courseViewModel.nameExists[name] ?? false
                     
                     Marker(name, coordinate: item.placemark.coordinate)
                         .tint(exists ? .purple : .green)
@@ -160,10 +142,10 @@ struct CourseView: View {
             }
         }
         .onAppear {
-            preloadNameChecks()
+            courseViewModel.preloadNameChecks(for: locationHandler.mapItems)
         }
         .onChange(of: locationHandler.mapItems) {
-            preloadNameChecks()
+            courseViewModel.preloadNameChecks(for: locationHandler.mapItems)
         }
         .mapControls {
             MapCompass()
@@ -175,29 +157,14 @@ struct CourseView: View {
         Button {
             withAnimation {
                 isUpperHalf.toggle()
-                if let userLocation = locationHandler.userLocation {
-                    let upwardOffset: CLLocationDegrees = 0.03 // how much higher to shift (tweak if needed)
-                    let offsetLatitude = userLocation.latitude + upwardOffset
-                    
-                    let adjustedCoordinate = CLLocationCoordinate2D(
-                        latitude: offsetLatitude,
-                        longitude: userLocation.longitude
-                    )
-                    
-                    let region = MKCoordinateRegion(
-                        center: adjustedCoordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
-                    )
-                    
-                    locationHandler.performSearch(in: region) { result in
+                
+                locationHandler.searchNearbyCourses { success, newPosition in
+                    if let newPosition {
                         withAnimation {
-                            if result {
-                                position = locationHandler.updateCameraPosition(nil)
-                            }
+                            position = newPosition
                         }
                     }
                 }
-                
             }
         } label: {
             ZStack {
@@ -270,8 +237,6 @@ struct CourseView: View {
         }
     }
     
-    @State private var isSupportedLocation: Bool? = nil
-    
     var resultView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -293,7 +258,7 @@ struct CourseView: View {
                             .clipShape(Capsule())
                             .shadow(color: Color.black.opacity(0.1), radius: 5)
                         
-                        
+                    
                     }
                 }
             }
@@ -318,19 +283,10 @@ struct CourseView: View {
                         }
                     }
                     .onChange(of: locationHandler.bindingForSelectedItem().wrappedValue) { _ , newItem in
-                        guard let name = newItem?.name else {
-                            isSupportedLocation = nil
-                            return
-                        }
-
-                        courseRepo.courseNameExistsAndSupported(name) { exists in
-                            DispatchQueue.main.async {
-                                isSupportedLocation = exists
-                            }
-                        }
+                        courseViewModel.updateSupportedLocation(for: newItem)
                     }
                     
-                    if let supported = isSupportedLocation, supported == true {
+                    if let supported = courseViewModel.isSupportedLocation, supported == true {
                         HStack{
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 8) {

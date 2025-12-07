@@ -6,10 +6,8 @@
 import SwiftUI
 
 struct GameReviewView: View {
-    @StateObject var viewManager: ViewManager
-    var game: Game
-    
-    @State var course: Course? = nil
+    @ObservedObject var viewManager: ViewManager
+    @StateObject private var viewModel: GameReviewViewModel
     
     var showBackToStatsButton: Bool = false
     var isInCourseSettings: Bool = false
@@ -20,11 +18,12 @@ struct GameReviewView: View {
     
     // Custom init to assign @StateObject and normal vars
     init(viewManager: ViewManager, game: Game, showBackToStatsButton: Bool = false, isInCourseSettings: Bool = false, scrollOffset: CGFloat = 0, uuid: UUID? = nil, showInfoView: Bool = false) {
-        self.game = game
         self.showBackToStatsButton = showBackToStatsButton
         self.isInCourseSettings = isInCourseSettings
         
-        _viewManager = StateObject(wrappedValue: viewManager)
+        _viewModel = StateObject(wrappedValue: GameReviewViewModel(game: game))
+        
+        _viewManager = ObservedObject(wrappedValue: viewManager)
         _scrollOffset = State(initialValue: scrollOffset)
         _uuid = State(initialValue: uuid)
         _showInfoView = State(initialValue: showInfoView)
@@ -38,7 +37,7 @@ struct GameReviewView: View {
         }
         .padding()
         .sheet(isPresented: $showInfoView) {
-            GameInfoView(game: game, isSheetPresent: $showInfoView)
+            GameInfoView(game: viewModel.game, isSheetPresent: $showInfoView)
         }
     }
     
@@ -54,7 +53,7 @@ struct GameReviewView: View {
                 VStack(alignment: .leading){
                     Text("Scorecard")
                         .font(.title).fontWeight(.bold)
-                    if let locationName = course?.name {
+                    if let locationName = viewModel.course?.name {
                         Text(locationName)
                             .font(.subheadline)
                     }
@@ -81,13 +80,7 @@ struct GameReviewView: View {
             totalRow
         }
         .onAppear {
-            if let courseID = game.courseID {
-                CourseRepository().fetchCourse(id: courseID) { course in
-                    if let course = course {
-                        self.course = course
-                    }
-                }
-            }
+            viewModel.loadCourse()
         }
         .background {
             scoreCardBackground
@@ -98,7 +91,7 @@ struct GameReviewView: View {
     
     private var scoreCardBackground: some View {
         Group {
-            if let color = course?.scoreCardColor {
+            if let color = viewModel.course?.scoreCardColor {
                 Rectangle().fill(color)
             } else {
                 Rectangle().fill(.ultraThinMaterial)
@@ -115,8 +108,8 @@ struct GameReviewView: View {
             Divider()
             SyncedScrollViewRepresentable(scrollOffset: $scrollOffset, syncSourceID: $uuid) {
                 HStack {
-                    ForEach(game.players) { player in
-                        if player.id != game.players[0].id { Divider() }
+                    ForEach(viewModel.game.players, id: \.self) { player in
+                        if player.id != viewModel.game.players[0].id { Divider() }
                         PhotoIconView(photoURL: player.photoURL, name: player.name, imageSize: 30, background: .ultraThinMaterial)
                             .frame(width: 100, height: 60)
                     }
@@ -134,23 +127,22 @@ struct GameReviewView: View {
                 holeNumbersColumn
                 Divider()
                 SyncedScrollViewRepresentable(scrollOffset: $scrollOffset, syncSourceID: $uuid) {
-                    PlayerColumnsShowView(game: game)
+                    PlayerColumnsShowView(game: viewModel.game)
                 }
             }
         }
     }
     
-    var holeCount: Int { course?.pars?.count ?? game.numberOfHoles }
     /// first column with holes and number i.e "hole 1"
     private var holeNumbersColumn: some View {
         VStack {
-            ForEach(1...holeCount, id: \.self) { i in
+            ForEach(1...viewModel.holeCount, id: \.self) { i in
                 if i != 1 { Divider() }
                 VStack {
                     Text("Hole \(i)")
                         .font(.body).fontWeight(.medium)
 
-                    if let course = course, let pars = course.pars {
+                    if let pars = viewModel.course?.pars, pars.indices.contains(i - 1) {
                         Text("Par: \(pars[i - 1])")
                             .font(.caption)
                     }
@@ -167,7 +159,7 @@ struct GameReviewView: View {
             VStack{
                 Text("Total")
                     .font(.title3).fontWeight(.semibold)
-                if let course = course, let coursePars = course.pars{
+                if let course = viewModel.course, let coursePars = course.pars{
                     Text("Par: \(coursePars.reduce(0) { $0 + ($1) })")
                         .font(.caption)
                 }
@@ -176,8 +168,8 @@ struct GameReviewView: View {
             Divider()
             SyncedScrollViewRepresentable(scrollOffset: $scrollOffset, syncSourceID: $uuid) {
                 HStack {
-                    ForEach(game.players) { player in
-                        if player.id != game.players[0].id { Divider() }
+                    ForEach(viewModel.game.players) { player in
+                        if player.id != viewModel.game.players[0].id { Divider() }
                         Text("Total: \(player.totalStrokes)")
                             .frame(width: 100, height: 60)
                     }
@@ -198,7 +190,7 @@ struct GameReviewView: View {
                         Spacer()
                     }
                     if NetworkChecker.shared.isConnected {
-                        ShareLink(item: makeShareableSummary(for: game)) {
+                        ShareLink(item: viewModel.shareText){
                             Image(systemName: "square.and.arrow.up")
                                 .font(.title2)
                         }
@@ -225,7 +217,7 @@ struct GameReviewView: View {
             }
             
             if isInCourseSettings {
-                if let course = course, course.adActive {
+                if let course = viewModel.course, course.customAdActive {
                     Button {
                         if let link = course.adLink, link != "" {
                             if let url = URL(string: link) {
@@ -283,7 +275,7 @@ struct GameReviewView: View {
                         }
                         .padding()
                     }
-                } else if let course = course, !course.adActive{
+                } else if let course = viewModel.course, !course.customAdActive{
                     BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6716977198") // Replace with real one later
                         .frame(height: 50)
                         .padding(.top, 5)
@@ -292,34 +284,6 @@ struct GameReviewView: View {
             
         }
         .padding(.bottom)
-    }
-    
-    private func timeString(from seconds: Int) -> String {
-        let minutes = seconds / 60
-        let secs = seconds % 60
-        return String(format: "%d:%02d", minutes, secs)
-    }
-    
-    /// Build a plain-text summary (you could also return a URL to a generated PDF/image)
-    func makeShareableSummary(for game: Game) -> String {
-        var lines = ["MiniMate Scorecard",
-                     "Date: \(game.date.formatted(.dateTime))",
-                     ""]
-        
-        for player in game.players {
-            var holeLine = ""
-            
-            for hole in player.holes {
-                holeLine += "|\(hole.strokes)"
-            }
-            
-            lines.append("\(player.name): \(player.totalStrokes) strokes (\(player.totalStrokes))")
-            lines.append("Holes " + holeLine)
-            
-        }
-        lines.append("")
-        lines.append("Download MiniMate: https://apps.apple.com/app/id6745438125")
-        return lines.joined(separator: "\n")
     }
 }
 

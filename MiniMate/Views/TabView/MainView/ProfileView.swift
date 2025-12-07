@@ -350,7 +350,7 @@ struct ProfileView: View {
     }
     
     private func handleDeleteAccount(using credential: AuthCredential) {
-        authModel.deleteAccount(reauthCredential: credential) { result in
+        authModel.deleteAccount(credential: credential) { result in
             switch result {
             case .success:
                 cleanupLocalDataAndExit()

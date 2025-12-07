@@ -11,12 +11,20 @@ import FirebaseCore
 import SwiftData
 import AuthenticationServices
 import CryptoKit
+import SwiftUI
 
 /// ViewModel that manages Firebase Authentication and app-specific user data
 class AuthViewModel: ObservableObject {
     /// The currently authenticated Firebase user
     @Published var firebaseUser: FirebaseAuth.User?
     @Published var userModel: UserModel?
+    @Published var authAction: AuthAction?
+    
+    enum AuthAction {
+        case deletionSuccess
+        case error(String)
+    }
+
     
     func setUserModel(_ user: UserModel) {
         self.userModel = user
@@ -236,22 +244,60 @@ class AuthViewModel: ObservableObject {
     }
     
     /// Deletes the user's account after reauthentication
-    func deleteAccount(reauthCredential: AuthCredential, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let user = Auth.auth().currentUser else {
-            completion(.failure(NSError(domain: "AuthViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "No signed-in user"])))
-            return
-        }
-        user.reauthenticate(with: reauthCredential) { _, error in
-            if let error = error {
-                completion(.failure(error)); return
+    func deleteAccount(email: String? = nil, password: String? = nil, credential: AuthCredential? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
+        
+        
+        if let credential = credential {
+            reauthDelete(credential: credential)
+        } else {
+            if let email = email, let password = password, email.isEmpty && password.isEmpty{
+                let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+                reauthDelete(credential: credential)
             }
-            user.delete { error in
+            
+        }
+        
+        func reauthDelete(credential: AuthCredential){
+            guard let user = Auth.auth().currentUser else {
+                completion(.failure(NSError(domain: "AuthViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "No signed-in user"])))
+                return
+            }
+            user.reauthenticate(with: credential) { _, error in
                 if let error = error {
-                    completion(.failure(error))
-                } else {
-                    DispatchQueue.main.async { self.firebaseUser = nil }
-                    completion(.success(()))
+                    completion(.failure(error)); return
                 }
+                user.delete { error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        DispatchQueue.main.async { self.firebaseUser = nil }
+                        completion(.success(()))
+                    }
+                }
+            }
+        }
+    }
+    
+    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: ViewManager, user: User?, errorMessage: Binding<String?>) {
+
+        errorMessage.wrappedValue = nil
+        let repo = UserRepository(context: context)
+        repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user) { userModel in
+            authModel.setUserModel(userModel)
+            Task { @MainActor in
+                viewManager.navigateToMain(1)
+            }
+        }
+    }
+    
+    
+    func signInUIManage(email: String, password: String, authModel: AuthViewModel, errorMessage: Binding<String?>, context: ModelContext, viewManager: ViewManager) {
+        authModel.signIn(email: email, password: password) { result in
+            switch result {
+            case .failure(let err):
+                errorMessage.wrappedValue = err.localizedDescription
+            case .success(let firebaseUser):
+                self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage)
             }
         }
     }
@@ -286,7 +332,7 @@ class AuthViewModel: ObservableObject {
         )
         
         // 3️⃣ Call your existing deleteAccount method
-        deleteAccount(reauthCredential: oauthCred, completion: completion)
+        deleteAccount(credential: oauthCred, completion: completion)
     }
     
     /// Reauthenticate a Google user and hand back the `AuthCredential`

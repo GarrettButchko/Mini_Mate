@@ -262,7 +262,7 @@ struct ScoreCardView: View {
                 }
             }
             
-            if let course = gameModel.getCourse(), course.adActive {
+            if let course = gameModel.getCourse(), course.customAdActive {
                 Button {
                     if let link = course.adLink, link != "" {
                         if let url = URL(string: link) {

@@ -137,6 +137,32 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }
     }
+    
+    func searchNearbyCourses(
+        upwardOffset: CLLocationDegrees = 0.03,
+        span: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1),
+        completion: @escaping (Bool, MapCameraPosition?) -> Void
+    ) {
+        guard let userLocation else {
+            completion(false, nil)
+            return
+        }
+
+        let adjustedCoordinate = CLLocationCoordinate2D(
+            latitude: userLocation.latitude + upwardOffset,
+            longitude: userLocation.longitude
+        )
+
+        let region = MKCoordinateRegion(
+            center: adjustedCoordinate,
+            span: span
+        )
+
+        performSearch(in: region) { success in
+            let newPosition = success ? self.updateCameraPosition(nil) : nil
+            completion(success, newPosition)
+        }
+    }
 
     func findClosestMiniGolf(completion: @escaping (MKMapItem?) -> Void) {
         guard let userLoc = userLocation else {

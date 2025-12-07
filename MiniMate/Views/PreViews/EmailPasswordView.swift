@@ -5,6 +5,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import SwiftData
 
 /// View for new users to sign up and create an account
 struct EmailPasswordView: View {
@@ -71,8 +72,9 @@ struct EmailPasswordView: View {
 
                     passwordField(title: "Password", text: $password)
 
-                    // Sign Up Button
-                    Button(action: signIn) {
+                    Button {
+                        authModel.signInUIManage(email: email, password: password, authModel: authModel, errorMessage: $errorMessage, context: context, viewManager: viewManager)
+                    } label: {
                         ZStack {
                             RoundedRectangle(cornerRadius: 25)
                                 .frame(width: 150, height: 50)
@@ -145,15 +147,6 @@ struct EmailPasswordView: View {
                 .stroke(.ultraThickMaterial))
         }
     }
-
-    private func signIn() {
-        authModel.signIn(email: email, password: password) { result in
-            switch result {
-            case .failure(let err):
-                errorMessage = err.localizedDescription
-            case .success(let firebaseUser):
-                createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
-            }
-        }
-    }
 }
+
+
