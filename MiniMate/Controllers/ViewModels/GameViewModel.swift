@@ -75,6 +75,10 @@ final class GameViewModel: ObservableObject {
     
     var isOnline: Bool { onlineGame }
     
+    var isInGame: Bool {
+        !gameValue.id.isEmpty
+    }
+    
     // Public Actions
     func resetGame() {
         setGame(Game())
@@ -141,6 +145,12 @@ final class GameViewModel: ObservableObject {
         guard let ref = gameRef(), let handle = listenerHandle else { return }
         ref.removeObserver(withHandle: handle)
         listenerHandle = nil
+    }
+    
+    func setLastUpdated(_ date: Date) {
+        objectWillChange.send()
+        lastUpdated = date
+        pushUpdate()
     }
     
     // MARK: - Updating DataBase
@@ -511,3 +521,4 @@ final class GameViewModel: ObservableObject {
     func resetCourse(){ course = nil; game.courseID = nil}
     func getCourse() -> Course? { course }
 }
+

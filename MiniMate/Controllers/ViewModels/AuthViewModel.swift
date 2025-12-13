@@ -283,7 +283,7 @@ class AuthViewModel: ObservableObject {
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
         repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user) { userModel in
-            authModel.setUserModel(userModel)
+            
             Task { @MainActor in
                 viewManager.navigateToMain(1)
             }

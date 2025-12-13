@@ -11,33 +11,44 @@ struct HostView: View {
     @Environment(\.scenePhase) private var scenePhase
     
     @Binding var showHost: Bool
+    @State var showTextAndButtons = false
+    @State var showAddPlayerAlert = false
+    @State var showDeleteAlert = false
+    @State var newPlayerName = ""
+    @State var newPlayerEmail = ""
+    @State var isRotating = false
     
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var viewManager: ViewManager
     @ObservedObject var locationHandler: LocationHandler
     @ObservedObject var gameModel: GameViewModel
+    @StateObject var viewModel: HostViewModel
     
-    @State private var showAddPlayerAlert = false
-    @State private var showDeleteAlert = false
-    @State private var newPlayerName = ""
-    @State private var newPlayerEmail = ""
-    @State private var playerToDelete: String?
-    
-    // how long (in seconds) a game stays live without activity
-    private let ttl: TimeInterval = 20 * 60
-    // when this game was last pushed to Firebase
-    @State private var lastUpdated: Date = Date()
-    // a one-second ticker
-    private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    @State  private var timeRemaining: TimeInterval = 20 * 60
-    
-    @State var showTextAndButtons: Bool = false
-    
-    @State private var isRotating = false // Place this in your view struct
-    
-    let courseRepo = CourseRepository()
+    init(
+            showHost: Binding<Bool>,
+            authModel: AuthViewModel,
+            viewManager: ViewManager,
+            locationHandler: LocationHandler,
+            gameModel: GameViewModel
+        ) {
+            self._showHost = showHost
+            self.authModel = authModel
+            self.viewManager = viewManager
+            self.locationHandler = locationHandler
+            self.gameModel = gameModel
+            
+            // Correct way to initialize a StateObject with dependencies
+            _viewModel = StateObject(wrappedValue: HostViewModel(gameModel: gameModel, handler: locationHandler))
+        }
     
     var body: some View {
+        mainContent
+        .onTapGesture {
+            viewModel.resetTimer()
+        }
+    }
+    
+    private var mainContent: some View {
         VStack {
             Capsule()
                 .frame(width: 38, height: 6)
@@ -45,7 +56,7 @@ struct HostView: View {
                 .padding(10)
             
             HStack {
-                Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
+                Text(viewModel.gameModel.isOnline ? "Hosting Game" : "Game Setup")
                     .font(.title)
                     .fontWeight(.bold)
                     .padding(.leading, 30)
@@ -75,35 +86,27 @@ struct HostView: View {
             }
                 
             Button("Add") {
-                gameModel.addLocalPlayer(named: newPlayerName, email: newPlayerEmail)
-                newPlayerName = "";
-                newPlayerEmail = "";
+                viewModel.addPlayer(newPlayerName: $newPlayerName, newPlayerEmail: $newPlayerEmail)
             }
             .disabled(
                 newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                 !newPlayerEmail.isEmpty
             )
+
             .tint(.blue)
             
             Button("Cancel", role: .cancel) {}
         }
         .alert("Delete Player?", isPresented: $showDeleteAlert) {
             Button("Delete", role: .destructive) {
-                if let player = playerToDelete {
+                if let player = viewModel.playerToDelete {
                     gameModel.removePlayer(userId: player)
                 }
             }
             Button("Cancel", role: .cancel) {}
         }
-        .onReceive(ticker) { _ in
-            // compute seconds until (lastUpdated + ttl)
-            let expireDate = lastUpdated.addingTimeInterval(ttl)
-            timeRemaining = max(0, expireDate.timeIntervalSinceNow)
-            
-            // if we’ve actually hit zero, you could auto-dismiss:
-            if timeRemaining <= 0 {
-                showHost = false
-            }
+        .onReceive(viewModel.timer) { _ in
+            viewModel.tick(showHost: $showHost)
         }
     }
     
@@ -121,31 +124,14 @@ struct HostView: View {
                     HStack {
                         Text("Expires in:")
                         Spacer()
-                        Text(timeString(from: Int(timeRemaining)))
+                        Text(viewModel.timeString(from: Int(viewModel.timeRemaining)))
                             .monospacedDigit()
                     }
                 }
                 
                 DatePicker("Date & Time", selection: gameModel.binding(for: \.date))
                     .onChange(of: locationHandler.selectedItem) { _, newValue in
-                        guard
-                            let newValue = newValue,
-                            let name = newValue.name
-                        else { return }
-
-                        courseRepo.courseNameExistsAndSupported(name) { exists in
-                            if !exists {
-                                return
-                            }
-
-                            // Course exists — try to fetch it
-                            courseRepo.fetchCourseByName(name) { course in
-                                
-                                let holeCount = course?.pars?.count ?? 18
-                                    gameModel.setNumberOfHole(holeCount)
-                                
-                            }
-                        }
+                        viewModel.handleLocationChange(newValue)
                     }
 
                 
@@ -214,12 +200,8 @@ struct HostView: View {
                     Spacer()
                     
                     if !showTextAndButtons {
-                        
                         Button {
-                            
-                            gameModel.setHasLoaded(false)
-                            gameModel.findClosestLocationAndLoadCourse(locationHandler: locationHandler, showTextAndButtons: $showTextAndButtons)
-                            
+                            viewModel.searchNearby(showTxtButtons: $showTextAndButtons)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "magnifyingglass")
@@ -238,14 +220,7 @@ struct HostView: View {
                         // Retry Button
                         Button(action: {
                             withAnimation(){
-                                isRotating = true
-                            }
-                            
-                            gameModel.setHasLoaded(false)
-                            gameModel.findClosestLocationAndLoadCourse(locationHandler: locationHandler, showTextAndButtons: $showTextAndButtons)
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                                isRotating = false
+                                viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating)
                             }
                         }) {
                             Image(systemName: "arrow.trianglehead.2.clockwise")
@@ -260,14 +235,10 @@ struct HostView: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                         
                         
-                        
                         // Exit Button
                         Button(action: {
                             withAnimation {
-                                locationHandler.selectedItem = nil
-                                gameModel.setLocation(nil)
-                                gameModel.resetCourse()
-                                showTextAndButtons = false
+                                viewModel.exit(showTxtButtons: $showTextAndButtons)
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -282,10 +253,7 @@ struct HostView: View {
                     }
                 }
                 .onAppear {
-                    if gameModel.getCourse() == nil && !gameModel.getHasLoaded() {
-                        gameModel.findClosestLocationAndLoadCourse(locationHandler: locationHandler, showTextAndButtons: $showTextAndButtons)
-                        gameModel.setHasLoaded(true)
-                    }
+                    viewModel.setUp(showTxtButtons: $showTextAndButtons)
                 }
             }
         }
@@ -297,7 +265,7 @@ struct HostView: View {
                 HStack {
                     ForEach(gameModel.gameValue.players) { player in
                         PlayerIconView(player: player, isRemovable: player.userId.count == 6) {
-                            playerToDelete = player.userId
+                            viewModel.playerToDelete = player.userId
                             showDeleteAlert = true
                         }
                     }
@@ -330,58 +298,8 @@ struct HostView: View {
     private var startGameSection: some View {
         Section {
             Button("Start Game") {
-                gameModel.startGame(showHost: $showHost)
-                viewManager.navigateToScoreCard()
+                viewModel.startGame(showHost: $showHost, viewManager: viewManager)
             }
         }
-    }
-    
-    
-    // MARK: - Logic
-    
-    private func timeString(from seconds: Int) -> String {
-        let minutes = seconds / 60
-        let secs = seconds % 60
-        return String(format: "%d:%02d", minutes, secs)
-    }
-    
-    
-}
-
-struct MapItemPickerRowView: View {
-    let item: MKMapItem
-    let userLocation: CLLocationCoordinate2D
-    
-    var body: some View {
-        let itemName = item.name ?? "Unknown"
-        let itemLocation = CLLocation(latitude: item.placemark.coordinate.latitude, longitude: item.placemark.coordinate.longitude)
-        let userLoc = CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)
-        let distanceInMiles = userLoc.distance(from: itemLocation) / 1609.34
-        
-        Text("\(itemName) • \(String(format: "%.1f", distanceInMiles)) mi")
-    }
-}
-
-// MARK: - Player Icon View
-
-struct PlayerIconView: View {
-    let player: Player
-    var isRemovable: Bool
-    var onTap: (() -> Void)?
-    var imageSize: CGFloat = 30
-    
-    var body: some View {
-        Group {
-            if isRemovable {
-                Button {
-                    onTap?()
-                } label: {
-                    PhotoIconView(photoURL: player.photoURL, name: player.name, imageSize: imageSize, background: .ultraThinMaterial)
-                }
-            } else {
-                PhotoIconView(photoURL: player.photoURL, name: player.name, imageSize: imageSize, background: .ultraThinMaterial)
-            }
-        }
-        .padding(.horizontal)
     }
 }

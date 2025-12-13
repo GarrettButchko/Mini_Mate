@@ -25,64 +25,51 @@ final class UserRepository {
         name: String? = nil,
         completion: @escaping(UserModel) -> Void
     ) {
-        // 1️⃣ Fetch Local First
-        let local = fetchLocal(id: id)
         
-        // 2️⃣ Fetch Remote
-        fetchRemote(id: id) { remote in
-            
-            // CASE A: Remote exists
-            if let remote = remote {
-                
-                // CASE A1: Local exists
-                if let local = local {
-                    
-                    // ⚠️ They differ → update remote with the local version
-                    if local.lastUpdated < remote.lastUpdated {
-                        // Remote is newer → update local
-                        self.saveLocal(context: self.context!, model: remote) { _ in
-                            print("🔄 Synced: Remote → Local (remote newer)")
-                        }
-                        completion(remote)
-                        return
-                    }
-
-                    if local.lastUpdated > remote.lastUpdated {
-                        // Local is newer → update remote
-                        self.saveRemote(id: id, userModel: local) { _ in
-                            print("🔄 Synced: Local → Remote (local newer)")
-                        }
-                        completion(local)
-                        return
-                    }
-                    
-                    // Local is authoritative; return it
-                    completion(local)
-                    return
+        let local: UserModel? = fetchLocal(id: id)
+        var remote: UserModel?
+        fetchRemote(id: id) { remoteNew in
+            remote = remoteNew
+        }
+        // 1️⃣ Fetch Local First
+        
+        if let remote = remote, let local = local {
+            if local.lastUpdated == remote.lastUpdated {
+                print("🔄 Users already synced")
+                completion(local)
+                return
+            } else if local.lastUpdated < remote.lastUpdated {
+                // Remote is newer → update local
+                saveLocal(context: context!, model: remote) { _ in
+                    print("🔄 Synced: Remote → Local (remote newer)")
                 }
-                
-                // CASE A2: No local exists → save remote locally
-                self.saveLocal(context: self.context!, model: remote) { _ in }
                 completion(remote)
                 return
-            }
-            
-            
-            // CASE B: Remote does not exist
-            // CASE B1: Local exists → push it to remote
-            if let local = local {
-                self.saveRemote(id: id, userModel: local) { _ in
-                    print("☁️ Uploaded local → remote (remote didn't exist)")
+            } else if local.lastUpdated > remote.lastUpdated {
+                // Local is newer → update remote
+                saveRemote(id: id, userModel: local) { _ in
+                    print("🔄 Synced: Local → Remote (local newer)")
                 }
                 completion(local)
                 return
             }
-            
-            
-            // CASE B2: No local AND no remote → create new
-            let userModel = self.createUser(id: id, firebaseUser: firebaseUser, name: name)
-            self.saveLocal(context: self.context!, model: userModel) { _ in }
-            self.saveRemote(id: id, userModel: userModel) { _ in }
+        } else if let local, remote == nil {
+            saveRemote(id: id, userModel: local) { _ in
+                print("🔄 Synced: Local → Remote (no remote only local)")
+            }
+            completion(local)
+            return
+        } else if local == nil, let remote = remote {
+            saveLocal(context: context!, model: remote) { _ in
+                print("🔄 Synced: Remote → Local (no local only remote)")
+            }
+            completion(remote)
+            return
+        } else {
+            print("✅ Created new user, named: \(name ?? "N/A")")
+            let userModel = createUser(id: id, firebaseUser: firebaseUser, name: name)
+            saveLocal(context: context!, model: userModel) { _ in }
+            saveRemote(id: id, userModel: userModel) { _ in }
             completion(userModel)
         }
     }
