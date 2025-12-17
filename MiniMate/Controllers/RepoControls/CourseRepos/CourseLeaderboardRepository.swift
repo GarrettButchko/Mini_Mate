@@ -59,10 +59,10 @@ final class CourseLeaderboardRepository {
     }
     
     // MARK: - Add Player to Live Leaderboard
-    func addPlayerToLiveLeaderboard(player: Player, course: Course, email: String, max numberOfPlayers: Int, added: Binding<Bool>, courseRepository: CourseRepository, completion: @escaping (Bool) -> Void) {
+    func addPlayerToLiveLeaderboard(player: Player, courseID: String, email: String, max numberOfPlayers: Int, added: Binding<Bool>, courseRepository: CourseRepository, completion: @escaping (Bool) -> Void) {
         
-        fetchCourseLeaderboard(id: course.id) { currentLeaderboard in
-            var leaderboard = currentLeaderboard ?? CourseLeaderboard(id: course.id)
+        fetchCourseLeaderboard(id: courseID) { currentLeaderboard in
+            var leaderboard = currentLeaderboard ?? CourseLeaderboard(id: courseID)
             
             // Add player and sort
             leaderboard.allPlayers.append(player.toDTO())
@@ -71,18 +71,6 @@ final class CourseLeaderboardRepository {
             // Keep top N
             if leaderboard.allPlayers.count > numberOfPlayers {
                 leaderboard.allPlayers = Array(leaderboard.allPlayers.prefix(numberOfPlayers))
-            }
-            
-            // Update leaderboard in Firebase
-            self.addOrUpdateCourseLeaderboard(leaderboard) { success in
-                // Update course emails
-                var updatedCourse = course
-                updatedCourse.emails?.append(email)
-                courseRepository.addOrUpdateCourse(updatedCourse) { _ in }
-                
-                // Update view
-                withAnimation { added.wrappedValue = true }
-                completion(success)
             }
         }
     }

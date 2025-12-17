@@ -79,7 +79,7 @@ struct MainView: View {
                             viewManager: viewManager,
                             authModel: authModel,
                             isSheetPresent: $isSheetPresented,
-                            showLoginOverlay: $showLoginOverlay
+                            showLoginOverlay: $showLoginOverlay, context: context
                         )
                         
                     }
@@ -174,7 +174,7 @@ struct MainView: View {
                                                     .fill(.primary)
                                                     .frame(width: 30, height: 30)
                                                 Image(systemName: "chevron.left")
-                                                    .foregroundStyle(.ultraThickMaterial)
+                                                    .foregroundStyle(.white)
                                                     .frame(width: 20, height: 20)
                                             }
                                         }

@@ -130,6 +130,8 @@ final class GameViewModel: ObservableObject {
         self.game.location = location
         if let location = location{
             game.courseID = CourseIDGenerator.generateCourseID(from: location)
+        } else {
+            game.courseID = nil
         }
         pushUpdate()
     }

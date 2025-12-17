@@ -6,26 +6,24 @@ struct TitleView: View {
     
     var body: some View {
         ZStack {
-                // Foreground Title text
-                VStack {
-                    
-                    
-                    HStack {
-                        Text("Mini")
-                            .font(.largeTitle)
-                            .foregroundColor(.mainOpp)
-                            .bold()
-                        Spacer()
-                    }
-                    HStack {
-                        Spacer()
-                        Text("Mate")
-                            .font(.largeTitle)
-                            .foregroundColor(.mainOpp)
-                            .bold()
-                    }
+            // Foreground Title text
+            VStack {
+                HStack {
+                    Text("Mini")
+                        .font(.largeTitle)
+                        .foregroundColor(.mainOpp)
+                        .bold()
+                    Spacer()
                 }
-                .frame(width: 130)
+                HStack {
+                    Spacer()
+                    Text("Mate")
+                        .font(.largeTitle)
+                        .foregroundColor(.mainOpp)
+                        .bold()
+                }
+            }
+            .frame(width: 130)
             
             // Orbiting background
             OrbitingCirclesView(colors: colors)
@@ -48,9 +46,9 @@ struct OrbitingCircle {
 // MARK: - Circle Animation View
 struct OrbitingCirclesView: View {
     var orbitingCircles: [OrbitingCircle]
-        // Custom initializer
+    // Custom initializer
     init(colors: [Color]) {
-            // Initialize orbitingCircles after `colors` is available
+        // Initialize orbitingCircles after `colors` is available
         self.orbitingCircles = (0..<8).map { index in
             OrbitingCircle(
                 angleOffset: Double(index) * (360 / 8),
@@ -62,21 +60,21 @@ struct OrbitingCirclesView: View {
         }
     }
     
-
+    
     var body: some View {
         TimelineView(.animation) { timeline in
             let date = timeline.date.timeIntervalSinceReferenceDate
             let baseRotation = date * 50
-
+            
             ZStack {
                 ForEach(orbitingCircles, id: \.angleOffset) { circle in
                     let angle = baseRotation * circle.speedMultiplier + circle.angleOffset
                     let radians = angle * .pi / 180
-
+                    
                     let x = 100 * cos(radians)
                     let y = circle.verticalScale * sin(radians) // <- height variation
                     let scale = 0.5 + 0.5 * (1 + sin(radians))
-
+                    
                     Circle()
                         .fill(circle.color)
                         .frame(width: circle.size * scale, height: circle.size * scale)

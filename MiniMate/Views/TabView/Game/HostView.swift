@@ -43,9 +43,6 @@ struct HostView: View {
     
     var body: some View {
         mainContent
-        .onTapGesture {
-            viewModel.resetTimer()
-        }
     }
     
     private var mainContent: some View {
@@ -66,8 +63,8 @@ struct HostView: View {
             Form {
                 gameInfoSection
                 playersSection
-                startGameSection
             }
+            startGameSection
         }
         .onChange(of: showHost) { _, newValue in
             if !newValue && !gameModel.started {
@@ -266,10 +263,14 @@ struct HostView: View {
                     ForEach(gameModel.gameValue.players) { player in
                         PlayerIconView(player: player, isRemovable: player.userId.count == 6) {
                             viewModel.playerToDelete = player.userId
+                            viewModel.resetTimer()
                             showDeleteAlert = true
                         }
                     }
-                    Button(action: { showAddPlayerAlert = true }) {
+                    Button(action: {
+                        showAddPlayerAlert = true
+                        viewModel.resetTimer()
+                    }) {
                         VStack {
                             ZStack {
                                 Circle()
@@ -296,10 +297,19 @@ struct HostView: View {
     }
     
     private var startGameSection: some View {
-        Section {
-            Button("Start Game") {
-                viewModel.startGame(showHost: $showHost, viewManager: viewManager)
-            }
+        Button {
+            viewModel.startGame(viewManager: viewManager, showHost: $showHost)
+        } label: {
+            Text("Start Game")
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(Color.blue)
+                        .padding(.horizontal)
+                )
         }
     }
 }

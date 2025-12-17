@@ -282,8 +282,7 @@ class AuthViewModel: ObservableObject {
 
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
-        repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user) { userModel in
-            
+        repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, authModel: authModel) {
             Task { @MainActor in
                 viewManager.navigateToMain(1)
             }
@@ -407,6 +406,11 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
+    
+    func updateUserName(_ name: String) {
+        userModel?.name = name
+    }
+
 }
 
 extension String {

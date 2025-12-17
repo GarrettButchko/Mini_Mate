@@ -138,11 +138,7 @@ struct MainTabView: View {
             }
         }
         .onAppear {
-            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!) { userModel in
-                if NetworkChecker.shared.isConnected {
-                    authModel.setUserModel(userModel)
-                }
-                try? context.save()
+            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) {
                 Task {
                     await iapManager.isPurchasedPro(authModel: authModel)
                 }

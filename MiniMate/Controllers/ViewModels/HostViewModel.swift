@@ -34,7 +34,6 @@ final class HostViewModel: ObservableObject {
         
         if timeRemaining == 0 {
             showHost.wrappedValue = false
-            gameModel.dismissGame()
         }
     }
     
@@ -48,12 +47,19 @@ final class HostViewModel: ObservableObject {
         gameModel.addLocalPlayer(named: newPlayerName.wrappedValue, email: newPlayerEmail.wrappedValue)
         newPlayerName.wrappedValue = ""
         newPlayerEmail.wrappedValue = ""
+        resetTimer()
     }
     
     func deletePlayer() {
         if let id = playerToDelete {
             gameModel.removePlayer(userId: id)
+            resetTimer()
         }
+    }
+    
+    func startGame(viewManager: ViewManager, showHost: Binding<Bool>) {
+        gameModel.startGame(showHost: showHost)
+        viewManager.navigateToScoreCard()
     }
     
     func handleLocationChange(_ item: MKMapItem?) {
@@ -67,11 +73,13 @@ final class HostViewModel: ObservableObject {
                 self.gameModel.setNumberOfHole(holes)
             }
         }
+        resetTimer()
     }
     
     func searchNearby(showTxtButtons: Binding<Bool>) {
         gameModel.setHasLoaded(false)
         gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+        resetTimer()
     }
     
     func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>) {
@@ -81,11 +89,7 @@ final class HostViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             isRotating.wrappedValue = false
         }
-    }
-    
-    func startGame(showHost: Binding<Bool>, viewManager: ViewManager) {
-        gameModel.startGame(showHost: showHost)
-        viewManager.navigateToScoreCard()
+        resetTimer()
     }
     
     func exit(showTxtButtons: Binding<Bool>){

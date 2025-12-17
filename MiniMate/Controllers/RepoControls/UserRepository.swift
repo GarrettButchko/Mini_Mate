@@ -23,57 +23,100 @@ final class UserRepository {
         id: String,
         firebaseUser: User? = nil,
         name: String? = nil,
-        completion: @escaping(UserModel) -> Void
+        authModel: AuthViewModel,
+        completion: @escaping () -> Void
     ) {
-        
-        let local: UserModel? = fetchLocal(id: id)
-        var remote: UserModel?
-        fetchRemote(id: id) { remoteNew in
-            remote = remoteNew
+        let local = fetchLocal(id: id)
+
+        // 1️⃣ Immediate local phase
+        if let local {
+            DispatchQueue.main.async {
+                print("✅ Found local user immediately")
+                authModel.setUserModel(local)
+                completion()   // ✅ local done, reconcile not done
+            }
         }
-        // 1️⃣ Fetch Local First
-        
-        if let remote = remote, let local = local {
-            if local.lastUpdated == remote.lastUpdated {
-                print("🔄 Users already synced")
-                completion(local)
-                return
-            } else if local.lastUpdated < remote.lastUpdated {
-                // Remote is newer → update local
-                saveLocal(context: context!, model: remote) { _ in
-                    print("🔄 Synced: Remote → Local (remote newer)")
-                }
-                completion(remote)
-                return
-            } else if local.lastUpdated > remote.lastUpdated {
-                // Local is newer → update remote
-                saveRemote(id: id, userModel: local) { _ in
-                    print("🔄 Synced: Local → Remote (local newer)")
-                }
-                completion(local)
-                return
+
+        // 2️⃣ Background reconcile phase
+        fetchRemote(id: id) { remote in
+            self.reconcile(
+                local: local,
+                remote: remote,
+                id: id,
+                firebaseUser: firebaseUser,
+                name: name,
+                authModel: authModel
+            ) {
+                completion() // ✅ reconcile finished
             }
-        } else if let local, remote == nil {
-            saveRemote(id: id, userModel: local) { _ in
-                print("🔄 Synced: Local → Remote (no remote only local)")
-            }
-            completion(local)
-            return
-        } else if local == nil, let remote = remote {
-            saveLocal(context: context!, model: remote) { _ in
-                print("🔄 Synced: Remote → Local (no local only remote)")
-            }
-            completion(remote)
-            return
-        } else {
-            print("✅ Created new user, named: \(name ?? "N/A")")
-            let userModel = createUser(id: id, firebaseUser: firebaseUser, name: name)
-            saveLocal(context: context!, model: userModel) { _ in }
-            saveRemote(id: id, userModel: userModel) { _ in }
-            completion(userModel)
         }
     }
 
+    private func reconcile(
+        local: UserModel?,
+        remote: UserModel?,
+        id: String,
+        firebaseUser: User?,
+        name: String?,
+        authModel: AuthViewModel,
+        completion: @escaping() -> Void
+    ) {
+        switch (local, remote) {
+
+        case let (local?, remote?):
+            
+            let delta = abs(local.lastUpdated.timeIntervalSince(remote.lastUpdated))
+            
+            
+            if delta < 0.5 {
+                print("🔄 Already in sync")
+                completion()
+            } else if local.lastUpdated > remote.lastUpdated {
+                
+                print("\(local.lastUpdated) > \(remote.lastUpdated)")
+                
+                saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
+                    print("🔄 Local → Remote")
+                    completion()
+                }
+            } else {
+                print("\(local.lastUpdated) < \(remote.lastUpdated)")
+                
+                saveLocal(context: context!, model: remote, updatedLastUpdated: false) { _ in
+                    print("🔄 Remote → Local")
+                    DispatchQueue.main.async {
+                        authModel.setUserModel(remote)
+                        completion()
+                    }
+                }
+            }
+
+        case let (local?, nil):
+            saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
+                print("🔄 Local → Remote (no remote)")
+                completion()
+            }
+
+        case let (nil, remote?):
+            saveLocal(context: context!, model: remote, updatedLastUpdated: false) { _ in
+                print("🔄 Remote → Local (no local)")
+                DispatchQueue.main.async {
+                    authModel.setUserModel(remote)
+                    completion()
+                }
+            }
+
+        case (nil, nil):
+            let newUser = createUser(id: id, firebaseUser: firebaseUser, name: name)
+            saveLocal(context: context!, model: newUser) { _ in }
+            saveRemote(id: id, userModel: newUser) { _ in }
+            DispatchQueue.main.async {
+                authModel.setUserModel(newUser)
+                print("✅ Created new user")
+                completion()
+            }
+        }
+    }
     
     func createUser(id: String, firebaseUser: User?, name: String?) -> UserModel {
         
@@ -132,12 +175,14 @@ final class UserRepository {
 
     
     
-    func saveRemote(id: String, userModel: UserModel, completion: @escaping (Bool) -> Void) {
+    func saveRemote(id: String, userModel: UserModel, updateLastUpdated: Bool = true, completion: @escaping (Bool) -> Void) {
         let db = Firestore.firestore()
         let ref = db.collection("users").document(id)
         
         let updatedUser = userModel
+        if updateLastUpdated {
             updatedUser.lastUpdated = Date()
+        }
         
         do {
             // Firestore will merge if document exists
@@ -183,8 +228,10 @@ final class UserRepository {
         }
     }
     
-    func saveLocal(context: ModelContext, model: UserModel, completion: @escaping (Bool) -> Void) {
-        model.lastUpdated = Date()
+    func saveLocal(context: ModelContext, model: UserModel, updatedLastUpdated: Bool = true, completion: @escaping (Bool) -> Void) {
+        if updatedLastUpdated {
+            model.lastUpdated = Date()
+        }
         do {
             context.insert(model)   // insert or update
             try context.save()

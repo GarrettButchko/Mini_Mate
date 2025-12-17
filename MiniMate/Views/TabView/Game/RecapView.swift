@@ -49,75 +49,20 @@ struct RecapView<VM: ViewManager & ObservableObject, AM: ObservableObject, Conte
                     Spacer()
                     
                     if sortedPlayers.count > 1 {
-                        VStack{
-                            HStack{
-                                PhotoIconView(photoURL: sortedPlayers[0].photoURL, name: sortedPlayers[0].name + "🥇", imageSize: 70, background: Color.yellow)
-                                Spacer()
-                                Text(sortedPlayers[0].totalStrokes.description)
-                                    .font(.title)
-                                    .foregroundStyle(Color.yellow)
-                                    .padding()
-                            }
-                            AddToLeaderBoardButton(course: course, player: sortedPlayers[0])
-                        }
-                        .padding()
-                        .background(Color.yellow.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 25, height: 25)))
                         
-                        
+                        PlayerStandingView(player: sortedPlayers[0], place: .first, course: course, onlyPlayer: false)
                         
                         HStack{
-                            VStack{
-                                HStack{
-                                    PhotoIconView(photoURL: sortedPlayers[1].photoURL, name: sortedPlayers[1].name + "🥈", imageSize: 40, background: Color.gray)
-                                    Spacer()
-                                    Text(sortedPlayers[1].totalStrokes.description)
-                                        .font(.title)
-                                        .foregroundStyle(Color.gray)
-                                        .padding()
-                                }
-                                AddToLeaderBoardButton(course: course, player: sortedPlayers[1])
-                            }
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .clipShape(RoundedRectangle(cornerSize: CGSize(width: 25, height: 25)))
-                            
+                            PlayerStandingView(player: sortedPlayers[1], place: .second, course: course, onlyPlayer: false)
                             if sortedPlayers.count > 2{
-                                VStack{
-                                    HStack{
-                                        PhotoIconView(photoURL: sortedPlayers[2].photoURL, name: sortedPlayers[2].name + "🥉", imageSize: 40, background: Color.brown)
-                                        Spacer()
-                                        Text(sortedPlayers[2].totalStrokes.description)
-                                            .font(.title)
-                                            .foregroundStyle(Color.brown)
-                                            .padding()
-                                    }
-                                    AddToLeaderBoardButton(course: course, player: sortedPlayers[2])
-                                }
-                                .padding()
-                                .background(Color.brown.opacity(0.2))
-                                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 25, height: 25)))
+                                PlayerStandingView(player: sortedPlayers[2], place: .third, course: course, onlyPlayer: false)
                             }
                         }
-                        
-                        
                         
                         if sortedPlayers.count > 3 {
                             ScrollView{
                                 ForEach(sortedPlayers[3...]) { player in
-                                    VStack{
-                                        HStack{
-                                            PhotoIconView(photoURL: player.photoURL, name: player.name, imageSize: 30, background: .ultraThinMaterial)
-                                            Spacer()
-                                            Text(player.totalStrokes.description)
-                                                .font(.subheadline)
-                                                .padding()
-                                        }
-                                        AddToLeaderBoardButton(course: course, player: player)
-                                    }
-                                    .padding()
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 25, height: 25)))
+                                    PlayerStandingView(player: player, place: nil, course: course, onlyPlayer: false)
                                 }
                             }
                             .frame(height: geometry.size.height * 0.3)
@@ -125,22 +70,7 @@ struct RecapView<VM: ViewManager & ObservableObject, AM: ObservableObject, Conte
                         
                         
                     } else {
-                        VStack{
-                            HStack{
-                                PhotoIconView(photoURL: sortedPlayers[0].photoURL, name: sortedPlayers[0].name, imageSize: 70, background: .ultraThinMaterial)
-                                
-                                Spacer()
-                                
-                                Text(sortedPlayers[0].totalStrokes.description)
-                                    .font(.title)
-                                    .padding()
-                            }
-                            AddToLeaderBoardButton(course: course, player: sortedPlayers[0])
-                        }
-                        .padding()
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 25, height: 25)))
-                        
+                        PlayerStandingView(player: sortedPlayers[0], place: .first, course: course, onlyPlayer: true)
                     }
                     
                     if sortedPlayers.count <= 3 {
@@ -168,12 +98,103 @@ struct RecapView<VM: ViewManager & ObservableObject, AM: ObservableObject, Conte
                 }
                 .confettiCannon(trigger: $confettiTrigger, num: 40, confettis: [.shape(.slimRectangle)])
                 .onAppear {
-                    
                     confettiTrigger = true
                 }
                 .padding()
             }
             
+        }
+    }
+}
+
+enum PlayerStanding: Equatable {
+    case first
+    case second
+    case third
+}
+
+struct PlayerStandingView: View {
+    let player: Player
+    let place: PlayerStanding?
+    let course: Course?
+    let onlyPlayer: Bool
+
+    var color: Color {
+        switch place {
+        case .first:
+            Color.yellow
+        case .second:
+            Color.gray
+        case .third:
+            Color.brown
+        default:
+            Color.clear
+        }
+    }
+    
+    var moji: String {
+        switch place {
+        case .first:
+            "🥇"
+        case .second:
+            "🥈"
+        case .third:
+            "🥉"
+        default:
+            ""
+        }
+    }
+    
+    var imageSize: CGFloat {
+        switch place {
+        case .first:
+            70
+        case .second:
+            40
+        case .third:
+            40
+        default:
+            30
+        }
+    }
+    
+    var body: some View {
+        
+        VStack{
+            HStack{
+                if place != nil {
+                    if onlyPlayer {
+                        PhotoIconView(photoURL: player.photoURL, name: player.name, imageSize: 70, background: .ultraThinMaterial)
+                    } else {
+                        PhotoIconView(photoURL: player.photoURL, name: player.name + moji, imageSize: imageSize, background: color)
+                    }
+                } else {
+                    PhotoIconView(photoURL: player.photoURL, name: player.name, imageSize: imageSize, background: .ultraThinMaterial)
+                }
+                
+                Spacer()
+                
+                Text(player.totalStrokes.description)
+                    .font(.title)
+                    .padding()
+            }
+            AddToLeaderBoardButton(course: course, player: player)
+        }
+        .padding()
+        .background {
+            if place != nil {
+                if onlyPlayer {
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(.ultraThinMaterial)
+                } else {
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(color)
+                        .opacity(0.2)
+                }
+            } else {
+                RoundedRectangle(cornerRadius: 25)
+                    .fill(.ultraThinMaterial)
+            }
         }
     }
 }

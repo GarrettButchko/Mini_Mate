@@ -7,17 +7,28 @@ import SwiftUI
 
 struct JoinView: View {
     @Environment(\.modelContext) private var context
-   
-    @ObservedObject var authModel: AuthViewModel
+    
     @ObservedObject var viewManager: ViewManager
-    @ObservedObject var gameModel: GameViewModel
-
-    @State private var gameCode: String = ""
-    @State private var message: String = ""
     
     @Binding var showHost: Bool
-    @State var inGame: Bool = false
-    @State private var showExitAlert: Bool = false
+    
+    @StateObject private var viewModel: JoinViewModel
+    
+    init(
+        authModel: AuthViewModel,
+        viewManager: ViewManager,
+        gameModel: GameViewModel,
+        showHost: Binding<Bool>
+    ) {
+        self._showHost = showHost
+        self.viewManager = viewManager
+        _viewModel = StateObject(
+            wrappedValue: JoinViewModel(
+                gameModel: gameModel,
+                authModel: authModel
+            )
+        )
+    }
 
     var body: some View {
         VStack {
@@ -38,63 +49,68 @@ struct JoinView: View {
             Form {
                 gameInfoSection
 
-                if inGame {
-                    Group{
-                        playersSection
-                        Section {
-                            Button("Exit Game") {
-                                showExitAlert = true
-                            }
-                            .foregroundColor(.red)
-                            .alert("Exit Game?", isPresented: $showExitAlert) {
-                                Button("Leave", role: .destructive) {
-                                    gameModel.leaveGame(userId: authModel.userModel!.id)
-                                    gameCode = ""
-                                    inGame = false
-                                }
-                                Button("Cancel", role: .cancel) {}
-                            }
-                        }
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    
-                } else {
+                
+            }
+            if viewModel.inGame {
+                Group{
+                    playersSection
                     Section {
-                        Button("Join Game") {
-                            gameModel.joinGame(id: gameCode){ result in
-                                if result {
-                                    withAnimation{
-                                        inGame = true
-                                    }
-                                }
-                            }
+                        Button {
+                            viewModel.showExitAlert = true
+                        } label: {
+                            Text("Exit Game")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 25)
+                                        .fill(Color.red)
+                                        .padding(.horizontal)
+                                )
                         }
-                        .disabled(gameCode.isEmpty)
+                        .foregroundColor(.red)
+                        .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
+                            Button("Leave", role: .destructive) {
+                                viewModel.leaveGame()
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        }
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                
+            } else {
+                Section {
+                    Button {
+                        viewModel.joinGame()
+                    } label: {
+                        Text("Join Game")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
+                            )
+                            .padding(.horizontal)
+                    }
+                    .disabled(viewModel.gameCode.isEmpty)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .onChange(of: showHost) { oldValue, newValue in
-            if !gameModel.gameValue.id.isEmpty && !showHost && !gameModel.gameValue.started {
-                gameModel.leaveGame(userId: gameModel.gameValue.id)
-                withAnimation{
-                    inGame = false
-                }
-            }
+            viewModel.hostDidDismiss(showHost: showHost)
         }
-        .onChange(of: gameModel.gameValue.started) { oldValue, newValue in
-            if newValue {
+        .onChange(of: viewModel.gameModel.gameValue.started) {
+            viewModel.gameDidStart($1) {
                 viewManager.navigateToScoreCard()
             }
         }
-        .onChange(of: gameModel.gameValue.dismissed) { oldValue, newValue in
-            if newValue {
-                gameCode = ""
-                withAnimation{
-                    inGame = false
-                }
-            }
+        .onChange(of: viewModel.gameModel.gameValue.dismissed) {
+            viewModel.gameDidDismiss($1)
         }
     }
 
@@ -102,11 +118,11 @@ struct JoinView: View {
 
     private var gameInfoSection: some View {
         Section(header: Text("Game Info")) {
-            if !inGame {
+            if !viewModel.inGame {
                 HStack {
                     Text("Enter Code:")
                     Spacer()
-                    TextField("Game Code", text: $gameCode)
+                    TextField("Game Code", text: $viewModel.gameCode)
                         .frame(width: 150)
                         .padding(12)
                         .background(
@@ -114,8 +130,8 @@ struct JoinView: View {
                                 .fill(Color(.systemBackground))
                                 .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                         )
-                    if message != "" {
-                        Text("Error: " + message)
+                    if viewModel.message != "" {
+                        Text("Error: " + viewModel.message)
                     }
                     
                 }
@@ -123,15 +139,15 @@ struct JoinView: View {
                 HStack {
                     Text("Code:")
                     Spacer()
-                    Text(gameModel.gameValue.id)
+                    Text(viewModel.gameModel.gameValue.id)
                 }
                 HStack {
                     Text("Date:")
                     Spacer()
-                    Text(gameModel.gameValue.date.formatted(date: .abbreviated, time: .shortened))
+                    Text(viewModel.gameModel.gameValue.date.formatted(date: .abbreviated, time: .shortened))
                 }
                 
-                if let gameModel = gameModel.gameValue.location, gameModel.latitude != 0 {
+                if let gameModel = viewModel.gameModel.gameValue.location, gameModel.latitude != 0 {
                     HStack {
                         Text("Location:")
                         Spacer()
@@ -142,17 +158,17 @@ struct JoinView: View {
                 HStack {
                     Text("Holes:")
                     Spacer()
-                    Text("\(gameModel.gameValue.numberOfHoles)")
+                    Text("\(viewModel.gameModel.gameValue.numberOfHoles)")
                 }
             }
         }
     }
 
     private var playersSection: some View {
-        Section(header: Text("Players: \(gameModel.gameValue.players.count)")) {
+        Section(header: Text("Players: \(viewModel.gameModel.gameValue.players.count)")) {
             ScrollView(.horizontal) {
                 HStack {
-                    ForEach(gameModel.gameValue.players) { player in
+                    ForEach(viewModel.gameModel.gameValue.players) { player in
                         PlayerIconView(player: player, isRemovable: false) {}
                     }
                     VStack {

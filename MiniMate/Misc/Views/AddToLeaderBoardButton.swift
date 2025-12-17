@@ -20,7 +20,7 @@ struct AddToLeaderBoardButton: View{
     var body: some View {
         if let course = course, let courseTier = course.tier, !(ProfanityFilter.containsBlockedWord(player.name) && player.incomplete) && !added && courseTier >= 2{
             Button{
-                alert = true
+                courseLeaderBoardRepo.addPlayerToLiveLeaderboard(player: player, courseID: course.id, email: email, max: 20, added: $added, courseRepository: CourseRepository()) { _ in }
             } label: {
                 ZStack{
                     RoundedRectangle(cornerRadius: 25)
@@ -35,15 +35,6 @@ struct AddToLeaderBoardButton: View{
                     }
                 }
                 .frame(width: 120, height: 20)
-            }
-            .alert("Enter a valid email to add to leaderboard?", isPresented: $alert) {
-                TextField("Name", text: $email)
-        
-                Button("Add") {
-                    courseLeaderBoardRepo.addPlayerToLiveLeaderboard(player: player, course: course, email: email, max: 20, added: $added, courseRepository: CourseRepository()) { _ in }
-                }
-                    .disabled(!email.isValidEmail)
-                Button("Cancel", role: .cancel) {}
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
