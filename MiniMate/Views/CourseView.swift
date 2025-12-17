@@ -16,13 +16,18 @@ struct CourseView: View {
     @ObservedObject var viewManager: ViewManager
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var locationHandler: LocationHandler
+    @StateObject var courseViewModel: CourseViewModel
     
-    @StateObject private var courseViewModel = CourseViewModel()
-    @StateObject private var viewModel = LookAroundViewModel()
-
-    @State var position: MapCameraPosition = .automatic
-    @State var isUpperHalf: Bool = false
-    @State private var hasAppeared = false
+    @StateObject var viewModel = LookAroundViewModel()
+    
+    init(viewManager: ViewManager, authModel: AuthViewModel, locationHandler: LocationHandler) {
+        self.viewManager = viewManager
+        self.authModel = authModel
+        self.locationHandler = locationHandler
+        _courseViewModel = StateObject(
+                    wrappedValue: CourseViewModel(locationHandler: locationHandler)
+                )
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -49,14 +54,14 @@ struct CourseView: View {
                             
                             Spacer()
                             
-                            LocationButton(cameraPosition: $position, isUpperHalf: $isUpperHalf, selectedResult: locationHandler.bindingForSelectedItem(), locationHandler: locationHandler)
+                            LocationButton(cameraPosition: $courseViewModel.position, isUpperHalf: $courseViewModel.isUpperHalf, selectedResult: locationHandler.bindingForSelectedItem(), locationHandler: locationHandler)
                                 .shadow(color: Color.black.opacity(0.1), radius: 10)
                         }
                         
                         Spacer()
                         
                         // Bottom Panel
-                        if !isUpperHalf {
+                        if !courseViewModel.isUpperHalf {
                             searchButton
                         } else {
                             
@@ -112,18 +117,12 @@ struct CourseView: View {
             }
         }
         .onAppear {
-            if !hasAppeared {
-                hasAppeared = true
-                isUpperHalf = false
-                locationHandler.mapItems = []
-                locationHandler.selectedItem = nil
-                position = locationHandler.updateCameraPosition()
-            }
+            courseViewModel.onAppearance()
         }
     }
     
     var mapView: some View {
-        Map(position: $position, selection: locationHandler.bindingForSelectedItem()) {
+        Map(position: $courseViewModel.position, selection: locationHandler.bindingForSelectedItem()) {
             withAnimation(){
                 ForEach(locationHandler.mapItems, id: \.self) { item in
                     let name = item.name ?? "Unknown"
@@ -138,7 +137,7 @@ struct CourseView: View {
         }
         .onChange(of: locationHandler.selectedItem) { oldValue, newValue in
             withAnimation {
-                position = locationHandler.updateCameraPosition(newValue)
+                courseViewModel.setPosition(locationHandler.updateCameraPosition(newValue))
             }
         }
         .onAppear {
@@ -155,17 +154,7 @@ struct CourseView: View {
     
     var searchButton: some View {
         Button {
-            withAnimation {
-                isUpperHalf.toggle()
-                
-                locationHandler.searchNearbyCourses { success, newPosition in
-                    if let newPosition {
-                        withAnimation {
-                            position = newPosition
-                        }
-                    }
-                }
-            }
+            courseViewModel.searchNearby()
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 25)
@@ -192,11 +181,7 @@ struct CourseView: View {
                     .foregroundStyle(.mainOpp)
                 Spacer()
                 Button {
-                    withAnimation {
-                        isUpperHalf = false
-                        locationHandler.mapItems = []
-                        position = locationHandler.updateCameraPosition()
-                    }
+                    courseViewModel.cancel()
                 } label: {
                     
                     Text("Cancel")
@@ -218,10 +203,7 @@ struct CourseView: View {
                             }
                             SearchResultRow(item: mapItem, userLocation: userCoord)
                                 .onTapGesture {
-                                    withAnimation(){
-                                        locationHandler.setSelectedItem(mapItem)
-                                        position = locationHandler.updateCameraPosition(locationHandler.bindingForSelectedItem().wrappedValue)
-                                    }
+                                    courseViewModel.updatePosition(mapItem: mapItem)
                                 }
                         }
                     } else {
@@ -266,8 +248,7 @@ struct CourseView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Button(action: {
-                        let launchOptions = [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
-                        locationHandler.bindingForSelectedItem().wrappedValue?.openInMaps(launchOptions: launchOptions)
+                        courseViewModel.getDirections()
                     }) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 15)
