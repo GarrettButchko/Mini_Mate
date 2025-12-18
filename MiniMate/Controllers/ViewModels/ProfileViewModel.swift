@@ -29,6 +29,7 @@ final class ProfileViewModel: ObservableObject {
     private let authModel: AuthViewModel
     private let userRepo: UserRepository
     private let localGameRepo: LocalGameRepository
+    private let remoteGameRepo: FirestoreGameRepository
     private let viewManager: ViewManager
     
     let reauthCoordinator = AppleReauthCoordinator { _ in }
@@ -38,12 +39,14 @@ final class ProfileViewModel: ObservableObject {
         authModel: AuthViewModel,
         userRepo: UserRepository,
         localGameRepo: LocalGameRepository,
+        remoteGameRepo: FirestoreGameRepository,
         viewManager: ViewManager,
         isSheetPresent: Binding<Bool>
     ) {
         self.authModel = authModel
         self.userRepo = userRepo
         self.localGameRepo = localGameRepo
+        self.remoteGameRepo = remoteGameRepo
         self.viewManager = viewManager
     }
     
@@ -143,6 +146,10 @@ final class ProfileViewModel: ObservableObject {
         // Now it's safe to leave the context
         viewManager.navigateToWelcome()
         
+        findGameIdsToDelete(allGameIds: gameIDs) { ids in
+            self.remoteGameRepo.deleteAll(ids: ids) { completed in }
+        }
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             self.localGameRepo.deleteAll(ids: gameIDs) { completed in
                 if completed {
@@ -153,6 +160,36 @@ final class ProfileViewModel: ObservableObject {
             self.userRepo.deleteUnified(id: userID)
         }
     }
+    
+    private func findGameIdsToDelete(
+        allGameIds: [String],
+        completion: @escaping ([String]) -> Void
+    ) {
+        var gameIdsToDelete: [String] = []
+
+        remoteGameRepo.fetchAll(withIDs: allGameIds) { games in
+            let group = DispatchGroup()
+
+            for game in games {
+                group.enter()
+                let playerIds = game.players.map(\.userId)
+
+                self.userRepo.countExistingUsers(ids: playerIds) { count in
+                    if count == 1 {
+                        gameIdsToDelete.append(game.id)
+                    }
+                    group.leave()
+                }
+            }
+
+            group.notify(queue: .main) {
+                completion(gameIdsToDelete)
+            }
+        }
+    }
+    
+    
+
 
     
     func managePictureChange(newImage: UIImage?) {

@@ -197,6 +197,31 @@ final class UserRepository {
         }
     }
     
+    func countExistingUsers(
+        ids: [String],
+        completion: @escaping (Int) -> Void
+    ) {
+        guard !ids.isEmpty else {
+            completion(0)
+            return
+        }
+
+        let db = Firestore.firestore()
+
+        db.collection("users")
+            .whereField(FieldPath.documentID(), in: ids)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("❌ Firestore countExistingUsers error: \(error.localizedDescription)")
+                    completion(0)
+                    return
+                }
+
+                completion(snapshot?.documents.count ?? 0)
+            }
+    }
+
+    
     func fetchRemote(id: String, completion: @escaping (UserModel?) -> Void) {
         let db = Firestore.firestore()
         let ref = db.collection("users").document(id)

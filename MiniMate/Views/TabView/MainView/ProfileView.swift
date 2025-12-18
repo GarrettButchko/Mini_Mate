@@ -56,7 +56,7 @@ struct ProfileView: View {
             wrappedValue: ProfileViewModel(
                 authModel: authModel,
                 userRepo: UserRepository(context: context),
-                localGameRepo: LocalGameRepository(context: context),
+                localGameRepo: LocalGameRepository(context: context), remoteGameRepo: FirestoreGameRepository(),
                 viewManager: viewManager, isSheetPresent: isSheetPresent
             )
         )

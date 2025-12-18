@@ -121,5 +121,31 @@ class FirestoreGameRepository {
             }
         }
     }
+    
+    func deleteAll(
+        ids: [String],
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard !ids.isEmpty else {
+            completion(true)
+            return
+        }
+
+        let batch = db.batch()
+
+        for id in ids {
+            let ref = db.collection("games").document(id)
+            batch.deleteDocument(ref)
+        }
+
+        batch.commit { error in
+            if let error = error {
+                print("❌ Firestore batch delete error: \(error.localizedDescription)")
+                completion(false)
+            } else {
+                completion(true)
+            }
+        }
+    }
 }
 
