@@ -8,6 +8,20 @@ import FirebaseAuth
 import AuthenticationServices
 import SwiftData
 
+enum DeleteAlertType: Identifiable {
+    case google
+    case apple
+    case email
+    
+    var id: Int {
+        switch self {
+        case .google: return 0
+        case .apple:  return 1
+        case .email:  return 2
+        }
+    }
+}
+
 struct ProfileView: View {
     @Environment(\.modelContext) private var context
     
@@ -16,6 +30,9 @@ struct ProfileView: View {
     
     @Binding var isSheetPresent: Bool
     @Binding var showLoginOverlay: Bool
+    
+    @State var password: String = ""
+    @State var confirmPassword: String = ""
     
     @State private var showingPhotoPicker = false
     
@@ -34,7 +51,7 @@ struct ProfileView: View {
         self.authModel = authModel
         self._isSheetPresent = isSheetPresent
         self._showLoginOverlay = showLoginOverlay
-        
+
         _viewModel = StateObject(
             wrappedValue: ProfileViewModel(
                 authModel: authModel,
@@ -44,7 +61,7 @@ struct ProfileView: View {
             )
         )
     }
-    
+
     
     var body: some View {
         ZStack {
@@ -149,7 +166,6 @@ struct ProfileView: View {
                     Section("Account Management") {
                         
                         Button("Logout") {
-                            isSheetPresent = false
                             viewModel.logOut()
                         }
                         .foregroundColor(.red)
@@ -187,7 +203,7 @@ struct ProfileView: View {
                                     title: Text("Confirm Deletion"),
                                     message: Text("This will permanently delete your account."),
                                     primaryButton: .destructive(Text("Delete")) {
-                                        viewModel.emailReauthAndDelete()
+                                        showLoginOverlay = true
                                     },
                                     secondaryButton: .cancel()
                                 )
@@ -210,16 +226,24 @@ struct ProfileView: View {
                     }
                 }
             }
-            
-            // Reauth Overlay
-            if showLoginOverlay {
-                ReauthViewOverlay(
-                    authModel: authModel, viewManager: viewManager,
-                    showLoginOverlay: $showLoginOverlay,
-                    isSheetPresent: $isSheetPresent
-                )
-                .cornerRadius(20)
-                .zIndex(1)
+            .alert("Confirm Deletion", isPresented: $showLoginOverlay) {
+                SecureField("Password", text: $password)
+                SecureField("Confirm Password", text: $confirmPassword)
+                
+                Button("Delete", role: .destructive) {
+                    viewModel.emailReauthAndDelete(
+                        email: authModel.userModel!.email!,
+                        password: password
+                    )
+                }
+                .disabled((password != confirmPassword) || password == "" || confirmPassword == "")
+
+                Button("Cancel", role: .cancel) {
+                    password = ""
+                    confirmPassword = ""
+                }
+            } message: {
+                Text("This will permanently delete your account.")
             }
         }
     }

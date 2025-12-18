@@ -15,26 +15,59 @@ struct EmailPasswordView: View {
     @ObservedObject var authModel: AuthViewModel
     
     @Binding var showEmail: Bool
+    @State var showSignUp: Bool = false
     
     @Binding var height: CGFloat
     var geometry: GeometryProxy
     
     @State private var email = ""
     @State private var password = ""
+    @State private var confirmPassword = ""
     @State private var errorMessage: String?
 
     @FocusState private var isTextFieldFocused: Bool
 
     private let characterLimit = 15
+    
+    var disabled: Bool {
+        if !showSignUp {
+            return email.isEmpty || password.isEmpty
+        } else {
+            return email.isEmpty || password.isEmpty || confirmPassword.isEmpty || password != confirmPassword
+        }
+    }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
             VStack {
+            
+                // Back Button
+                HStack {
+                    Button(action: {
+                        isTextFieldFocused = false
+                        withAnimation {
+                            showEmail = false
+                        }
+                        
+                        height = 220
+                        
+                    }) {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Image(systemName: "arrow.left")
+                                    .font(.headline)
+                                    .foregroundStyle(.green)
+                            )
+                    }
+                    Spacer()
+                }
+                
                 Spacer()
                 // Title
                 VStack(spacing: 8) {
                     HStack {
-                        Text("Sign Up / Login")
+                        Text(showSignUp ? "Sign Up" : "Login")
                             .font(.system(size: 40, weight: .bold))
                             .foregroundColor(.primary)
                         Spacer()
@@ -71,23 +104,40 @@ struct EmailPasswordView: View {
                     }
 
                     passwordField(title: "Password", text: $password)
+                    
+                    if showSignUp {
+                        passwordField(title: "Confirm Password", text: $confirmPassword)
+                    }
 
                     Button {
-                        authModel.signInUIManage(email: email, password: password, authModel: authModel, errorMessage: $errorMessage, context: context, viewManager: viewManager)
+                        if !showSignUp {
+                            authModel.signInUIManage(email: email, password: password, authModel: authModel, errorMessage: $errorMessage, showSignUp: $showSignUp, context: context, viewManager: viewManager)
+                        } else {
+                            authModel.createUser(email: email, password: password) { result in
+                                switch result {
+                                case .success(let firebaseUser):
+                                    authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
+                                case .failure(let error):
+                                    errorMessage = error.localizedDescription
+                                }
+                            }
+                        }
                     } label: {
                         ZStack {
                             RoundedRectangle(cornerRadius: 25)
                                 .frame(width: 150, height: 50)
                                 .foregroundColor(.green)
-                            Text("Sign Up / Login")
+                            Text(showSignUp ? "Sign Up" : "Login")
                                 .foregroundColor(.white)
                         }
+                        .opacity(disabled ? 0.5 : 1)
                     }
+                    .disabled(disabled)
 
                     // Error
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
-                            .foregroundColor(.pink)
+                            .foregroundColor(.white)
                             .font(.caption)
                             .multilineTextAlignment(.center)
                     }
@@ -96,41 +146,16 @@ struct EmailPasswordView: View {
                 Spacer()
             }
             .padding()
-
-            // Back Button
-            HStack {
-                Button(action: {
-                    isTextFieldFocused = false
-                    withAnimation {
-                        showEmail = false
-                    }
-                    
-                    height = 220
-                    
-                }) {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            Image(systemName: "arrow.left")
-                                .font(.headline)
-                                .foregroundStyle(.green)
-                        )
-                }
-                Spacer()
-            }
-            .padding()
-        }
     }
 
     // MARK: - Helpers
 
-    private func passwordField(title: String, text: Binding<String>) -> some View {
+    private func passwordField(title: String, text: Binding<String>, image: String = "lock") -> some View {
         VStack(alignment: .leading) {
             Text(title)
                 .foregroundColor(.secondary)
             HStack {
-                Image(systemName: "lock")
+                Image(systemName: image)
                     .foregroundColor(.secondary)
                 SecureField("••••••", text: text)
                     .focused($isTextFieldFocused)

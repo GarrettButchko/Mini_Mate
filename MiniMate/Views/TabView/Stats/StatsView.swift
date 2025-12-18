@@ -161,7 +161,7 @@ struct StatsView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 25))
                     }
                     
-                    if analyzer?.hasGames == true {
+                    if !games.isEmpty {
                         ForEach(games) { game in
                             GameRow(context: _context, editOn: $editOn, editingGameID: $editingGameID, authModel: authModel, game: game, viewManager: viewManager, presentShareSheet: presentShareSheet)
                                 .transition(.opacity)

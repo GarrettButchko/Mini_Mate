@@ -107,29 +107,26 @@ final class UserRepository {
             }
 
         case (nil, nil):
-            let newUser = createUser(id: id, firebaseUser: firebaseUser, name: name)
-            saveLocal(context: context!, model: newUser) { _ in }
-            saveRemote(id: id, userModel: newUser) { _ in }
-            DispatchQueue.main.async {
-                authModel.setUserModel(newUser)
-                print("✅ Created new user")
+            createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel) {
                 completion()
             }
         }
     }
     
-    func createUser(id: String, firebaseUser: User?, name: String?) -> UserModel {
+    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, completion: @escaping () -> Void){
         
-        let finalName  = name ?? firebaseUser?.displayName ?? "Error"
-        let finalEmail = firebaseUser?.email ?? "Error"
+        let finalName  = name ?? firebaseUser?.displayName ?? "User#\(String(id.prefix(5)))"
+        let finalEmail = firebaseUser?.email ?? "Email"
         
-        return UserModel(
-                            id: id,
-                            name: finalName,
-                            photoURL: firebaseUser?.photoURL,
-                            email: finalEmail,
-                            gameIDs: []
-                        )
+        let newUser = UserModel(id: id, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [])
+        
+        saveLocal(context: context!, model: newUser) { _ in }
+        saveRemote(id: id, userModel: newUser) { _ in }
+        DispatchQueue.main.async {
+            authModel.setUserModel(newUser)
+            print("✅ Created new user")
+            completion()
+        }
     }
     
     
@@ -279,39 +276,32 @@ final class UserRepository {
     }
     
     func deleteRemote(id: String, completion: @escaping (Bool) -> Void) {
-        let db = Firestore.firestore()
-        let ref = db.collection("users").document(id)
-        
-        ref.delete { error in
-            if let error = error {
-                print("❌ Firestore delete error: \(error.localizedDescription)")
-                completion(false)
-            } else {
-                print("🗑️ Firestore user doc deleted")
+        let ref = Firestore.firestore().collection("users").document(id)
+
+        ref.getDocument { snapshot, error in
+            guard snapshot?.exists == true else {
+                print("⚠️ User doc did not exist")
                 completion(true)
+                return
+            }
+
+            ref.delete { error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        print("❌ Firestore delete error:", error)
+                        completion(false)
+                    } else {
+                        completion(true)
+                    }
+                }
             }
         }
     }
+
     
-    func deleteUnified(id: String, completion: @escaping (Bool, Bool) -> Void) {
-        var localSuccess: Bool?
-        var remoteSuccess: Bool?
-        
-        func returnIfDone() {
-            if let local = localSuccess, let remote = remoteSuccess {
-                completion(local, remote)
-            }
-        }
-        
-        deleteLocal(id: id) { success in
-            localSuccess = success
-            returnIfDone()
-        }
-        
-        deleteRemote(id: id) { success in
-            remoteSuccess = success
-            returnIfDone()
-        }
+    func deleteUnified(id: String) {
+        deleteLocal(id: id) { _ in }
+        deleteRemote(id: id) { _ in }
     }
 
     
@@ -320,7 +310,7 @@ final class UserRepository {
         _ image: UIImage,
         completion: @escaping (Result<URL, Error>) -> Void
     ) {
-        guard let user = firebaseUser else {
+        guard let user = Auth.auth().currentUser else {
             return completion(.failure(NSError(
                 domain: "AuthViewModel",
                 code: -1,

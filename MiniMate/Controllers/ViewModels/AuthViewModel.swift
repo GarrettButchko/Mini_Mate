@@ -13,12 +13,19 @@ import AuthenticationServices
 import CryptoKit
 import SwiftUI
 
+enum SignInMethod {
+    case google
+    case apple
+    case email
+}
+
 /// ViewModel that manages Firebase Authentication and app-specific user data
 class AuthViewModel: ObservableObject {
     /// The currently authenticated Firebase user
     @Published var firebaseUser: FirebaseAuth.User?
     @Published var userModel: UserModel?
     @Published var authAction: AuthAction?
+    @Published var signInMethod: SignInMethod? = nil
     
     enum AuthAction {
         case deletionSuccess
@@ -148,6 +155,7 @@ class AuthViewModel: ObservableObject {
                         print("Successfully")
                     }
                 }
+                self.signInMethod = .apple
                 completion(.success(result.user), cred.fullName?.formatted())
             }
         }
@@ -189,6 +197,7 @@ class AuthViewModel: ObservableObject {
                 if let result = authResult {
                     DispatchQueue.main.async {
                         self.firebaseUser = result.user
+                        self.signInMethod = .google
                         completion(.success(result.user))
                     }
                 }
@@ -198,14 +207,15 @@ class AuthViewModel: ObservableObject {
     
     /// Creates a new user with email and password
     func createUser(email: String, password: String, completion: @escaping (Result<FirebaseAuth.User, Error>) -> Void) {
-        Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
+        Auth.auth().createUser(withEmail: email, password: password) { result, error in
             if let error = error {
                 completion(.failure(error)); return
             }
-            if let firebaseUser = result?.user {
+            if let firebaseUser = result {
                 DispatchQueue.main.async {
-                    self?.firebaseUser = firebaseUser
-                    completion(.success(firebaseUser))
+                    self.firebaseUser = firebaseUser.user
+                    self.signInMethod = .email
+                    completion(.success(firebaseUser.user))
                 }
                 
             }
@@ -214,14 +224,15 @@ class AuthViewModel: ObservableObject {
     
     /// Signs in an existing user with email and password
     func signIn(email: String, password: String, completion: @escaping (Result<FirebaseAuth.User, Error>) -> Void) {
-        Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
+        Auth.auth().signIn(withEmail: email, password: password) { result, error in
             if let error = error {
                 completion(.failure(error)); return
             }
-            if let firebaseUser = result?.user {
+            if let firebaseUser = result {
                 DispatchQueue.main.async {
-                    self?.firebaseUser = firebaseUser
-                    completion(.success(firebaseUser))
+                    self.firebaseUser = firebaseUser.user
+                    self.signInMethod = .email
+                    completion(.success(firebaseUser.user))
                 }
                 
             }
@@ -234,6 +245,7 @@ class AuthViewModel: ObservableObject {
             try Auth.auth().signOut()
             DispatchQueue.main.async {
                 self.firebaseUser = nil
+                self.signInMethod = nil
                 if self.appleUserID != nil {
                     self.rawAppleUserID = nil
                 }
@@ -271,6 +283,7 @@ class AuthViewModel: ObservableObject {
                         completion(.failure(error))
                     } else {
                         DispatchQueue.main.async { self.firebaseUser = nil }
+                        self.signInMethod = nil
                         completion(.success(()))
                     }
                 }
@@ -279,7 +292,6 @@ class AuthViewModel: ObservableObject {
     }
     
     func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: ViewManager, user: User?, errorMessage: Binding<String?>) {
-
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
         repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, authModel: authModel) {
@@ -290,11 +302,14 @@ class AuthViewModel: ObservableObject {
     }
     
     
-    func signInUIManage(email: String, password: String, authModel: AuthViewModel, errorMessage: Binding<String?>, context: ModelContext, viewManager: ViewManager) {
+    func signInUIManage(email: String, password: String, authModel: AuthViewModel, errorMessage: Binding<String?>, showSignUp: Binding<Bool>, context: ModelContext, viewManager: ViewManager) {
         authModel.signIn(email: email, password: password) { result in
             switch result {
-            case .failure(let err):
-                errorMessage.wrappedValue = err.localizedDescription
+            case .failure(_):
+                withAnimation(){
+                    showSignUp.wrappedValue = true
+                }
+                errorMessage.wrappedValue = "No User Found Plase Sign Up"
             case .success(let firebaseUser):
                 self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage)
             }

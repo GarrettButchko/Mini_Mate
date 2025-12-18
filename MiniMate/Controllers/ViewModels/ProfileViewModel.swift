@@ -10,19 +10,7 @@ import FirebaseAuth
 import AuthenticationServices
 import SwiftUI
 
-enum DeleteAlertType: Identifiable {
-    case google
-    case apple
-    case email
-    
-    var id: Int {
-        switch self {
-        case .google: return 0
-        case .apple:  return 1
-        case .email:  return 2
-        }
-    }
-}
+
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
@@ -35,6 +23,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var name = ""
     @Published var email = ""
     @Published var activeDeleteAlert: DeleteAlertType?
+    var oldEmail: String? = nil
     
     // MARK: - Dependencies
     private let authModel: AuthViewModel
@@ -120,8 +109,8 @@ final class ProfileViewModel: ObservableObject {
         }
     }
     
-    func emailReauthAndDelete() {
-        authModel.reauthenticateWithGoogle { reauthResult in
+    func emailReauthAndDelete(email: String, password: String) {
+        authModel.reauthenticateWithEmail(email: email, password: password){ reauthResult in
             switch reauthResult {
             case .success(let credential):
                 self.handleDeleteAccount(using: credential)
@@ -154,16 +143,14 @@ final class ProfileViewModel: ObservableObject {
         // Now it's safe to leave the context
         viewManager.navigateToWelcome()
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let self else { return }
-
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             self.localGameRepo.deleteAll(ids: gameIDs) { completed in
                 if completed {
                     print("🗑️ Deleted all local games for user")
                 }
             }
 
-            self.userRepo.deleteUnified(id: userID) { _, _ in }
+            self.userRepo.deleteUnified(id: userID)
         }
     }
 
@@ -183,17 +170,22 @@ final class ProfileViewModel: ObservableObject {
     
     func manageProfileEditting(user: UserModel) {
         if editProfile {
-            authModel.updateUserName(name)
-            userRepo.saveRemote(id: authModel.currentUserIdentifier!, userModel: authModel.userModel!) { _ in }
+            if let oldEmail = oldEmail, oldEmail != name {
+                authModel.updateUserName(name)
+                userRepo.saveRemote(id: authModel.currentUserIdentifier!, userModel: authModel.userModel!) { _ in }
+            }
+
             editProfile = false
         } else {
+            oldEmail = user.name
             name = user.name
             editProfile = true
         }
     }
     
     func passwordReset(user: UserModel) {
-        let targetEmail = user.email ?? ""
+        let targetEmail = user.email ?? "No email"
+        print("Sent email to: \(targetEmail)")
         Auth.auth().sendPasswordReset(withEmail: targetEmail) { error in
             if let error = error {
                 self.botMessage = error.localizedDescription
@@ -213,13 +205,9 @@ final class ProfileViewModel: ObservableObject {
     }
     
     func deleteAccount() {
-        guard let firebaseUser = authModel.firebaseUser else {
-            activeDeleteAlert = .email
-            return
-        }
-        if firebaseUser.providerData.contains(where: { $0.providerID == "google.com" }) {
+        if authModel.signInMethod == .google {
             activeDeleteAlert = .google
-        } else if firebaseUser.providerData.contains(where: { $0.providerID == "apple.com" }) {
+        } else if authModel.signInMethod == .apple {
             activeDeleteAlert = .apple
         } else {
             activeDeleteAlert = .email
