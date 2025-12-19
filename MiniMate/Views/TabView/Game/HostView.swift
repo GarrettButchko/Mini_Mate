@@ -87,7 +87,7 @@ struct HostView: View {
             }
             .disabled(
                 newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                !newPlayerEmail.isEmpty
+                !newPlayerEmail.isEmpty || ProfanityFilter.containsBlockedWord(newPlayerName) || !newPlayerEmail.isValidEmail
             )
 
             .tint(.blue)

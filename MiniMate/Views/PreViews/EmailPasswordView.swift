@@ -116,7 +116,7 @@ struct EmailPasswordView: View {
                             authModel.createUser(email: email, password: password) { result in
                                 switch result {
                                 case .success(let firebaseUser):
-                                    authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage)
+                                    authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .email)
                                 case .failure(let error):
                                     errorMessage = error.localizedDescription
                                 }

@@ -12,6 +12,10 @@ struct MainView: View {
         allGames.filter { authModel.userModel?.gameIDs.contains($0.id) == true }
     }
     
+    var disablePlaying: Bool {
+        authModel.userModel?.isPro == false && (authModel.userModel?.gameIDs.count ?? 0) >= 2
+    }
+    
     @Environment(\.colorScheme) private var colorScheme
 
     @ObservedObject var viewManager: ViewManager
@@ -81,7 +85,6 @@ struct MainView: View {
                             isSheetPresent: $isSheetPresented,
                             showLoginOverlay: $showLoginOverlay, context: context
                         )
-                        
                     }
                 }
                 
@@ -215,18 +218,21 @@ struct MainView: View {
                                 if isOnlineMode {
                                     HStack(spacing: 16) {
                                         gameModeButton(title: "Host", icon: "antenna.radiowaves.left.and.right", color: .purple) {
-                                            gameModel.createGame(online: true, startingLoc: nil)
-                                            showHost = true
+                                            
+                                                gameModel.createGame(online: true, startingLoc: nil)
+                                                showHost = true
+                                            
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            
                                             HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler, gameModel: gameModel)
                                                 .presentationDetents([.large])
                                         }
                                         
                                         gameModeButton(title: "Join", icon: "person.2.fill", color: .orange) {
-                                            gameModel.resetGame()
-                                            showJoin = true
+                                           
+                                                gameModel.resetGame()
+                                                showJoin = true
+                                            
                                         }
                                         .sheet(isPresented: $showJoin) {
                                             JoinView(authModel: authModel, viewManager: viewManager, gameModel: gameModel, showHost: $showJoin)
@@ -238,13 +244,18 @@ struct MainView: View {
                                         removal: .move(edge: .trailing).combined(with: .opacity)
                                     ))
                                     .clipped()
+                                    
                                 } else {
                                     HStack(spacing: 16) {
                                         gameModeButton(title: "Quick", icon: "person.fill", color: .blue) {
-                                            gameModel.createGame(online: false, startingLoc: nil)
-                                            showHost = true
-                                            withAnimation {
-                                                isOnlineMode = false
+                                            if !disablePlaying {
+                                                gameModel.createGame(online: false, startingLoc: nil)
+                                                showHost = true
+                                                withAnimation {
+                                                    isOnlineMode = false
+                                                }
+                                            } else {
+                                                showDonation = true
                                             }
                                         }
                                         .sheet(isPresented: $showHost) {
@@ -265,8 +276,12 @@ struct MainView: View {
                                             .opacity(0.4)
                                         } else {
                                             gameModeButton(title: "Connect", icon: "globe", color: .green) {
-                                                withAnimation {
-                                                    isOnlineMode = true
+                                                if !disablePlaying {
+                                                    withAnimation {
+                                                        isOnlineMode = true
+                                                    }
+                                                } else {
+                                                    showDonation = true
                                                 }
                                             }
                                         }
@@ -362,8 +377,8 @@ struct MainView: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, minHeight: 50)
-            .background(RoundedRectangle(cornerRadius: 15).fill().foregroundStyle(color))
-            .foregroundColor(.white)
+            .background(RoundedRectangle(cornerRadius: 15).fill().foregroundStyle(color).opacity(disablePlaying ? 0.5 : 1))
+            .foregroundColor(.white.opacity(disablePlaying ? 0.5 : 1))
         }
     }
 }

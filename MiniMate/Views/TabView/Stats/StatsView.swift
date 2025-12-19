@@ -161,6 +161,14 @@ struct StatsView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 25))
                     }
                     
+                    if !authModel.userModel!.isPro && games.count >= 2 {
+                        Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 25))
+                    }
+                    
                     if !games.isEmpty {
                         ForEach(games) { game in
                             GameRow(context: _context, editOn: $editOn, editingGameID: $editingGameID, authModel: authModel, game: game, viewManager: viewManager, presentShareSheet: presentShareSheet)
@@ -172,6 +180,10 @@ struct StatsView: View {
                             .frame(width: 50, height: 50)
                             .padding()
                     }
+                    
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundStyle(Color.clear)
                 }
             }
             

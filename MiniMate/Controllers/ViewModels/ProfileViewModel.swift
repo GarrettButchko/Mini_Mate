@@ -19,11 +19,10 @@ final class ProfileViewModel: ObservableObject {
     @Published var editProfile = false
     @Published var botMessage = ""
     @Published var isRed = true
-    @Published var showAppleDeleteConfirmation: Bool = false
     @Published var name = ""
     @Published var email = ""
     @Published var activeDeleteAlert: DeleteAlertType?
-    var oldEmail: String? = nil
+    var oldName: String? = nil
     
     // MARK: - Dependencies
     private let authModel: AuthViewModel
@@ -50,7 +49,7 @@ final class ProfileViewModel: ObservableObject {
         self.viewManager = viewManager
     }
     
-    func startAppleReauthAndDelete() {
+    func startAppleReauthAndDelete(isSheetPresent: Binding<Bool>) {
         let provider = ASAuthorizationAppleIDProvider()
         let request  = provider.createRequest()
         request.requestedScopes = []
@@ -65,21 +64,18 @@ final class ProfileViewModel: ObservableObject {
             case .failure(let err):
                 self.botMessage = err.localizedDescription
                 self.isRed = true
-                self.showAppleDeleteConfirmation = false
                 
             case .success(let authorization):
                 self.authModel.deleteAppleAccount(using: authorization) { deletionResult in
                     switch deletionResult {
                     case .success():
+                        isSheetPresent.wrappedValue = false
                         self.viewManager.navigateToWelcome()
                         
                         if let userModel = self.authModel.userModel {
-                            let model = UserModel(id: userModel.id, name: userModel.name, photoURL: nil, email: userModel.email, gameIDs: [])
-                            self.localGameRepo.deleteAll(ids: userModel.gameIDs) { completed in
-                                if completed {
-                                    print("Deleted all local games for user")
-                                }
-                            }
+                            let model = UserModel(id: userModel.id, name: userModel.name, photoURL: nil, email: userModel.email, gameIDs: [], accountType: "apple")
+                            
+                            self.cleanupLocalDataAndExit(deleteUnifed: false)
                             
                             self.userRepo.saveRemote(id: self.authModel.currentUserIdentifier!, userModel: model) { _ in
                                 self.authModel.setRawAppleId(nil)
@@ -89,7 +85,6 @@ final class ProfileViewModel: ObservableObject {
                         self.botMessage = err.localizedDescription
                         self.isRed = true
                     }
-                    self.showAppleDeleteConfirmation = false
                 }
             }
         }
@@ -100,11 +95,11 @@ final class ProfileViewModel: ObservableObject {
         controller.performRequests()
     }
     
-    func googleReauthAndDelete() {
+    func googleReauthAndDelete(isSheetPresent: Binding<Bool>) {
         authModel.reauthenticateWithGoogle { reauthResult in
             switch reauthResult {
             case .success(let credential):
-                self.handleDeleteAccount(using: credential)
+                self.handleDeleteAccount(using: credential, isSheetPresent: isSheetPresent)
             case .failure(let error):
                 self.botMessage = error.localizedDescription
                 self.isRed = true
@@ -112,11 +107,11 @@ final class ProfileViewModel: ObservableObject {
         }
     }
     
-    func emailReauthAndDelete(email: String, password: String) {
+    func emailReauthAndDelete(email: String, password: String, isSheetPresent: Binding<Bool>) {
         authModel.reauthenticateWithEmail(email: email, password: password){ reauthResult in
             switch reauthResult {
             case .success(let credential):
-                self.handleDeleteAccount(using: credential)
+                self.handleDeleteAccount(using: credential, isSheetPresent: isSheetPresent)
             case .failure(let error):
                 self.botMessage = error.localizedDescription
                 self.isRed = true
@@ -124,10 +119,11 @@ final class ProfileViewModel: ObservableObject {
         }
     }
     
-    private func handleDeleteAccount(using credential: AuthCredential) {
+    private func handleDeleteAccount(using credential: AuthCredential, isSheetPresent: Binding<Bool>) {
         authModel.deleteAccount(credential: credential) { result in
             switch result {
             case .success:
+                isSheetPresent.wrappedValue = false
                 self.cleanupLocalDataAndExit()
             case .failure(let error):
                 self.botMessage = error.localizedDescription
@@ -136,7 +132,7 @@ final class ProfileViewModel: ObservableObject {
         }
     }
     
-    private func cleanupLocalDataAndExit() {
+    private func cleanupLocalDataAndExit(deleteUnifed: Bool = true) {
         guard let userModel = authModel.userModel else { return }
 
         // ✅ Snapshot ALL value types BEFORE navigation
@@ -146,51 +142,19 @@ final class ProfileViewModel: ObservableObject {
         // Now it's safe to leave the context
         viewManager.navigateToWelcome()
         
-        findGameIdsToDelete(allGameIds: gameIDs) { ids in
-            self.remoteGameRepo.deleteAll(ids: ids) { completed in }
-        }
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             self.localGameRepo.deleteAll(ids: gameIDs) { completed in
                 if completed {
                     print("🗑️ Deleted all local games for user")
                 }
             }
-
-            self.userRepo.deleteUnified(id: userID)
-        }
-    }
-    
-    private func findGameIdsToDelete(
-        allGameIds: [String],
-        completion: @escaping ([String]) -> Void
-    ) {
-        var gameIdsToDelete: [String] = []
-
-        remoteGameRepo.fetchAll(withIDs: allGameIds) { games in
-            let group = DispatchGroup()
-
-            for game in games {
-                group.enter()
-                let playerIds = game.players.map(\.userId)
-
-                self.userRepo.countExistingUsers(ids: playerIds) { count in
-                    if count == 1 {
-                        gameIdsToDelete.append(game.id)
-                    }
-                    group.leave()
-                }
-            }
-
-            group.notify(queue: .main) {
-                completion(gameIdsToDelete)
+            if deleteUnifed {
+                self.userRepo.deleteUnified(id: userID)
+            } else {
+                self.userRepo.deleteLocal(id: userID) { _ in }
             }
         }
     }
-    
-    
-
-
     
     func managePictureChange(newImage: UIImage?) {
         guard let img = newImage else { return }
@@ -205,18 +169,10 @@ final class ProfileViewModel: ObservableObject {
         }
     }
     
-    func manageProfileEditting(user: UserModel) {
-        if editProfile {
-            if let oldEmail = oldEmail, oldEmail != name {
-                authModel.updateUserName(name)
-                userRepo.saveRemote(id: authModel.currentUserIdentifier!, userModel: authModel.userModel!) { _ in }
-            }
-
-            editProfile = false
-        } else {
-            oldEmail = user.name
-            name = user.name
-            editProfile = true
+    func saveName(user: UserModel) {
+        if oldName != name {
+            authModel.updateUserName(name)
+            userRepo.saveRemote(id: authModel.currentUserIdentifier!, userModel: authModel.userModel!) { _ in }
         }
     }
     
@@ -241,10 +197,10 @@ final class ProfileViewModel: ObservableObject {
         authModel.logout()
     }
     
-    func deleteAccount() {
-        if authModel.signInMethod == .google {
+    func deleteAccount(user: UserModel) {
+        if user.accountType == "google" {
             activeDeleteAlert = .google
-        } else if authModel.signInMethod == .apple {
+        } else if user.accountType == "apple" {
             activeDeleteAlert = .apple
         } else {
             activeDeleteAlert = .email

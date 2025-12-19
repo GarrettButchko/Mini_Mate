@@ -20,9 +20,10 @@ class UserModel: Identifiable, Equatable {
     var isPro: Bool = false
     var gameIDs: [String] = []
     var lastUpdated: Date
+    var accountType: String
 
     enum CodingKeys: String, CodingKey {
-        case id, name, photoURL, email, adminType, isPro, gameIDs, lastUpdated
+        case id, name, photoURL, email, adminType, isPro, gameIDs, lastUpdated, accountType
     }
 
     static func == (lhs: UserModel, rhs: UserModel) -> Bool {
@@ -33,7 +34,8 @@ class UserModel: Identifiable, Equatable {
         lhs.adminType == rhs.adminType &&
         lhs.isPro == rhs.isPro &&
         lhs.gameIDs == rhs.gameIDs &&
-        lhs.lastUpdated == rhs.lastUpdated
+        lhs.lastUpdated == rhs.lastUpdated &&
+        lhs.accountType == rhs.accountType
     }
 
     init(
@@ -44,7 +46,8 @@ class UserModel: Identifiable, Equatable {
         adminType: String? = nil,
         isPro: Bool = false,
         gameIDs: [String] = [],
-        lastUpdated: Date = Date()
+        lastUpdated: Date = Date(),
+        accountType: String
     ) {
         self.id = id
         self.name = name
@@ -54,6 +57,7 @@ class UserModel: Identifiable, Equatable {
         self.isPro = isPro
         self.gameIDs = gameIDs
         self.lastUpdated = lastUpdated
+        self.accountType = accountType
     }
 
     func toDTO() -> UserDTO {
@@ -65,7 +69,8 @@ class UserModel: Identifiable, Equatable {
             adminType: adminType,
             isPro: isPro,
             gameIDs: gameIDs,
-            lastUpdated: lastUpdated
+            lastUpdated: lastUpdated,
+            accountType: accountType
         )
     }
 
@@ -78,7 +83,8 @@ class UserModel: Identifiable, Equatable {
             adminType: dto.adminType,
             isPro: dto.isPro,
             gameIDs: dto.gameIDs,
-            lastUpdated: dto.lastUpdated
+            lastUpdated: dto.lastUpdated,
+            accountType: dto.accountType
         )
     }
 }
@@ -92,5 +98,6 @@ struct UserDTO: Codable {
     var isPro: Bool
     var gameIDs: [String]
     var lastUpdated: Date
+    var accountType: String
 }
 

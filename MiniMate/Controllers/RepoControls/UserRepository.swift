@@ -24,6 +24,7 @@ final class UserRepository {
         firebaseUser: User? = nil,
         name: String? = nil,
         authModel: AuthViewModel,
+        signInMethod: SignInMethod? = nil,
         completion: @escaping () -> Void
     ) {
         let local = fetchLocal(id: id)
@@ -45,7 +46,8 @@ final class UserRepository {
                 id: id,
                 firebaseUser: firebaseUser,
                 name: name,
-                authModel: authModel
+                authModel: authModel,
+                signInMethod: signInMethod
             ) {
                 completion() // ✅ reconcile finished
             }
@@ -59,6 +61,7 @@ final class UserRepository {
         firebaseUser: User?,
         name: String?,
         authModel: AuthViewModel,
+        signInMethod: SignInMethod? = nil,
         completion: @escaping() -> Void
     ) {
         switch (local, remote) {
@@ -107,18 +110,18 @@ final class UserRepository {
             }
 
         case (nil, nil):
-            createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel) {
+            createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel, signInMethod: signInMethod) {
                 completion()
             }
         }
     }
     
-    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, completion: @escaping () -> Void){
+    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, signInMethod: SignInMethod? = nil, completion: @escaping () -> Void){
         
         let finalName  = name ?? firebaseUser?.displayName ?? "User#\(String(id.prefix(5)))"
         let finalEmail = firebaseUser?.email ?? "Email"
         
-        let newUser = UserModel(id: id, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [])
+        let newUser = UserModel(id: id, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [], accountType: signInMethod!.rawValue)
         
         saveLocal(context: context!, model: newUser) { _ in }
         saveRemote(id: id, userModel: newUser) { _ in }
@@ -126,26 +129,6 @@ final class UserRepository {
             authModel.setUserModel(newUser)
             print("✅ Created new user")
             completion()
-        }
-    }
-    
-    
-    func updateDisplayName(to newName: String, completion: @escaping (Error?) -> Void) {
-        guard let user = Auth.auth().currentUser else {
-            completion(NSError(domain: "Auth", code: -1,
-                               userInfo: [NSLocalizedDescriptionKey: "No signed-in user"]))
-            return
-        }
-        
-        let changeRequest = user.createProfileChangeRequest()
-        changeRequest.displayName = newName
-        changeRequest.commitChanges { error in
-            if let error = error {
-                print("❌ Failed to update displayName:", error)
-            } else {
-                print("✅ displayName updated to:", newName)
-            }
-            completion(error)
         }
     }
     
@@ -196,31 +179,6 @@ final class UserRepository {
             completion(false)
         }
     }
-    
-    func countExistingUsers(
-        ids: [String],
-        completion: @escaping (Int) -> Void
-    ) {
-        guard !ids.isEmpty else {
-            completion(0)
-            return
-        }
-
-        let db = Firestore.firestore()
-
-        db.collection("users")
-            .whereField(FieldPath.documentID(), in: ids)
-            .getDocuments { snapshot, error in
-                if let error = error {
-                    print("❌ Firestore countExistingUsers error: \(error.localizedDescription)")
-                    completion(0)
-                    return
-                }
-
-                completion(snapshot?.documents.count ?? 0)
-            }
-    }
-
     
     func fetchRemote(id: String, completion: @escaping (UserModel?) -> Void) {
         let db = Firestore.firestore()

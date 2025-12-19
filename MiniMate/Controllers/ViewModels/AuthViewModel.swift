@@ -13,7 +13,7 @@ import AuthenticationServices
 import CryptoKit
 import SwiftUI
 
-enum SignInMethod {
+enum SignInMethod: String {
     case google
     case apple
     case email
@@ -25,7 +25,6 @@ class AuthViewModel: ObservableObject {
     @Published var firebaseUser: FirebaseAuth.User?
     @Published var userModel: UserModel?
     @Published var authAction: AuthAction?
-    @Published var signInMethod: SignInMethod? = nil
     
     enum AuthAction {
         case deletionSuccess
@@ -70,7 +69,6 @@ class AuthViewModel: ObservableObject {
     // MARK: - Firebase Authentication
     
     func setRawAppleId(_ rawID: String?) {
-        guard let rawID = rawID else { return }
         rawAppleUserID = rawID
     }
     
@@ -148,14 +146,6 @@ class AuthViewModel: ObservableObject {
                     self.firebaseUser = result.user     // <-- REQUIRED
                 }
                 rawAppleUserID = cred.user
-                UserRepository(context: context).updateDisplayName(to: (cred.fullName?.formatted())!) { error in
-                    if error != nil {
-                        print("Error")
-                    } else {
-                        print("Successfully")
-                    }
-                }
-                self.signInMethod = .apple
                 completion(.success(result.user), cred.fullName?.formatted())
             }
         }
@@ -197,7 +187,6 @@ class AuthViewModel: ObservableObject {
                 if let result = authResult {
                     DispatchQueue.main.async {
                         self.firebaseUser = result.user
-                        self.signInMethod = .google
                         completion(.success(result.user))
                     }
                 }
@@ -214,7 +203,6 @@ class AuthViewModel: ObservableObject {
             if let firebaseUser = result {
                 DispatchQueue.main.async {
                     self.firebaseUser = firebaseUser.user
-                    self.signInMethod = .email
                     completion(.success(firebaseUser.user))
                 }
                 
@@ -231,7 +219,6 @@ class AuthViewModel: ObservableObject {
             if let firebaseUser = result {
                 DispatchQueue.main.async {
                     self.firebaseUser = firebaseUser.user
-                    self.signInMethod = .email
                     completion(.success(firebaseUser.user))
                 }
                 
@@ -245,7 +232,6 @@ class AuthViewModel: ObservableObject {
             try Auth.auth().signOut()
             DispatchQueue.main.async {
                 self.firebaseUser = nil
-                self.signInMethod = nil
                 if self.appleUserID != nil {
                     self.rawAppleUserID = nil
                 }
@@ -283,7 +269,6 @@ class AuthViewModel: ObservableObject {
                         completion(.failure(error))
                     } else {
                         DispatchQueue.main.async { self.firebaseUser = nil }
-                        self.signInMethod = nil
                         completion(.success(()))
                     }
                 }
@@ -291,10 +276,10 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: ViewManager, user: User?, errorMessage: Binding<String?>) {
+    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: ViewManager, user: User?, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil) {
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
-        repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, authModel: authModel) {
+        repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod) {
             Task { @MainActor in
                 viewManager.navigateToMain(1)
             }
@@ -311,7 +296,7 @@ class AuthViewModel: ObservableObject {
                 }
                 errorMessage.wrappedValue = "No User Found Plase Sign Up"
             case .success(let firebaseUser):
-                self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage)
+                self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email)
             }
         }
     }

@@ -118,17 +118,7 @@ struct ProfileView: View {
                         if let user = authModel.userModel {
                             HStack {
                                 Text("Name:")
-                                if viewModel.editProfile {
-                                    TextField("Name", text: $viewModel.name)
-                                        .textFieldStyle(.roundedBorder)
-                                        .onChange(of: viewModel.name) { _, newValue in
-                                            if newValue.count > 30 {
-                                                viewModel.name = String(newValue.prefix(30))
-                                            }
-                                        }
-                                } else {
-                                    Text(user.name)
-                                }
+                                Text(user.name)
                             }
                             
                             HStack {
@@ -146,17 +136,7 @@ struct ProfileView: View {
                                 Text((user.isPro ? "Yes" : "No"))
                             }
                             
-                            // Only allow edit/reset for non-social accounts
-                            if let firebaseUser = authModel.firebaseUser,
-                               !firebaseUser.providerData.contains(where: { $0.providerID == "google.com" || $0.providerID == "apple.com" }) {
-                                Button(viewModel.editProfile ? "Save" : "Edit Profile") {
-                                    viewModel.manageProfileEditting(user: user)
-                                }
-                                
-                                Button("Password Reset") {
-                                    viewModel.passwordReset(user: user)
-                                }
-                            }
+                            
                         } else {
                             Text("User data not available.")
                         }
@@ -165,16 +145,43 @@ struct ProfileView: View {
                     // Account Management Section
                     Section("Account Management") {
                         
+                        // Only allow edit/reset for non-social accounts
+                        if let user = authModel.userModel{
+                            Button("Edit Name") {
+                                viewModel.oldName = user.name
+                                viewModel.editProfile = true
+                            }
+                            .alert("Edit Name", isPresented: $viewModel.editProfile) {
+                                TextField("New Name", text: $viewModel.name)
+                                    .characterLimit($viewModel.name, maxLength: 18)
+
+                                Button("Change") {
+                                    viewModel.saveName(user: user)
+                                }
+                                .disabled(ProfanityFilter.containsBlockedWord(viewModel.name) || viewModel.name.isEmpty)
+
+                                Button("Cancel", role: .cancel) {
+                                    viewModel.editProfile = false
+                                }
+                            }
+                            if user.accountType == "email" {
+                                Button("Password Reset") {
+                                    viewModel.passwordReset(user: user)
+                                }
+                            }
+                        }
+                        
                         Button("Logout") {
+                            isSheetPresent = false
                             viewModel.logOut()
                         }
                         .foregroundColor(.red)
                         
                         Button("Delete Account") {
-                            viewModel.deleteAccount()
+                            
+                            viewModel.deleteAccount(user: authModel.userModel!)
                         }
                         .foregroundColor(.red)
-                        
                         .alert(item: $viewModel.activeDeleteAlert) { alertType in
                             switch alertType {
                             case .google:
@@ -183,7 +190,7 @@ struct ProfileView: View {
                                     message: Text("This will permanently delete your account."),
                                     primaryButton: .destructive(Text("Delete")) {
                                         // call Google deletion flow
-                                        viewModel.googleReauthAndDelete()
+                                        viewModel.googleReauthAndDelete(isSheetPresent: $isSheetPresent)
                                     },
                                     secondaryButton: .cancel()
                                 )
@@ -193,7 +200,7 @@ struct ProfileView: View {
                                     title: Text("Confirm Deletion"),
                                     message: Text("This will permanently delete your account."),
                                     primaryButton: .destructive(Text("Delete")) {
-                                        viewModel.startAppleReauthAndDelete()
+                                        viewModel.startAppleReauthAndDelete(isSheetPresent: $isSheetPresent)
                                     },
                                     secondaryButton: .cancel()
                                 )
@@ -233,7 +240,7 @@ struct ProfileView: View {
                 Button("Delete", role: .destructive) {
                     viewModel.emailReauthAndDelete(
                         email: authModel.userModel!.email!,
-                        password: password
+                        password: password, isSheetPresent: $isSheetPresent
                     )
                 }
                 .disabled((password != confirmPassword) || password == "" || confirmPassword == "")

@@ -29,14 +29,14 @@ struct JoinView: View {
             )
         )
     }
-
+    
     var body: some View {
         VStack {
             Capsule()
                 .frame(width: 38, height: 6)
                 .foregroundColor(.gray)
                 .padding(10)
-
+            
             HStack {
                 Text("Join Game")
                     .font(.title)
@@ -45,60 +45,52 @@ struct JoinView: View {
                 Spacer()
             }
             .padding(.bottom, 10)
-
+            
             Form {
                 gameInfoSection
-
-                
+                if viewModel.inGame {
+                    playersSection
+                }
             }
             if viewModel.inGame {
-                Group{
-                    playersSection
-                    Section {
-                        Button {
-                            viewModel.showExitAlert = true
-                        } label: {
-                            Text("Exit Game")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 25)
-                                        .fill(Color.red)
-                                        .padding(.horizontal)
-                                )
-                        }
-                        .foregroundColor(.red)
-                        .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
-                            Button("Leave", role: .destructive) {
-                                viewModel.leaveGame()
-                            }
-                            Button("Cancel", role: .cancel) {}
-                        }
-                    }
+                Button {
+                    viewModel.showExitAlert = true
+                } label: {
+                    Text("Exit Game")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(Color.red)
+                                .padding(.horizontal)
+                        )
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                
+                .foregroundColor(.red)
+                .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
+                    Button("Leave", role: .destructive) {
+                        viewModel.leaveGame()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                }
             } else {
-                Section {
-                    Button {
-                        viewModel.joinGame()
-                    } label: {
-                        Text("Join Game")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 25)
-                                    .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
-                            )
-                            .padding(.horizontal)
-                    }
-                    .disabled(viewModel.gameCode.isEmpty)
+                Button {
+                    viewModel.joinGame()
+                } label: {
+                    Text("Join Game")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
+                        )
+                        .padding(.horizontal)
+                        .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .disabled(viewModel.gameCode.isEmpty)
             }
         }
         .onChange(of: showHost) { oldValue, newValue in
