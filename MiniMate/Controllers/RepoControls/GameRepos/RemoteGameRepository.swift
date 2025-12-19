@@ -43,13 +43,16 @@ class FirestoreGameRepository {
                 return
             }
             
-            do {
-                let game = try snapshot.data(as: GameDTO.self)
-                completion(game)
-            } catch {
-                print("❌ Firestore decoding error: \(error)")
-                completion(nil)
+            Task{ @MainActor in
+                do {
+                    let game = try snapshot.data(as: GameDTO.self)
+                    completion(game)
+                } catch {
+                    print("❌ Firestore decoding error: \(error)")
+                    completion(nil)
+                }
             }
+            
         }
     }
     
@@ -80,14 +83,16 @@ class FirestoreGameRepository {
 
                     if let docs = snapshot?.documents {
                         for doc in docs {
-                            do {
-                                let dto = try doc.data(as: GameDTO.self)
-                                // Protect shared dictionary with a serial queue
-                                syncQueue.async {
-                                    allGames[dto.id] = dto
+                            Task{ @MainActor in
+                                do {
+                                    let dto = try doc.data(as: GameDTO.self)
+                                    // Protect shared dictionary with a serial queue
+                                    syncQueue.async {
+                                        allGames[dto.id] = dto
+                                    }
+                                } catch {
+                                    print("❌ Firestore decoding error for id \(doc.documentID): \(error)")
                                 }
-                            } catch {
-                                print("❌ Firestore decoding error for id \(doc.documentID): \(error)")
                             }
                         }
                     }

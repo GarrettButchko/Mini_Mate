@@ -15,22 +15,21 @@ final class CourseLeaderboardRepository {
     private let dbRef = Database.database().reference().child("course_leaderboards")
     
     // MARK: - Add / Update CourseLeaderboard
+    @MainActor
     func addOrUpdateCourseLeaderboard(_ course: CourseLeaderboard, completion: @escaping (Bool) -> Void) {
-        let ref = dbRef.child(course.id)
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                let data = try JSONEncoder().encode(course)
-                if let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    ref.setValue(dict) { error, _ in
-                        DispatchQueue.main.async {
-                            completion(error == nil)
-                        }
+        do {
+            let data = try JSONEncoder().encode(course)
+            if let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let ref = dbRef.child(course.id)
+                ref.setValue(dict) { error, _ in
+                    DispatchQueue.main.async {
+                        completion(error == nil)
                     }
                 }
-            } catch {
-                print("❌ Encoding course error: \(error.localizedDescription)")
-                DispatchQueue.main.async { completion(false) }
             }
+        } catch {
+            print("❌ Encoding course error: \(error.localizedDescription)")
+            DispatchQueue.main.async { completion(false) }
         }
     }
     
@@ -107,3 +106,4 @@ final class CourseLeaderboardRepository {
         }
     }
 }
+

@@ -8,8 +8,6 @@
 // Models.swift
 import Foundation
 import SwiftData
-import MapKit
-import Contacts
 
 @Model
 class Player: Identifiable, Equatable {
@@ -102,13 +100,3 @@ class Player: Identifiable, Equatable {
     }
 }
 
-struct PlayerDTO: Codable, Identifiable, Equatable {
-    var id: String
-    var userId: String
-    var name: String
-    var photoURL: URL?
-    var totalStrokes: Int
-    var inGame: Bool
-    var holes: [HoleDTO]
-    var email: String?
-}

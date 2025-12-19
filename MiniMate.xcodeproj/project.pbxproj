@@ -68,25 +68,47 @@
 		21E19BC52EE4B254005C1193 /* Exceptions for "MiniMate" folder in "MiniMate Manager" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Assets.xcassets,
+				Controllers/Auth/AppleReauthCoordinator.swift,
 				Controllers/Other/LocFuncs.swift,
 				Controllers/Other/NetworkChecker.swift,
 				Controllers/RepoControls/CourseRepos/CourseLeaderboardRepository.swift,
 				Controllers/RepoControls/CourseRepos/CourseRepository.swift,
+				Controllers/RepoControls/GameRepos/LocalGameRepository.swift,
+				Controllers/RepoControls/GameRepos/RemoteGameRepository.swift,
 				Controllers/RepoControls/UserRepository.swift,
 				Controllers/ViewModels/AuthViewModel.swift,
+				Controllers/ViewModels/GameReviewViewModel.swift,
+				Controllers/ViewModels/ProfileViewModel.swift,
 				Controllers/ViewModels/WelcomeViewModel.swift,
 				DataModels/Course.swift,
+				"DataModels/Course+UI.swift",
 				DataModels/Game.swift,
+				DataModels/GameDTO.swift,
 				DataModels/Hole.swift,
+				DataModels/HoleDTO.swift,
 				DataModels/MapItemDTO.swift,
+				"DataModels/MapItemDTO+MapKit.swift",
 				DataModels/Player.swift,
+				DataModels/PlayerDTO.swift,
+				DataModels/UserDTO.swift,
 				DataModels/UserModel.swift,
+				Misc/CharacterLimitModifier.swift,
+				Misc/Functions/PasswordGenerator.swift,
+				Misc/Functions/ProfanityFilter.swift,
+				Misc/isAvaliableGlassEffect.swift,
+				Misc/PhotoPicker.swift,
+				Misc/SynchronizedScrollViews.swift,
 				Misc/Views/PhotoIconView.swift,
+				Misc/Views/SearchBarView.swift,
+				Misc/Views/UserInfoRow.swift,
 				Protocals/AppNavigationManaging.swift,
+				"Shared-Assets.xcassets",
+				Views/PreViews/EmailPasswordView.swift,
 				Views/PreViews/SignInView.swift,
 				Views/PreViews/WelcomeView.swift,
 				Views/TabView/Game/GameReviewView.swift,
+				Views/TabView/MainView/ProfileView.swift,
+				Views/TabView/Stats/GameInfoView.swift,
 			);
 			target = 21E19BB12EE4A3CE005C1193 /* MiniMate Manager */;
 		};
@@ -527,6 +549,7 @@
 				DEVELOPMENT_TEAM = PCUSPZK2L4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MiniMate-Manager-Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -561,6 +584,7 @@
 				DEVELOPMENT_TEAM = PCUSPZK2L4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MiniMate-Manager-Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

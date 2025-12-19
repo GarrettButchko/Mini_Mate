@@ -18,7 +18,7 @@ enum ViewType {
 
 /// Manages app navigation state based on authentication status
 @MainActor
-class ViewManager: AppNavigationManaging ,ObservableObject{
+class ViewManager: AppNavigationManaging, ObservableObject{
     
     
     

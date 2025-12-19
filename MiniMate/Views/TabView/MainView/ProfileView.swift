@@ -29,7 +29,7 @@ struct ProfileView: View {
     @ObservedObject var authModel: AuthViewModel
     
     @Binding var isSheetPresent: Bool
-    @Binding var showLoginOverlay: Bool
+    @State var showLoginOverlay: Bool = false
     
     @State var password: String = ""
     @State var confirmPassword: String = ""
@@ -44,13 +44,11 @@ struct ProfileView: View {
         viewManager: ViewManager,
         authModel: AuthViewModel,
         isSheetPresent: Binding<Bool>,
-        showLoginOverlay: Binding<Bool>,
         context: ModelContext
     ) {
         self.viewManager = viewManager
         self.authModel = authModel
         self._isSheetPresent = isSheetPresent
-        self._showLoginOverlay = showLoginOverlay
 
         _viewModel = StateObject(
             wrappedValue: ProfileViewModel(

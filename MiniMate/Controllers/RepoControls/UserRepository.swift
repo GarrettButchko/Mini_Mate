@@ -197,14 +197,16 @@ final class UserRepository {
                 return
             }
             
-            do {
-                // Decode directly from Firestore document
-                let dto = try snapshot.data(as: UserDTO.self)
-                let model = UserModel.fromDTO(dto)
-                completion(model)
-            } catch {
-                print("❌ Firestore decoding error: \(error)")
-                completion(nil)
+            Task{ @MainActor in
+                do {
+                    // Decode directly from Firestore document
+                    let dto = try snapshot.data(as: UserDTO.self)
+                    let model = UserModel.fromDTO(dto)
+                    completion(model)
+                } catch {
+                    print("❌ Firestore decoding error: \(error)")
+                    completion(nil)
+                }
             }
         }
     }

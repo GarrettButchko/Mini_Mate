@@ -9,8 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) var context
-    @StateObject private var viewManager = ViewManager()
-    @StateObject private var authModel = AuthViewModel()
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
     
     @State private var selectedTab = 1
     
@@ -19,13 +19,13 @@ struct ContentView: View {
             Group {
                 switch viewManager.currentView {
                 case .courseTab(let tab):
-                    CourseTabView(viewManager: viewManager, authModel: authModel, selectedTab: tab)
+                    CourseTabView(selectedTab: tab)
                 case .courseList:
                     CourseListView()
                 case .welcome:
-                    WelcomeView(viewManager: viewManager)
+                    WelcomeView(viewManager: viewManager, welcomeText: "Mini Mate Manager", gradientColors: [.managerBlue, .managerGreen])
                 case .signIn:
-                    SignInView(authModel: authModel, viewManager: viewManager)
+                    SignInView(authModel: authModel, viewManager: viewManager, gradientColors: [.managerBlue, .managerGreen])
                 }
             }
         }
@@ -34,16 +34,11 @@ struct ContentView: View {
 
 struct CourseTabView: View {
     @Environment(\.modelContext) private var context
-    @ObservedObject var viewManager: ViewManager
-    @ObservedObject var authModel: AuthViewModel
-    
-    private var userRepo: UserRepository { UserRepository(context: context)}
-    
+    @EnvironmentObject var authModel: AuthViewModel
+
     @State var selectedTab: Int
     
-    init(viewManager: ViewManager, authModel: AuthViewModel, selectedTab: Int){
-        self.viewManager = viewManager
-        self.authModel = authModel
+    init(selectedTab: Int){
         self.selectedTab = selectedTab
     }
     
@@ -60,9 +55,6 @@ struct CourseTabView: View {
             CourseSettingsView()
                 .tabItem { Label("Settings", systemImage: "gear") }
                 .tag(2)
-        }
-        .onAppear {
-            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) {}
         }
     }
 }

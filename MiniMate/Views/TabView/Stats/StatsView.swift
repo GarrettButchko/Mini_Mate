@@ -190,21 +190,7 @@ struct StatsView: View {
             
             VStack{
                 HStack{
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 25)
-                            .ifAvailableGlassEffect()
-                            .frame(height: 50)
-                        
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
-                            TextField("Search", text: $searchText)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                                .padding(.trailing, 5)
-                        }
-                        .padding()
-                    }
+                    SearchBarView(searchText: $searchText)
                     .padding(.vertical)
                     
                     Button {

@@ -25,6 +25,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct MiniMate_ManagerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject var authModel = AuthViewModel()
+    @StateObject var viewManager = ViewManager()
 
     // Local (non-shared) SwiftData container
     private var modelContainer: ModelContainer = {
@@ -45,6 +47,8 @@ struct MiniMate_ManagerApp: App {
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }
+                .environmentObject(authModel)
+                .environmentObject(viewManager)
         }
         .modelContainer(modelContainer) // inject the ModelContext into the environment
     }

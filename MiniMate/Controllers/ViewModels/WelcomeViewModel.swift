@@ -16,15 +16,16 @@ final class WelcomeViewModel: ObservableObject {
     @Published var showLoading = false
 
     // MARK: - Private
-    private let fullText = "Welcome to MiniMate"
+    private let fullText: String
     private let typingSpeed = 0.05
     private var animationTriggered = false
 
     private let viewManager: ViewManager
 
     // MARK: - Init
-    init(viewManager: ViewManager) {
+    init(viewManager: ViewManager, welcomeText: String) {
         self.viewManager = viewManager
+        self.fullText = welcomeText
     }
 
     // MARK: - Lifecycle

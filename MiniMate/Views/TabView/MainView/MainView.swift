@@ -25,7 +25,6 @@ struct MainView: View {
 
     @State private var nameIsPresented = false
     @State private var isSheetPresented = false
-    @State var showLoginOverlay = false
     @State var isOnlineMode = false
     @State var showHost = false
     @State var showJoin = false
@@ -82,8 +81,7 @@ struct MainView: View {
                         ProfileView(
                             viewManager: viewManager,
                             authModel: authModel,
-                            isSheetPresent: $isSheetPresented,
-                            showLoginOverlay: $showLoginOverlay, context: context
+                            isSheetPresent: $isSheetPresented, context: context
                         )
                     }
                 }
@@ -391,22 +389,5 @@ struct MainView: View {
     }
 }
 
-extension Shape {
-    @ViewBuilder
-    func ifAvailableGlassEffect() -> some View {
-        if #available(iOS 26.0, *) {
-            self
-                .fill(Color(.subTwo).opacity(0.3))
-                .glassEffect(in: self)
-                .clipShape(self) // clip BEFORE adding border
-                .overlay(self.stroke(Color(.subTwo), lineWidth: 1)) // ← correct border
-        } else {
-            self
-                .fill(.ultraThinMaterial)
-                .clipShape(self)
-                .overlay(self.stroke(Color(.subTwo), lineWidth: 1))
-                .shadow(radius: 10)
-        }
-    }
-}
+
 

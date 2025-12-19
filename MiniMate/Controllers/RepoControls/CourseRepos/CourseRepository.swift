@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseStorage
+import Combine
 
 final class CourseRepository {
     
@@ -45,13 +46,15 @@ final class CourseRepository {
                 return
             }
             
-            do {
-                // Decode the document directly into your Course model
-                let course = try snapshot.data(as: Course.self)
-                DispatchQueue.main.async { completion(course) }
-            } catch {
-                print("❌ Firestore decoding error: \(error)")
-                DispatchQueue.main.async { completion(nil) }
+            // Decode the document directly into your Course model on the main actor
+            Task { @MainActor in
+                do {
+                    let course = try snapshot.data(as: Course.self)
+                    completion(course)
+                } catch {
+                    print("❌ Firestore decoding error: \(error)")
+                    completion(nil)
+                }
             }
         }
     }
@@ -73,12 +76,14 @@ final class CourseRepository {
                     return
                 }
                 
-                do {
-                    let course = try document.data(as: Course.self)
-                    DispatchQueue.main.async { completion(course) }
-                } catch {
-                    print("❌ Firestore decoding error: \(error)")
-                    DispatchQueue.main.async { completion(nil) }
+                Task { @MainActor in
+                    do {
+                        let course = try document.data(as: Course.self)
+                        completion(course)
+                    } catch {
+                        print("❌ Firestore decoding error: \(error)")
+                        completion(nil)
+                    }
                 }
             }
     }
@@ -101,7 +106,7 @@ final class CourseRepository {
             }
     }
 
-    
+    #if MINIMATE
     func createCourseWithMapItem(location: MapItemDTO, completion: @escaping (Bool) -> Void) {
         let courseID = CourseIDGenerator.generateCourseID(from: location)
         let ref = db.collection(collectionName).document(courseID)
@@ -131,6 +136,7 @@ final class CourseRepository {
             }
         }
     }
+    #endif
 
     
     func findCourseIDWithPassword(withPassword password: String, completion: @escaping (String?) -> Void) {

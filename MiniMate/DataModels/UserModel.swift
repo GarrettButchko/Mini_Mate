@@ -5,10 +5,9 @@
 //  Created by Garrett Butchko on 5/2/25.
 //
 
-import Foundation
+
 import SwiftData
-import MapKit
-import Contacts
+import Foundation
 
 @Model
 class UserModel: Identifiable, Equatable {
@@ -83,14 +82,4 @@ class UserModel: Identifiable, Equatable {
     }
 }
 
-struct UserDTO: Codable {
-    var id: String
-    var name: String
-    var photoURL: URL?
-    var email: String?
-    var isPro: Bool
-    var gameIDs: [String]
-    var lastUpdated: Date
-    var accountType: String
-}
 

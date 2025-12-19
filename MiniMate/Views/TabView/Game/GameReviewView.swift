@@ -201,7 +201,9 @@ struct GameReviewView: View {
                     HStack {
                         Button {
                             if !isInCourseSettings {
+                                #if MINIMATE
                                 viewManager.navigateToMain(0)
+                                #endif
                             }
                         } label: {
                             ZStack {
@@ -276,9 +278,21 @@ struct GameReviewView: View {
                         .padding()
                     }
                 } else if let course = viewModel.course, !course.customAdActive{
-                    BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6716977198") // Replace with real one later
+                    Text("Google Ad Here")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
                         .frame(height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(.systemGray6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(.systemGray4), lineWidth: 1)
+                                )
+                        )
                         .padding(.top, 5)
+                        .padding(.horizontal)
                 }
             }
             

@@ -26,18 +26,19 @@ struct SignInView: View {
     @ObservedObject var viewManager : ViewManager
 
     @FocusState private var isTextFieldFocused: Bool
+    
+    var gradientColors: [Color] = [.blue, .green]
 
     private let characterLimit = 15
-    
     
     var body: some View {
         GeometryReader{ geometry in
             ZStack {
                 Rectangle()
-                    .foregroundStyle(Gradient(colors: [.blue, .green]))
+                    .foregroundStyle(Gradient(colors: gradientColors))
                     .ignoresSafeArea()
                 VStack{
-                    HStack{
+                    HStack(alignment: .top){
                         VStack(alignment: .leading){
                             Text("Welcome to,")
                                 .font(.subheadline)
@@ -48,7 +49,13 @@ struct SignInView: View {
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
                                 .colorScheme(.dark)
-                                
+                            
+                            #if MANAGER
+                            Text("Manager")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .colorScheme(.dark)
+                            #endif
                         }
                         
                         Spacer()
