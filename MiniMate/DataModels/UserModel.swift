@@ -16,7 +16,6 @@ class UserModel: Identifiable, Equatable {
     var name: String
     var photoURL: URL?
     var email: String?
-    var adminType: String? = nil
     var isPro: Bool = false
     var gameIDs: [String] = []
     var lastUpdated: Date
@@ -31,7 +30,6 @@ class UserModel: Identifiable, Equatable {
         lhs.name == rhs.name &&
         lhs.photoURL == rhs.photoURL &&
         lhs.email == rhs.email &&
-        lhs.adminType == rhs.adminType &&
         lhs.isPro == rhs.isPro &&
         lhs.gameIDs == rhs.gameIDs &&
         lhs.lastUpdated == rhs.lastUpdated &&
@@ -43,7 +41,6 @@ class UserModel: Identifiable, Equatable {
         name: String,
         photoURL: URL? = nil,
         email: String? = nil,
-        adminType: String? = nil,
         isPro: Bool = false,
         gameIDs: [String] = [],
         lastUpdated: Date = Date(),
@@ -53,7 +50,6 @@ class UserModel: Identifiable, Equatable {
         self.name = name
         self.photoURL = photoURL
         self.email = email
-        self.adminType = adminType
         self.isPro = isPro
         self.gameIDs = gameIDs
         self.lastUpdated = lastUpdated
@@ -66,7 +62,6 @@ class UserModel: Identifiable, Equatable {
             name: name,
             photoURL: photoURL,
             email: email,
-            adminType: adminType,
             isPro: isPro,
             gameIDs: gameIDs,
             lastUpdated: lastUpdated,
@@ -80,7 +75,6 @@ class UserModel: Identifiable, Equatable {
             name: dto.name,
             photoURL: dto.photoURL,
             email: dto.email,
-            adminType: dto.adminType,
             isPro: dto.isPro,
             gameIDs: dto.gameIDs,
             lastUpdated: dto.lastUpdated,
@@ -94,7 +88,6 @@ struct UserDTO: Codable {
     var name: String
     var photoURL: URL?
     var email: String?
-    var adminType: String?
     var isPro: Bool
     var gameIDs: [String]
     var lastUpdated: Date

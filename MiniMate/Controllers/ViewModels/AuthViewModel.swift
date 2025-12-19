@@ -12,6 +12,7 @@ import SwiftData
 import AuthenticationServices
 import CryptoKit
 import SwiftUI
+import Combine
 
 enum SignInMethod: String {
     case google
@@ -276,12 +277,12 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: ViewManager, user: User?, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil) {
+    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User?, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil) {
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
         repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod) {
             Task { @MainActor in
-                viewManager.navigateToMain(1)
+                viewManager.navigateAfterSignIn()
             }
         }
     }

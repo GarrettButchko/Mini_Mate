@@ -9,6 +9,13 @@
 /* Begin PBXBuildFile section */
 		211D23372D556B3C00558873 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 211D23362D556B3C00558873 /* GoogleSignIn */; };
 		211D23392D556B3C00558873 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 211D23382D556B3C00558873 /* GoogleSignInSwift */; };
+		21491E372EF4E3900047B91D /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E362EF4E3900047B91D /* FirebaseAuth */; };
+		21491E3B2EF4E3900047B91D /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E3A2EF4E3900047B91D /* FirebaseCore */; };
+		21491E412EF4E3900047B91D /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E402EF4E3900047B91D /* FirebaseFirestore */; };
+		21491E552EF4E3900047B91D /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E542EF4E3900047B91D /* FirebaseStorage */; };
+		21491E5D2EF4E3900047B91D /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E5C2EF4E3900047B91D /* GoogleSignInSwift */; };
+		21491E612EF4E3900047B91D /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E602EF4E3900047B91D /* GoogleMobileAds */; };
+		21491E632EF4E3900047B91D /* MarqueeText in Frameworks */ = {isa = PBXBuildFile; productRef = 21491E622EF4E3900047B91D /* MarqueeText */; };
 		215679A22D5175D9001BE574 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 215679A12D5175D9001BE574 /* FirebaseAuth */; };
 		215679A62D5175D9001BE574 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 215679A52D5175D9001BE574 /* FirebaseCore */; };
 		215679AA2D5175D9001BE574 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 215679A92D5175D9001BE574 /* FirebaseDatabase */; };
@@ -61,11 +68,25 @@
 		21E19BC52EE4B254005C1193 /* Exceptions for "MiniMate" folder in "MiniMate Manager" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Assets.xcassets,
+				Controllers/Other/LocFuncs.swift,
+				Controllers/Other/NetworkChecker.swift,
+				Controllers/RepoControls/CourseRepos/CourseLeaderboardRepository.swift,
+				Controllers/RepoControls/CourseRepos/CourseRepository.swift,
+				Controllers/RepoControls/UserRepository.swift,
 				Controllers/ViewModels/AuthViewModel.swift,
+				Controllers/ViewModels/WelcomeViewModel.swift,
 				DataModels/Course.swift,
 				DataModels/Game.swift,
 				DataModels/Hole.swift,
+				DataModels/MapItemDTO.swift,
 				DataModels/Player.swift,
+				DataModels/UserModel.swift,
+				Misc/Views/PhotoIconView.swift,
+				Protocals/AppNavigationManaging.swift,
+				Views/PreViews/SignInView.swift,
+				Views/PreViews/WelcomeView.swift,
+				Views/TabView/Game/GameReviewView.swift,
 			);
 			target = 21E19BB12EE4A3CE005C1193 /* MiniMate Manager */;
 		};
@@ -110,7 +131,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				21491E632EF4E3900047B91D /* MarqueeText in Frameworks */,
+				21491E5D2EF4E3900047B91D /* GoogleSignInSwift in Frameworks */,
 				21E19BC32EE4B23E005C1193 /* FirebaseDatabase in Frameworks */,
+				21491E412EF4E3900047B91D /* FirebaseFirestore in Frameworks */,
+				21491E612EF4E3900047B91D /* GoogleMobileAds in Frameworks */,
+				21491E372EF4E3900047B91D /* FirebaseAuth in Frameworks */,
+				21491E552EF4E3900047B91D /* FirebaseStorage in Frameworks */,
+				21491E3B2EF4E3900047B91D /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,6 +228,13 @@
 			name = "MiniMate Manager";
 			packageProductDependencies = (
 				21E19BC22EE4B23E005C1193 /* FirebaseDatabase */,
+				21491E362EF4E3900047B91D /* FirebaseAuth */,
+				21491E3A2EF4E3900047B91D /* FirebaseCore */,
+				21491E402EF4E3900047B91D /* FirebaseFirestore */,
+				21491E542EF4E3900047B91D /* FirebaseStorage */,
+				21491E5C2EF4E3900047B91D /* GoogleSignInSwift */,
+				21491E602EF4E3900047B91D /* GoogleMobileAds */,
+				21491E622EF4E3900047B91D /* MarqueeText */,
 			);
 			productName = "MiniMate Manager";
 			productReference = 21E19BB22EE4A3CE005C1193 /* MiniMate Manager.app */;
@@ -439,6 +474,7 @@
 				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.garrettbutchko.MiniMate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[arch=*]" = MINIMATE;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -505,6 +541,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.garrettbutchko.MiniMate-Manager";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[arch=*]" = MANAGER;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -633,6 +670,41 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 211D23352D556B3C00558873 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		21491E362EF4E3900047B91D /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 210BDE4B2D4DDFB80012E465 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		21491E3A2EF4E3900047B91D /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 210BDE4B2D4DDFB80012E465 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		21491E402EF4E3900047B91D /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 210BDE4B2D4DDFB80012E465 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		21491E542EF4E3900047B91D /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 210BDE4B2D4DDFB80012E465 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		21491E5C2EF4E3900047B91D /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 211D23352D556B3C00558873 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		21491E602EF4E3900047B91D /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2177134B2DDE6AC700AF367E /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+		21491E622EF4E3900047B91D /* MarqueeText */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 21A0A6A82ECFCEE60060A93D /* XCRemoteSwiftPackageReference "MarqueeText" */;
+			productName = MarqueeText;
 		};
 		215679A12D5175D9001BE574 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;

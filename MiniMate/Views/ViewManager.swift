@@ -19,7 +19,7 @@ enum ViewType {
 
 /// Manages app navigation state based on authentication status
 @MainActor
-class ViewManager: ObservableObject{
+class ViewManager: AppNavigationManaging, ObservableObject{
     
     @Published var currentView: ViewType
 
@@ -53,6 +53,10 @@ class ViewManager: ObservableObject{
     
     func navigateToGameReview(_ gameModel: Game) {
         currentView = .gameReview(gameModel)
+    }
+    
+    func navigateAfterSignIn() {
+        navigateToMain(1)
     }
     
 }

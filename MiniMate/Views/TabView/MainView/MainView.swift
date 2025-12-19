@@ -104,6 +104,14 @@ struct MainView: View {
                                         .fill(Color.clear)
                                         .frame(height: 110)
                                     
+                                    if !authModel.userModel!.isPro && games.count >= 2 {
+                                        Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
+                                            .padding()
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(.ultraThinMaterial)
+                                            .clipShape(RoundedRectangle(cornerRadius: 25))
+                                    }
+                                    
                                     if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
                                         VStack{
                                             BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6344452429") // Replace with real one later
