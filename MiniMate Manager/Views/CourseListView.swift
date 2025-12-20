@@ -12,15 +12,17 @@ struct CourseListView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var authModel: AuthViewModel
     @EnvironmentObject var viewManager: ViewManager
+    @StateObject var viewModel = CourseListViewModel()
     
     private var userRepo: UserRepository { UserRepository(context: context)}
     
     @State private var isSheetPresented: Bool = false
+    @State private var showUnsuccessfulAlert: Bool = false
     
     var body: some View {
         VStack{
             HStack{
-                Text("Game Stats")
+                Text("Courses")
                     .font(.title).fontWeight(.bold)
                 Spacer()
                 Button(action: {
@@ -53,12 +55,89 @@ struct CourseListView: View {
                     )
                 }
             }
+            
+            ScrollView{
+                VStack(spacing: 12){
+                    Rectangle()
+                        .frame(height: 10)
+                        .foregroundStyle(.clear)
+                    
+                    if let message = viewModel.message {
+                        VStack(spacing: 6) {
+                            Text(message)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+
+                            if viewModel.timeRemaining > 0 {
+                                Text("Try again in \(max(0, Int(ceil(viewModel.timeRemaining)))) seconds")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(.ultraThinMaterial)
+                        )
+                    }
+                    
+                    
+                    ForEach(viewModel.userCourses) { course in
+                        CourseButtonView(course: course)
+                    }
+                    
+                    
+                    Button {
+                        viewModel.showAddCourseAlert = true
+                    } label: {
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 25)
+                                .foregroundStyle(.blue)
+                                .frame(height: 60)
+                            HStack(alignment: .center){
+                                Image(systemName: "plus")
+                                    .foregroundStyle(.white)
+                                Text(viewModel.hasCourse ? "Add a new course" : "Add your first course")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .opacity(viewModel.timeRemaining > 0 ? 0.5 : 1)
+                    }
+                    .disabled(viewModel.timeRemaining > 0)
+                    Spacer()
+                }
+            }
         }
         .padding()
-        .onAppear {
-            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) {}
+        .onReceive(viewModel.timer) { _ in
+            viewModel.tick()
         }
-        
-        Text("Course List")
+        .alert("Add Course", isPresented: $viewModel.showAddCourseAlert) {
+            TextField("Password", text: $viewModel.password)
+
+            Button("Add", role: .none) {
+                viewModel.tryPassword { _ in
+                    viewModel.password = ""
+                    viewModel.showAddCourseAlert = false
+                }
+            }
+            .disabled(viewModel.password.isEmpty)
+
+            Button("Cancel", role: .cancel) {
+                viewModel.password = ""
+                viewModel.showAddCourseAlert = false
+            }
+        } message: {
+            Text("Enter course password to begin.")
+        }
+        .onAppear {
+            viewModel.bind(authModel: authModel)
+            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) {
+                viewModel.getCourses()
+            }
+        }
     }
 }

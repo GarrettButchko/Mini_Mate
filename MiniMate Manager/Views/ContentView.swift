@@ -29,6 +29,7 @@ struct ContentView: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.1), value: viewManager.currentView)
     }
 }
 

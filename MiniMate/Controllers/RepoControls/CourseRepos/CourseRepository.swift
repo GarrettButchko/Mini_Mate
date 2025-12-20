@@ -59,6 +59,46 @@ final class CourseRepository {
         }
     }
     
+    /// Fetches multiple Courses by their document IDs
+    func fetchCourses(ids: [String], completion: @escaping ([Course]) -> Void) {
+        guard !ids.isEmpty else {
+            completion([])
+            return
+        }
+
+        let group = DispatchGroup()
+        var results: [String: Course] = [:]
+
+        for id in ids {
+            group.enter()
+
+            let ref = db.collection(collectionName).document(id)
+            ref.getDocument { snapshot, error in
+                defer { group.leave() }
+
+                guard
+                    error == nil,
+                    let snapshot,
+                    snapshot.exists
+                else {
+                    return
+                }
+
+                Task { @MainActor in
+                    if let course = try? snapshot.data(as: Course.self) {
+                        results[id] = course
+                    }
+                }
+            }
+        }
+
+        group.notify(queue: .main) {
+            // Preserve original order of IDs
+            let orderedCourses = ids.compactMap { results[$0] }
+            completion(orderedCourses)
+        }
+    }
+    
     func fetchCourseByName(_ name: String, completion: @escaping (Course?) -> Void) {
         db.collection(collectionName)
             .whereField("name", isEqualTo: name)

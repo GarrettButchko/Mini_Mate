@@ -9,7 +9,7 @@ import SwiftUI
 import FirebaseAuth
 import Combine
 
-enum ViewType {
+enum ViewType: Equatable {
     case signIn
     case welcome
     case courseList

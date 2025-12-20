@@ -11,8 +11,6 @@ import AuthenticationServices
 import SwiftUI
 import Combine
 
-
-
 @MainActor
 final class ProfileViewModel: ObservableObject {
     

@@ -19,20 +19,10 @@ class UserModel: Identifiable, Equatable {
     var gameIDs: [String] = []
     var lastUpdated: Date
     var accountType: String
+    var adminCourses: [String] = []
 
     enum CodingKeys: String, CodingKey {
-        case id, name, photoURL, email, adminType, isPro, gameIDs, lastUpdated, accountType
-    }
-
-    static func == (lhs: UserModel, rhs: UserModel) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.name == rhs.name &&
-        lhs.photoURL == rhs.photoURL &&
-        lhs.email == rhs.email &&
-        lhs.isPro == rhs.isPro &&
-        lhs.gameIDs == rhs.gameIDs &&
-        lhs.lastUpdated == rhs.lastUpdated &&
-        lhs.accountType == rhs.accountType
+        case id, name, photoURL, email, isPro, gameIDs, lastUpdated, accountType, adminCourses
     }
 
     init(
@@ -43,7 +33,8 @@ class UserModel: Identifiable, Equatable {
         isPro: Bool = false,
         gameIDs: [String] = [],
         lastUpdated: Date = Date(),
-        accountType: String
+        accountType: String,
+        adminCourses: [String] = []
     ) {
         self.id = id
         self.name = name
@@ -53,6 +44,7 @@ class UserModel: Identifiable, Equatable {
         self.gameIDs = gameIDs
         self.lastUpdated = lastUpdated
         self.accountType = accountType
+        self.adminCourses = adminCourses
     }
 
     func toDTO() -> UserDTO {
@@ -64,7 +56,8 @@ class UserModel: Identifiable, Equatable {
             isPro: isPro,
             gameIDs: gameIDs,
             lastUpdated: lastUpdated,
-            accountType: accountType
+            accountType: accountType,
+            adminCourses: adminCourses
         )
     }
 
@@ -77,9 +70,8 @@ class UserModel: Identifiable, Equatable {
             isPro: dto.isPro,
             gameIDs: dto.gameIDs,
             lastUpdated: dto.lastUpdated,
-            accountType: dto.accountType
+            accountType: dto.accountType,
+            adminCourses: dto.adminCourses
         )
     }
 }
-
-

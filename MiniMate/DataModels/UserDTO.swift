@@ -15,4 +15,5 @@ struct UserDTO: Codable {
     var gameIDs: [String]
     var lastUpdated: Date
     var accountType: String
+    var adminCourses: [String]
 }
