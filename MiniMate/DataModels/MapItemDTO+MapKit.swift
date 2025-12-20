@@ -11,54 +11,114 @@ import Contacts
 extension MapItemDTO {
     func dtoToMapItem() -> MKMapItem {
         
-        let location = CLLocation(latitude: self.coordinate.latitude, longitude: self.coordinate.longitude)
-        
-        var address: MKAddress? = nil
-        
-        if let fullAddress = self.address?.fullAddress {
-            address = MKAddress(fullAddress: fullAddress, shortAddress: self.address?.shortAddress)
+        if #available(iOS 26.0, *) {
+            
+            let location = CLLocation(latitude: self.coordinate.latitude, longitude: self.coordinate.longitude)
+            
+            var address: MKAddress? = nil
+            
+            if let fullAddress = self.address?.fullAddress {
+                address = MKAddress(fullAddress: fullAddress, shortAddress: self.address?.shortAddress)
+            }
+            
+            let item = MKMapItem(location: location, address: address)
+            item.name = self.name
+            item.phoneNumber = self.phoneNumber
+            item.url = self.url != nil ? URL(string: self.url!) : nil
+            
+            if let categoryRaw = self.poiCategory {
+                item.pointOfInterestCategory = MKPointOfInterestCategory(rawValue: categoryRaw)
+            }
+            
+            if let timeZoneID = self.timeZone {
+                item.timeZone = TimeZone(identifier: timeZoneID)
+            }
+            
+            return item
+        } else {
+            
+            let placemark = MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: self.coordinate.latitude, longitude: self.coordinate.longitude))
+            
+            let item = MKMapItem(placemark: placemark)
+            item.name = self.name
+            item.phoneNumber = self.phoneNumber
+            item.url = self.url != nil ? URL(string: self.url!) : nil
+            
+            if #available(iOS 13.0, *), let categoryRaw = self.poiCategory {
+                item.pointOfInterestCategory = MKPointOfInterestCategory(rawValue: categoryRaw)
+            }
+            
+            if let timeZoneID = self.timeZone {
+                item.timeZone = TimeZone(identifier: timeZoneID)
+            }
+            
+            return item
         }
-        
-        let item = MKMapItem(location: location, address: address)
-        item.name = self.name
-        item.phoneNumber = self.phoneNumber
-        item.url = self.url != nil ? URL(string: self.url!) : nil
-
-        if #available(iOS 13.0, *), let categoryRaw = self.poiCategory {
-            item.pointOfInterestCategory = MKPointOfInterestCategory(rawValue: categoryRaw)
-        }
-
-        if let timeZoneID = self.timeZone {
-            item.timeZone = TimeZone(identifier: timeZoneID)
-        }
-
-        return item
     }
 }
 
 extension MKMapItem {
     
+    
     var idString: String {
-        "\(location.coordinate.latitude)-\(location.coordinate.longitude)-\(name ?? "")"
+        if #available(iOS 26.0, *) {
+            "\(location.coordinate.latitude)-\(location.coordinate.longitude)-\(name ?? "")"
+        } else {
+            "\(self.placemark.coordinate.latitude)-\(self.placemark.coordinate.longitude)-\(name ?? "")"
+        }
     }
     
+    
+    
     var newAddress: AddressDTO? {
-        if let address = self.address {
+        if #available(iOS 26.0, *), let address = self.address {
             return AddressDTO(fullAddress: address.fullAddress, shortAddress: address.shortAddress)
+        } else if let postalAddress = self.placemark.postalAddress {
+            
+            let street: String = postalAddress.street
+            let city: String = postalAddress.city
+            let state: String = postalAddress.state
+            let postalCode: String = postalAddress.postalCode
+            let country: String = postalAddress.country
+            
+            
+            var longAddress: String =
+                """
+                \(street)
+                \(city), \(state) \(postalCode)
+                \(country)
+                """
+            
+            var shortAddress: String = "\(street), \(city)"
+            
+            return AddressDTO(fullAddress: longAddress, shortAddress: shortAddress)
         } else {
             return nil
         }
     }
     
     func toDTO() -> MapItemDTO {
-        return MapItemDTO(
-            name: self.name,
-            poiCategory: self.pointOfInterestCategory?.rawValue,
-            phoneNumber: self.phoneNumber,
-            timeZone: self.timeZone?.identifier,
-            url: self.url?.absoluteString,
-            address: newAddress,
-            coordinate: CoordinateDTO(latitude: self.location.coordinate.latitude, longitude: self.location.coordinate.latitude)
-        )
+        
+        if #available(iOS 26.0, *), let address = self.address {
+            return MapItemDTO(
+                name: self.name,
+                poiCategory: self.pointOfInterestCategory?.rawValue,
+                phoneNumber: self.phoneNumber,
+                timeZone: self.timeZone?.identifier,
+                url: self.url?.absoluteString,
+                address: newAddress,
+                coordinate: CoordinateDTO(latitude: self.location.coordinate.latitude, longitude: self.location.coordinate.latitude)
+            )
+        } else {
+            return MapItemDTO(
+                name: self.name,
+                poiCategory: self.pointOfInterestCategory?.rawValue,
+                phoneNumber: self.phoneNumber,
+                timeZone: self.timeZone?.identifier,
+                url: self.url?.absoluteString,
+                address: newAddress,
+                coordinate: CoordinateDTO(latitude: self.placemark.coordinate.latitude, longitude: self.placemark.coordinate.latitude)
+            )
+        }
     }
 }
