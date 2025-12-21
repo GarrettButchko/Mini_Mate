@@ -16,7 +16,7 @@ struct CourseButtonView: View {
     var body: some View {
         Button {
             viewModel.setCourse(course: course)
-            viewManager.navigateToCourseTab(1, viewModel: viewModel)
+            viewManager.navigateToCourseTab(1)
         } label: {
             HStack {
                 VStack(alignment: .leading,spacing: 6){

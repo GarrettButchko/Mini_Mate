@@ -13,6 +13,7 @@ import Combine
 final class CourseRepository {
     
     private let db = Firestore.firestore()
+    private var listener: ListenerRegistration?
     let collectionName: String = "courses"
     
     
@@ -28,6 +29,45 @@ final class CourseRepository {
             print("❌ Firestore encoding error: \(error)")
             completion(false)
         }
+    }
+    
+    
+    
+    func listenToCourse(
+        id: String,
+        onUpdate: @escaping (Course?) -> Void
+    ) {
+        stopListening()
+        
+        listener = db.collection("courses")
+            .document(id)
+            .addSnapshotListener { snapshot, error in
+                
+                if let error = error {
+                    print("❌ Listener error:", error)
+                    onUpdate(nil)
+                    return
+                }
+                
+                guard let snapshot, snapshot.exists else {
+                    onUpdate(nil)
+                    return
+                }
+                
+                do {
+                    let course = try snapshot.data(as: Course.self)
+                    DispatchQueue.main.async {
+                        onUpdate(course)
+                    }
+                } catch {
+                    print("❌ Decode error:", error)
+                }
+            }
+    }
+    
+    func stopListening() {
+        listener?.remove()
+        listener = nil
     }
     
     /// Fetches a Course by ID from Firestore
@@ -85,13 +125,15 @@ final class CourseRepository {
                     return
                 }
 
-                do {
-                    let course = try snapshot.data(as: Course.self)
-                    resultsQueue.sync {
-                        results[id] = course
+                Task { @MainActor in
+                    do {
+                        let course = try snapshot.data(as: Course.self)
+                        resultsQueue.sync {
+                            results[id] = course
+                        }
+                    } catch {
+                        // Ignore decoding failures for this document
                     }
-                } catch {
-                    // Ignore decoding failures for this document
                 }
             }
         }

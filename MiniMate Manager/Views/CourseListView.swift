@@ -12,12 +12,13 @@ struct CourseListView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var authModel: AuthViewModel
     @EnvironmentObject var viewManager: ViewManager
-    @StateObject var viewModel = CourseViewModel()
+    @EnvironmentObject var viewModel: CourseViewModel
     
     private var userRepo: UserRepository { UserRepository(context: context)}
     
     @State private var isSheetPresented: Bool = false
     @State private var showUnsuccessfulAlert: Bool = false
+    @State private var isRotating: Bool = false
     
     var body: some View {
         VStack{
@@ -25,6 +26,23 @@ struct CourseListView: View {
                 Text("Courses")
                     .font(.title).fontWeight(.bold)
                 Spacer()
+                
+                Button(action: {
+                    withAnimation(){
+                        isRotating = true
+                        viewModel.getCourses()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                            isRotating = false
+                        }
+                    }
+                }) {
+                    Image(systemName: "arrow.trianglehead.2.clockwise")
+                        .rotationEffect(.degrees(isRotating ? 360 : 0))
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                        .frame(width: 30, height: 30)
+                }
+                
                 Button(action: {
                     isSheetPresented = true
                 }) {
@@ -56,56 +74,64 @@ struct CourseListView: View {
                 }
             }
             
-            ScrollView{
-                VStack(spacing: 12){
-                    Rectangle()
-                        .frame(height: 10)
-                        .foregroundStyle(.clear)
-                    
-                    if let message = viewModel.message {
-                        VStack(spacing: 6) {
-                            Text(message)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-
-                            if viewModel.timeRemaining > 0 {
-                                Text("Try again in \(max(0, Int(ceil(viewModel.timeRemaining)))) seconds")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(.ultraThinMaterial)
-                        )
-                    }
-                    
-                    ForEach(viewModel.userCourses) { course in
-                        CourseButtonView(viewModel: viewModel, course: course)
-                    }
-                    
-                    Button {
-                        viewModel.showAddCourseAlert = true
-                    } label: {
-                        ZStack{
-                            RoundedRectangle(cornerRadius: 25)
-                                .foregroundStyle(.blue)
-                                .frame(height: 60)
-                            HStack(alignment: .center){
-                                Image(systemName: "plus")
-                                    .foregroundStyle(.white)
-                                Text(viewModel.hasCourse ? "Add a new course" : "Add your first course")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.white)
-                            }
-                        }
-                        .opacity(viewModel.timeRemaining > 0 ? 0.5 : 1)
-                    }
-                    .disabled(viewModel.timeRemaining > 0)
+            if viewModel.loadingCourse {
+                VStack{
                     Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else {
+                ScrollView{
+                    VStack(spacing: 12){
+                        Rectangle()
+                            .frame(height: 10)
+                            .foregroundStyle(.clear)
+                        
+                        if let message = viewModel.message {
+                            VStack(spacing: 6) {
+                                Text(message)
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                
+                                if viewModel.timeRemaining > 0 {
+                                    Text("Try again in \(max(0, Int(ceil(viewModel.timeRemaining)))) seconds")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(.ultraThinMaterial)
+                            )
+                        }
+                        
+                        ForEach(viewModel.userCourses) { course in
+                            CourseButtonView(viewModel: viewModel, course: course)
+                        }
+                        
+                        Button {
+                            viewModel.showAddCourseAlert = true
+                        } label: {
+                            ZStack{
+                                RoundedRectangle(cornerRadius: 25)
+                                    .foregroundStyle(.blue)
+                                    .frame(height: 60)
+                                HStack(alignment: .center){
+                                    Image(systemName: "plus")
+                                        .foregroundStyle(.white)
+                                    Text(viewModel.hasCourse ? "Add a new course" : "Add your first course")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .opacity(viewModel.timeRemaining > 0 ? 0.5 : 1)
+                        }
+                        .disabled(viewModel.timeRemaining > 0)
+                        Spacer()
+                    }
                 }
             }
         }
@@ -134,7 +160,15 @@ struct CourseListView: View {
         .onAppear {
             viewModel.bind(authModel: authModel)
             userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) {
-                viewModel.getCourses()
+                if viewModel.userCourses.isEmpty {
+                    if authModel.userModel?.adminCourses.count ?? 0 > 1 {
+                        viewModel.getCourses()
+                    } else {
+                        viewModel.getCourse {
+                            viewManager.navigateToCourseTab(1)
+                        }
+                    }
+                }
             }
         }
     }

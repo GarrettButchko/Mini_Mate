@@ -11,6 +11,7 @@ struct ContentView: View {
     @Environment(\.modelContext) var context
     @EnvironmentObject var authModel: AuthViewModel
     @EnvironmentObject var viewManager: ViewManager
+    @StateObject var viewModel = CourseViewModel()
     
     @State private var selectedTab = 1
     
@@ -18,8 +19,8 @@ struct ContentView: View {
         ZStack {
             Group {
                 switch viewManager.currentView {
-                case .courseTab(let tab, let viewModel):
-                    CourseTabView(selectedTab: tab, viewModel: viewModel)
+                case .courseTab(let tab):
+                    CourseTabView(selectedTab: tab)
                 case .courseList:
                     CourseListView()
                 case .welcome:
@@ -30,20 +31,19 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.1), value: viewManager.currentView)
+        .environmentObject(viewModel)
     }
 }
 
 struct CourseTabView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var authModel: AuthViewModel
-    
-    @ObservedObject var viewModel: CourseViewModel
+    @EnvironmentObject var viewModel: CourseViewModel
 
     @State var selectedTab: Int
     
-    init(selectedTab: Int, viewModel: CourseViewModel){
+    init(selectedTab: Int){
         self.selectedTab = selectedTab
-        self.viewModel = viewModel
     }
     
     var body: some View {
@@ -60,6 +60,11 @@ struct CourseTabView: View {
                 .tabItem { Label("Settings", systemImage: "gear") }
                 .tag(2)
         }
-        .environmentObject(viewModel)
+        .onAppear {
+            viewModel.start()
+        }
+        .onDisappear {
+            viewModel.stop()
+        }
     }
 }

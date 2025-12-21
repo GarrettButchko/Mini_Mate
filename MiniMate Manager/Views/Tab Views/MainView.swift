@@ -25,7 +25,9 @@ struct MainView: View {
             HStack {
                 Button {
                     viewManager.navigateToCourseList()
-                    viewModel.setCourse(course: nil)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        viewModel.setCourse(course: nil)
+                    }
                 } label: {
                     Image(systemName: "chevron.left")
                 }
@@ -76,19 +78,26 @@ struct MainView: View {
             
             TitleView()
                 .frame(height: 150)
+                .padding(.bottom)
             
             ZStack(alignment: .top){
                 
                 ScrollView{
                     Rectangle()
                         .fill(Color.clear)
-                        .frame(height: 80)
+                        .frame(height: 120)
                     
-                    Text("Coming soon")
-                        .background {
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(Color.red)
-                        }
+                    HStack{
+                        Spacer()
+                        Text("ADD STUFF HERE")
+                        Spacer()
+                    }
+                    .padding()
+                    .background {
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(.ultraThinMaterial)
+                    }
+                    .padding()
                 }
                 
                 VStack{
@@ -102,7 +111,8 @@ struct MainView: View {
                             }
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding()
+                            .padding(.vertical, 40)
+                            .padding(.horizontal)
                             .background {
                                 RoundedRectangle(cornerRadius: 17)
                                     .foregroundStyle(Color.orange)
@@ -117,7 +127,8 @@ struct MainView: View {
                             }
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding()
+                            .padding(.vertical, 40)
+                            .padding(.horizontal)
                             .background {
                                 RoundedRectangle(cornerRadius: 17)
                                     .foregroundStyle(Color.green)

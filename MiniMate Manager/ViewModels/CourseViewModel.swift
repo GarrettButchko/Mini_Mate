@@ -16,6 +16,8 @@ final class CourseViewModel: ObservableObject {
     @Published var message: String? = nil
     @Published var showAddCourseAlert: Bool = false
     
+    @Published var loadingCourse: Bool = false
+    
     private var authModel: AuthViewModel?
     @Published var userCourses: [Course] = []
     private let courseRepo = CourseRepository()
@@ -73,24 +75,30 @@ final class CourseViewModel: ObservableObject {
     
     
     func getCourses(){
+        loadingCourse = true
         if hasCourse{
             courseRepo.fetchCourses(ids: (authModel?.userModel?.adminCourses)!) { courses in
                 withAnimation(){
                     self.userCourses = courses
+                    self.loadingCourse = false
                 }
             }
         }
     }
-    func getCourse(completion: @escaping (Course?) -> Void){
+    func getCourse(completion: @escaping () -> Void){
+        loadingCourse = true
         if hasCourse{
             courseRepo.fetchCourse(id: (authModel?.userModel?.adminCourses.first)!) { course in
                 if let course = course{
                     withAnimation(){
                         self.userCourses.append(course)
                     }
-                    completion(course)
+                    self.selectedCourse = course
+                    self.loadingCourse = false
+                    completion()
                 } else {
-                    completion(nil)
+                    self.loadingCourse = false
+                    completion()
                 }
             }
         }
@@ -131,6 +139,23 @@ final class CourseViewModel: ObservableObject {
                     completion(false)
                 }
             }
+        }
+    }
+    
+    func start() {
+        if let course = selectedCourse {
+            courseRepo.listenToCourse(id: course.id) { [weak self] newCourse in
+                if newCourse != course{
+                    self?.selectedCourse = newCourse
+                }
+            }
+        }
+    }
+
+    func stop() {
+            // tiny delay prevents teardown race
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.courseRepo.stopListening()
         }
     }
 }

@@ -18,7 +18,7 @@ enum ViewType: Equatable {
             return true
         case (.courseList, .courseList):
             return true
-        case let (.courseTab(lhsIndex, _), .courseTab(rhsIndex, _)):
+        case let (.courseTab(lhsIndex), .courseTab(rhsIndex)):
             return lhsIndex == rhsIndex
         default:
             return false
@@ -28,7 +28,7 @@ enum ViewType: Equatable {
     case signIn
     case welcome
     case courseList
-    case courseTab(Int, CourseViewModel)
+    case courseTab(Int)
 }
 
 /// Manages app navigation state based on authentication status
@@ -45,8 +45,8 @@ class ViewManager: AppNavigationManaging, ObservableObject{
         }
     }
 
-    func navigateToCourseTab(_ tab: Int, viewModel: CourseViewModel) {
-        currentView = .courseTab(tab, viewModel)
+    func navigateToCourseTab(_ tab: Int) {
+        currentView = .courseTab(tab)
     }
     
     func navigateToCourseList() {

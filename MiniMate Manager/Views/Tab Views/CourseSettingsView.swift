@@ -406,7 +406,7 @@ struct CourseSettingsView: View {
                 }
             }
             
-            if let courseTier = viewModel.selectedCourse!.tier, courseTier >= 2 {
+            if let courseTier = viewModel.selectedCourse?.tier, courseTier >= 2 {
                 Section("Ad") {
                     
                         
