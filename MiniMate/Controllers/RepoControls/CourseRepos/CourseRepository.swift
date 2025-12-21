@@ -67,6 +67,7 @@ final class CourseRepository {
         }
 
         let group = DispatchGroup()
+        let resultsQueue = DispatchQueue(label: "CourseRepository.fetchCourses.resultsQueue")
         var results: [String: Course] = [:]
 
         for id in ids {
@@ -84,10 +85,13 @@ final class CourseRepository {
                     return
                 }
 
-                Task { @MainActor in
-                    if let course = try? snapshot.data(as: Course.self) {
+                do {
+                    let course = try snapshot.data(as: Course.self)
+                    resultsQueue.sync {
                         results[id] = course
                     }
+                } catch {
+                    // Ignore decoding failures for this document
                 }
             }
         }

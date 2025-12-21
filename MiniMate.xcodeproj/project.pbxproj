@@ -98,6 +98,7 @@
 				Misc/isAvaliableGlassEffect.swift,
 				Misc/PhotoPicker.swift,
 				Misc/SynchronizedScrollViews.swift,
+				Misc/Views/NumberPickerView.swift,
 				Misc/Views/PhotoIconView.swift,
 				Misc/Views/SearchBarView.swift,
 				Misc/Views/UserInfoRow.swift,
@@ -108,6 +109,7 @@
 				Views/PreViews/WelcomeView.swift,
 				Views/TabView/Game/GameReviewView.swift,
 				Views/TabView/MainView/ProfileView.swift,
+				Views/TabView/MainView/TitleView.swift,
 				Views/TabView/Stats/GameInfoView.swift,
 			);
 			target = 21E19BB12EE4A3CE005C1193 /* MiniMate Manager */;

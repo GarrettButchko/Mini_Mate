@@ -10,7 +10,7 @@ import Combine
 import SwiftUI
 
 @MainActor
-final class CourseListViewModel: ObservableObject {
+final class CourseViewModel: ObservableObject {
 
     @Published var password: String = ""
     @Published var message: String? = nil
@@ -20,6 +20,8 @@ final class CourseListViewModel: ObservableObject {
     @Published var userCourses: [Course] = []
     private let courseRepo = CourseRepository()
     private let userRepo = UserRepository()
+    
+    @Published var selectedCourse: Course? = nil
     
     @Published var timeRemaining: TimeInterval = 0
     @Published var failedAttempts: Int = 0
@@ -65,6 +67,9 @@ final class CourseListViewModel: ObservableObject {
         self.authModel = authModel
     }
     
+    func setCourse(course: Course?) {
+        self.selectedCourse = course
+    }
     
     
     func getCourses(){
@@ -72,6 +77,20 @@ final class CourseListViewModel: ObservableObject {
             courseRepo.fetchCourses(ids: (authModel?.userModel?.adminCourses)!) { courses in
                 withAnimation(){
                     self.userCourses = courses
+                }
+            }
+        }
+    }
+    func getCourse(completion: @escaping (Course?) -> Void){
+        if hasCourse{
+            courseRepo.fetchCourse(id: (authModel?.userModel?.adminCourses.first)!) { course in
+                if let course = course{
+                    withAnimation(){
+                        self.userCourses.append(course)
+                    }
+                    completion(course)
+                } else {
+                    completion(nil)
                 }
             }
         }

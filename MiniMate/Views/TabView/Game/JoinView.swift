@@ -139,7 +139,7 @@ struct JoinView: View {
                     Text(viewModel.gameModel.gameValue.date.formatted(date: .abbreviated, time: .shortened))
                 }
                 
-                if let gameModel = viewModel.gameModel.gameValue.location, gameModel.latitude != 0 {
+                if let gameModel = viewModel.gameModel.gameValue.location, gameModel.coordinate.latitude != 0 {
                     HStack {
                         Text("Location:")
                         Spacer()

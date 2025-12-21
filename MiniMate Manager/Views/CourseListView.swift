@@ -12,7 +12,7 @@ struct CourseListView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var authModel: AuthViewModel
     @EnvironmentObject var viewManager: ViewManager
-    @StateObject var viewModel = CourseListViewModel()
+    @StateObject var viewModel = CourseViewModel()
     
     private var userRepo: UserRepository { UserRepository(context: context)}
     
@@ -82,11 +82,9 @@ struct CourseListView: View {
                         )
                     }
                     
-                    
                     ForEach(viewModel.userCourses) { course in
-                        CourseButtonView(course: course)
+                        CourseButtonView(viewModel: viewModel, course: course)
                     }
-                    
                     
                     Button {
                         viewModel.showAddCourseAlert = true

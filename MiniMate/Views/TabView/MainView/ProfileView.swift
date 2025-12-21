@@ -176,7 +176,6 @@ struct ProfileView: View {
                         .foregroundColor(.red)
                         
                         Button("Delete Account") {
-                            
                             viewModel.deleteAccount(user: authModel.userModel!)
                         }
                         .foregroundColor(.red)

@@ -13,19 +13,11 @@ final class CourseIDGenerator {
     // MARK: - Public API
     static func generateCourseID(from item: MapItemDTO) -> String {
         let namePart = slugify(item.name ?? "unknown")
-        let cityPart = slugify(item.city ?? "")
-        let statePart = slugify(item.state ?? "")
-
-        // Unique hash based on lat/lon + name
-        let hashInput = "\(item.latitude)-\(item.longitude)-\(item.name ?? "")"
+        
+        let hashInput = "\(item.coordinate.latitude)-\(item.coordinate.longitude)-\(item.name ?? "")"
         let hash = shortHash(hashInput)
 
-        // Build slug
-        let base = [namePart, cityPart, statePart]
-            .filter { !$0.isEmpty }
-            .joined(separator: "-")
-
-        return "\(base)-\(hash)"
+        return "\(namePart)-\(hash)"
     }
 
     // MARK: - Private Helpers

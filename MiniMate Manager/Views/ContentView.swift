@@ -18,8 +18,8 @@ struct ContentView: View {
         ZStack {
             Group {
                 switch viewManager.currentView {
-                case .courseTab(let tab):
-                    CourseTabView(selectedTab: tab)
+                case .courseTab(let tab, let viewModel):
+                    CourseTabView(selectedTab: tab, viewModel: viewModel)
                 case .courseList:
                     CourseListView()
                 case .welcome:
@@ -36,11 +36,14 @@ struct ContentView: View {
 struct CourseTabView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var authModel: AuthViewModel
+    
+    @ObservedObject var viewModel: CourseViewModel
 
     @State var selectedTab: Int
     
-    init(selectedTab: Int){
+    init(selectedTab: Int, viewModel: CourseViewModel){
         self.selectedTab = selectedTab
+        self.viewModel = viewModel
     }
     
     var body: some View {
@@ -57,5 +60,6 @@ struct CourseTabView: View {
                 .tabItem { Label("Settings", systemImage: "gear") }
                 .tag(2)
         }
+        .environmentObject(viewModel)
     }
 }
