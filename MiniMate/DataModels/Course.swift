@@ -15,6 +15,7 @@ struct Course: Codable, Identifiable, Equatable {
     
     var logo: String?
     var scoreCardColorDT: String?
+    var courseColorsDT: [String]? = []
     
     var link: String?
     
@@ -58,7 +59,8 @@ struct Course: Codable, Identifiable, Equatable {
         roundTimeAnalytics: RoundTimeAnalytics = RoundTimeAnalytics(),
         tier: Int? = 1,
         adminIDs: [String]? = [],
-        isClaimed: Bool = false
+        isClaimed: Bool = false,
+        courseColorsDT: [String]? = []
     ) {
             self.id = id
             self.name = name
@@ -81,6 +83,7 @@ struct Course: Codable, Identifiable, Equatable {
             self.password = password
             self.adminIDs = adminIDs
             self.isClaimed = isClaimed
+            self.courseColorsDT = courseColorsDT
     }
     
     static func == (lhs: Course, rhs: Course) -> Bool {
@@ -104,7 +107,8 @@ struct Course: Codable, Identifiable, Equatable {
         lhs.supported == rhs.supported &&
         lhs.adminIDs == rhs.adminIDs &&
         lhs.customAdActive == rhs.customAdActive &&
-        lhs.isClaimed == rhs.isClaimed
+        lhs.isClaimed == rhs.isClaimed &&
+        lhs.courseColorsDT == rhs.courseColorsDT
     }
 }
 

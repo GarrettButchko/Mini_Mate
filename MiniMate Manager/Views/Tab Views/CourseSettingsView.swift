@@ -25,9 +25,7 @@ struct CourseSettingsView: View {
     @State private var showDeleteColor: Bool = false
     @State private var showColor: Bool = false
     
-    let colors: [Color] = [
-        .red, .orange, .yellow, .green, .mint, .teal, .cyan, .blue, .indigo, .purple, .pink, .brown, .gray, .black
-    ]
+    @State private var scoreCardColorPicker: Bool = false
     
     let courseRepo = CourseRepository()
     
@@ -37,67 +35,24 @@ struct CourseSettingsView: View {
                 .padding()
             ZStack{
                 formView
-                
-                colorPicker
-                    .opacity(showColor ? 1 : 0)
-                    .animation(.spring(duration: 0.25, bounce: 0.4), value: showColor)
-                    .allowsHitTesting(showColor)
-            }
-        }
-    }
-    
-    private var colorPicker: some View {
-        ZStack {
-            // Background blur
-            Rectangle()
-                .foregroundStyle(.ultraThinMaterial)
-                .ignoresSafeArea()
-                
-            // Popup card
-            VStack(spacing: 20) {
-                Text("Pick a Color")
-                    .font(.headline)
-                
-                LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 4), spacing: 20) {
-                    ForEach(colors, id: \.self) { color in
-                        Button {
-                            withAnimation() {
-                                viewModel.selectedCourse!.scoreCardColorDT = colorToString(color)
-                                courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
-                                showColor = false
-                            }
-                        } label: {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 40, height: 40)
-                                .overlay {
-                                    Circle()
-                                        .fill(color)
-                                        .frame(width: 30, height: 30)
-                                }
+                ColorPickerView(showColor: $showColor) { color in
+                    if scoreCardColorPicker {
+                        viewModel.selectedCourse!.scoreCardColorDT = colorToString(color)
+                    } else {
+                        if viewModel.selectedCourse!.courseColorsDT == nil {
+                            viewModel.selectedCourse!.courseColorsDT? = []
                         }
+                        viewModel.selectedCourse!.courseColorsDT?.append(colorToString(color))
                     }
-                }
-                
-                Button {
                     withAnimation() {
+                        courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
                         showColor = false
                     }
-                } label: {
-                    Text("Cancel")
-                        .fontWeight(.semibold)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity)
-                        .foregroundStyle(.white)
-                        .background(.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
+                .opacity(showColor ? 1 : 0)
+                .animation(.spring(duration: 0.25, bounce: 0.4), value: showColor)
+                .allowsHitTesting(showColor)
             }
-            .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(20)
-            .padding()
-            .transition(.scale.combined(with: .opacity))
         }
     }
 
@@ -342,49 +297,40 @@ struct CourseSettingsView: View {
                         }
                     }
                     
-                    VStack {
+                    
+                    HStack{
+                        Text("Scorecard Color:")
+                        Spacer()
+                        ColorHolderView(color: viewModel.selectedCourse?.scoreCardColor, showDeleteColor: $showDeleteColor, showColor: $showColor,
+                                        showFunction:{
+                            scoreCardColorPicker = true
+                        }, deleteFunction: {
+                            viewModel.selectedCourse!.scoreCardColorDT = nil
+                            courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                        })
+                    }
+                    
+                    VStack{
                         HStack{
-                            Text("ScoreCard Color:")
-                            Spacer()
-                            if let scoreCC = viewModel.selectedCourse?.scoreCardColor {
-                                Button {
-                                    showDeleteColor = true
-                                } label: {
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .frame(width: 40, height: 40)
-                                        .overlay(content: {
-                                            Circle()
-                                                .fill(scoreCC)
-                                                .frame(width: 30, height: 30)
-                                        })
-                                }
-                                .alert("Delete color?", isPresented: $showDeleteColor){
-                                    Button("Delete", role: .destructive, action: {
-                                        viewModel.selectedCourse!.scoreCardColorDT = nil
-                                    })
-                                    Button("Cancel", role: .cancel, action: {showDeleteColor = false})
-                                } message: {
-                                    Text("Are you sure you want to delete this color?")
-                                }
-                            } else {
-                                Button {
-                                    withAnimation(){
-                                        showColor = true
+                            Text("Course Colors")
+                        }
+                        ScrollView(.horizontal) {
+                            if let colors = viewModel.selectedCourse?.courseColors {
+                                ForEach(colors, id: \.self) { color in
+                                    ColorHolderView(color: color, showDeleteColor: $showDeleteColor, showColor: $showColor) {
+                                        scoreCardColorPicker = false
+                                    } deleteFunction: {
+                                        viewModel.selectedCourse!.courseColorsDT?.removeAll(where: { $0 == colorToString(color) })
+                                        courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
                                     }
-                                } label: {
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .frame(width: 40, height: 40)
-                                        .overlay {
-                                            Image(systemName: "plus")
-                                                .resizable()
-                                                .frame(width: 20, height: 20)
-                                        }
                                 }
                             }
+                            ColorHolderView(showDeleteColor: $showDeleteColor, showColor: $showColor) {
+                                scoreCardColorPicker = false
+                            } deleteFunction: { }
                         }
                     }
+                    
                     
                     HStack {
                         Text("Link:")
