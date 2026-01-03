@@ -145,8 +145,10 @@ final class CourseViewModel: ObservableObject {
     func start() {
         if let course = selectedCourse {
             courseRepo.listenToCourse(id: course.id) { [weak self] newCourse in
-                if newCourse != course{
-                    self?.selectedCourse = newCourse
+                guard let self else { return }
+
+                if self.selectedCourse != newCourse {
+                    self.selectedCourse = newCourse
                 }
             }
         }

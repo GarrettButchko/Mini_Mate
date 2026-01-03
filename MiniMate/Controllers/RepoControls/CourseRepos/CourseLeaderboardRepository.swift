@@ -6,104 +6,182 @@
 //
 
 import Foundation
-import FirebaseDatabase
 import SwiftUI
+import Foundation
+import FirebaseFirestore
+
 
 /// Handles all Realtime Database operations for CourseLeaderboards
 final class CourseLeaderboardRepository {
     
-    private let dbRef = Database.database().reference().child("course_leaderboards")
+    private let db = Firestore.firestore()
     
     // MARK: - Add / Update CourseLeaderboard
-    @MainActor
-    func addOrUpdateCourseLeaderboard(_ course: CourseLeaderboard, completion: @escaping (Bool) -> Void) {
-        do {
-            let data = try JSONEncoder().encode(course)
-            if let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                let ref = dbRef.child(course.id)
-                ref.setValue(dict) { error, _ in
-                    DispatchQueue.main.async {
-                        completion(error == nil)
-                    }
-                }
-            }
-        } catch {
-            print("❌ Encoding course error: \(error.localizedDescription)")
-            DispatchQueue.main.async { completion(false) }
-        }
+    private func allTimeEntriesRef(courseID: String) -> CollectionReference {
+        db.collection("courses").document(courseID)
+            .collection("leaderboardsAllTime")
+            .document("entriesDoc")              // fixed doc so we can have a subcollection cleanly
+            .collection("entries")
     }
     
-    // MARK: - Fetch CourseLeaderboard
-    func fetchCourseLeaderboard(id: String, completion: @escaping (CourseLeaderboard?) -> Void) {
-        let ref = dbRef.child(id)
-        ref.observeSingleEvent(of: .value) { snapshot in
-            guard let value = snapshot.value else {
-                DispatchQueue.main.async { completion(nil) }
-                return
-            }
-            do {
-                guard let dict = value as? [String: Any] else {
-                    print("CourseLeaderboard value is not a dictionary:", value)
-                    DispatchQueue.main.async { completion(nil) }
+    private func weeklyEntriesRef(courseID: String, weekID: String) -> CollectionReference {
+        db.collection("courses").document(courseID)
+            .collection("leaderboardsWeekly")
+            .document(weekID)
+            .collection("entries")
+    }
+    
+    // MARK: - Fetch Top N (All-time)
+    
+    func fetchTopAllTime(courseID: String, limit: Int = 25, completion: @escaping ([LeaderboardEntry]) -> Void) {
+        allTimeEntriesRef(courseID: courseID)
+            .order(by: "totalStrokes", descending: false)
+            .limit(to: limit)
+            .getDocuments { snap, err in
+                guard let docs = snap?.documents, err == nil else {
+                    DispatchQueue.main.async { completion([]) }
                     return
                 }
-                let data = try JSONSerialization.data(withJSONObject: dict)
-                let leaderboard = try JSONDecoder().decode(CourseLeaderboard.self, from: data)
-                DispatchQueue.main.async { completion(leaderboard) }
-            } catch {
-                print("❌ Decoding CourseLeaderboard error: \(error.localizedDescription)")
-                DispatchQueue.main.async { completion(nil) }
+                let items: [LeaderboardEntry] = docs.compactMap { try? $0.data(as: LeaderboardEntry.self) }
+                DispatchQueue.main.async { completion(items) }
             }
-        }
     }
     
-    // MARK: - Add Player to Live Leaderboard
-    func addPlayerToLiveLeaderboard(player: Player, courseID: String, email: String, max numberOfPlayers: Int, added: Binding<Bool>, courseRepository: CourseRepository, completion: @escaping (Bool) -> Void) {
+    // MARK: - Fetch Top N (Weekly)
+    
+    func fetchTopWeekly(courseID: String, weekID: String, limit: Int = 25, completion: @escaping ([LeaderboardEntry]) -> Void) {
+        weeklyEntriesRef(courseID: courseID, weekID: weekID)
+            .order(by: "totalStrokes", descending: false)
+            .limit(to: limit)
+            .getDocuments { snap, err in
+                guard let docs = snap?.documents, err == nil else {
+                    DispatchQueue.main.async { completion([]) }
+                    return
+                }
+                let items: [LeaderboardEntry] = docs.compactMap { try? $0.data(as: LeaderboardEntry.self) }
+                DispatchQueue.main.async { completion(items) }
+            }
+    }
+    
+    // MARK: - Live Listening (All-time)
+    
+    func listenTopAllTime(courseID: String, limit: Int = 25, listener: inout ListenerRegistration?, onUpdate: @escaping ([LeaderboardEntry]) -> Void) {
+        listener?.remove()
         
-        fetchCourseLeaderboard(id: courseID) { currentLeaderboard in
-            var leaderboard = currentLeaderboard ?? CourseLeaderboard(id: courseID)
-            
-            // Add player and sort
-            leaderboard.allPlayers.append(player.toDTO())
-            leaderboard.allPlayers.sort { $0.totalStrokes < $1.totalStrokes }
-            
-            // Keep top N
-            if leaderboard.allPlayers.count > numberOfPlayers {
-                leaderboard.allPlayers = Array(leaderboard.allPlayers.prefix(numberOfPlayers))
+        listener = allTimeEntriesRef(courseID: courseID)
+            .order(by: "totalStrokes", descending: false)
+            .limit(to: limit)
+            .addSnapshotListener { snap, err in
+                guard let docs = snap?.documents, err == nil else {
+                    DispatchQueue.main.async { onUpdate([]) }
+                    return
+                }
+                let items: [LeaderboardEntry] = docs.compactMap { try? $0.data(as: LeaderboardEntry.self) }
+                DispatchQueue.main.async { onUpdate(items) }
             }
-        }
     }
     
-    // MARK: - Realtime Listening
-    func listenForCourseUpdates(id: String, listenerHandle: inout DatabaseHandle?, onUpdate: @escaping (CourseLeaderboard?) -> Void) {
-        let ref = dbRef.child(id)
+    // MARK: - Live Listening (Weekly)
+    
+    func listenTopWeekly(courseID: String, weekID: String, limit: Int = 25, listener: inout ListenerRegistration?, onUpdate: @escaping ([LeaderboardEntry]) -> Void) {
+        listener?.remove()
         
-        listenerHandle = ref.observe(.value) { snapshot in
-            guard let value = snapshot.value, !(value is NSNull) else {
-                print("⚠️ Snapshot value is nil or NSNull for id: \(id)")
-                withAnimation { onUpdate(nil) }
-                return
+        listener = weeklyEntriesRef(courseID: courseID, weekID: weekID)
+            .order(by: "totalStrokes", descending: false)
+            .limit(to: limit)
+            .addSnapshotListener { snap, err in
+                guard let docs = snap?.documents, err == nil else {
+                    DispatchQueue.main.async { onUpdate([]) }
+                    return
+                }
+                let items: [LeaderboardEntry] = docs.compactMap { try? $0.data(as: LeaderboardEntry.self) }
+                DispatchQueue.main.async { onUpdate(items) }
             }
-            guard let dict = value as? [String: Any] else {
-                print("⚠️ Snapshot value could not be cast to [String: Any]: \(value)")
-                return
-            }
-            do {
-                let data = try JSONSerialization.data(withJSONObject: dict)
-                let updatedCourse = try JSONDecoder().decode(CourseLeaderboard.self, from: data)
-                withAnimation { onUpdate(updatedCourse) }
-            } catch {
-                print("❌ Failed to decode Course from snapshot: \(error.localizedDescription)")
-            }
+    }
+    
+    func stopListening(_ listener: inout ListenerRegistration?) {
+        listener?.remove()
+        listener = nil
+    }
+    
+    // MARK: - Submit Score (Best Round Wins)
+    // This updates ONE user entry doc.
+    // If they already have a better score, we keep it.
+    
+    func submitScoreAllTime(courseID: String, entry: LeaderboardEntry, completion: @escaping (Bool) -> Void) {
+        let docRef = allTimeEntriesRef(courseID: courseID).document(entry.userId)
+        
+        db.runTransaction({ tx, errPtr -> Any? in
+            let snap: DocumentSnapshot
+            do { snap = try tx.getDocument(docRef) }
+            catch let e as NSError { errPtr?.pointee = e; return nil }
+            
+            let data = snap.data() ?? [:]
+            let oldBest = data["totalStrokes"] as? Int ?? Int.max
+            
+            let newBest = min(oldBest, entry.totalStrokes)
+            
+            tx.setData([
+                "id": entry.id,
+                "userId": entry.userId,
+                "name": entry.name,
+                "photoURL": entry.photoURL as Any,
+                "totalStrokes": newBest,
+                "email": entry.email
+            ], forDocument: docRef, merge: true)
+            
+            return nil
+        }) { _, err in
+            DispatchQueue.main.async { completion(err == nil) }
         }
     }
     
-    func stopListening(id: String, listenerHandle: inout DatabaseHandle?) {
-        let ref = dbRef.child(id)
-        if let handle = listenerHandle {
-            ref.removeObserver(withHandle: handle)
-            listenerHandle = nil
+    func submitScoreWeekly(courseID: String, entry: LeaderboardEntry, completion: @escaping (Bool) -> Void) {
+        
+        let weekID = makeWeekID()
+        
+        let docRef = weeklyEntriesRef(courseID: courseID, weekID: weekID).document(entry.userId)
+        
+        db.runTransaction({ tx, errPtr -> Any? in
+            let snap: DocumentSnapshot
+            do { snap = try tx.getDocument(docRef) }
+            catch let e as NSError { errPtr?.pointee = e; return nil }
+            
+            let data = snap.data() ?? [:]
+            let oldBest = data["totalStrokes"] as? Int ?? Int.max
+            
+            let newBest = min(oldBest, entry.totalStrokes)
+            
+            tx.setData([
+                "id": entry.id,
+                "userId": entry.userId,
+                "name": entry.name,
+                "photoURL": entry.photoURL as Any,
+                "totalStrokes": newBest,
+                "email": entry.email
+            ], forDocument: docRef, merge: true)
+            
+            return nil
+        }) { _, err in
+            DispatchQueue.main.async { completion(err == nil) }
         }
+    }
+    
+    func sumbitScore(courseID: String, player: Player, completion: @escaping (Bool) -> Void) {
+        
+        let entry = player.toDTO().convertToLBREP()!
+        
+        submitScoreAllTime(courseID: courseID, entry: entry) { complete in
+            if complete {
+                self.submitScoreWeekly(courseID: courseID, entry: entry) { complete2 in
+                    completion(complete2)
+                }
+            } else {
+                completion(false)
+            }
+        }
+        
+        
     }
 }
 

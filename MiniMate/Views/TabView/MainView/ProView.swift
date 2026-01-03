@@ -31,6 +31,8 @@ struct ProView: View {
         
         VStack(spacing: 24) {
             
+            Spacer()
+            
             Text("Buy Pro Now!")
                 .font(.largeTitle.bold())
                 .padding(.top)

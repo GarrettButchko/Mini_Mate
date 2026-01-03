@@ -9,11 +9,22 @@ import SwiftUI
 
 struct ColorPickerView: View {
     
+    @EnvironmentObject var viewModel: CourseViewModel
+    
     let colors: [Color] = [
-        .red, .orange, .yellow, .green, .mint, .teal, .cyan, .blue, .indigo, .purple, .pink, .brown, .gray, .black
+        .red,
+        .orange,
+        .yellow,
+        .green,
+        .blue,
+        .indigo,
+        .purple,
+        .pink,
+        .brown
     ]
     
     @Binding var showColor: Bool
+    @Binding var scoreCardColorPicker: Bool
     
     let function: (_ color: Color) -> Void
 
@@ -21,8 +32,9 @@ struct ColorPickerView: View {
         ZStack {
             // Background blur
             Rectangle()
-                .foregroundStyle(.ultraThinMaterial)
+                .foregroundStyle(.black.opacity(0.5))
                 .ignoresSafeArea()
+                .transition(.scale.combined(with: .opacity))
             
             // Popup card
             VStack(spacing: 20) {
@@ -39,10 +51,11 @@ struct ColorPickerView: View {
                                 .frame(width: 40, height: 40)
                                 .overlay {
                                     Circle()
-                                        .fill(color)
+                                        .fill(color.opacity(!scoreCardColorPicker && viewModel.selectedCourse?.courseColors != nil && viewModel.selectedCourse?.courseColors!.contains(color) == true ? 0.3 : 1))
                                         .frame(width: 30, height: 30)
                                 }
                         }
+                        .disabled(!scoreCardColorPicker && viewModel.selectedCourse?.courseColors != nil && viewModel.selectedCourse?.courseColors!.contains(color) == true)
                     }
                 }
                 
@@ -57,12 +70,15 @@ struct ColorPickerView: View {
                         .frame(maxWidth: .infinity)
                         .foregroundStyle(.white)
                         .background(.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(20)
+            .background(){
+                RoundedRectangle(cornerRadius: 25)
+                    .ifAvailableGlassEffect()
+                    .shadow(radius: 5)
+            }
             .padding()
             .transition(.scale.combined(with: .opacity))
         }

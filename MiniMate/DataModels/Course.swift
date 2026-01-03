@@ -30,13 +30,6 @@ struct Course: Codable, Identifiable, Equatable {
     var adLink: String?
     var adImage: String?
     
-    // Analytics
-    var emails: [String]?
-    var dailyCount: [String : DailyCount]?
-    var peakAnalytics: PeakAnalytics?
-    var holeAnalytics: HoleAnalytics?
-    var roundTimeAnalytics: RoundTimeAnalytics?
-    
     // MARK: - Init
     init(
         id: String = "",
@@ -52,11 +45,6 @@ struct Course: Codable, Identifiable, Equatable {
         adDescription: String? = nil,
         adLink: String? = nil,
         adImage: String? = nil,
-        emails: [String]? = [],
-        dailyCount: [String : DailyCount] = [:],
-        peakAnalytics: PeakAnalytics = PeakAnalytics(),
-        holeAnalytics: HoleAnalytics = HoleAnalytics(),
-        roundTimeAnalytics: RoundTimeAnalytics = RoundTimeAnalytics(),
         tier: Int? = 1,
         adminIDs: [String]? = [],
         isClaimed: Bool = false,
@@ -74,11 +62,6 @@ struct Course: Codable, Identifiable, Equatable {
             self.adDescription = adDescription
             self.adLink = adLink
             self.adImage = adImage
-            self.emails = emails
-            self.dailyCount = dailyCount
-            self.peakAnalytics = peakAnalytics
-            self.holeAnalytics = holeAnalytics
-            self.roundTimeAnalytics = roundTimeAnalytics
             self.tier = tier
             self.password = password
             self.adminIDs = adminIDs
@@ -97,11 +80,6 @@ struct Course: Codable, Identifiable, Equatable {
         lhs.adDescription == rhs.adDescription &&
         lhs.adLink == rhs.adLink &&
         lhs.adImage == rhs.adImage &&
-        lhs.emails == rhs.emails &&
-        lhs.dailyCount == rhs.dailyCount &&
-        lhs.peakAnalytics == rhs.peakAnalytics &&
-        lhs.holeAnalytics == rhs.holeAnalytics &&
-        lhs.roundTimeAnalytics == rhs.roundTimeAnalytics &&
         lhs.tier == rhs.tier &&
         lhs.password == rhs.password &&
         lhs.supported == rhs.supported &&
@@ -113,79 +91,52 @@ struct Course: Codable, Identifiable, Equatable {
 }
 
 struct DailyCount: Codable, Equatable {
-    var activeUsers: Int {
-        newPlayers + returningPlayers
-    }        // number of users active that day
-    var gamesPlayed: Int = 0        // optional metric
-    var newPlayers: Int = 0         // optional metric
-    var returningPlayers: Int = 0         // optional metric
+    var dayID: String = ""           // e.g. "2026-01-03"
+    var gamesPlayed: Int = 0
+    var newPlayers: Int = 0
+    var returningPlayers: Int = 0
+    var updatedAt: Date? = nil
+
+    var activeUsers: Int { newPlayers + returningPlayers }
 }
 
+struct WeeklyAnalytics: Codable, Equatable {
+    var weekID: String = ""
+    var peakAnalytics: PeakAnalytics = PeakAnalytics()
+    var holeAnalytics: HoleAnalytics = HoleAnalytics()
+    var roundTimeAnalytics: RoundTimeAnalytics = RoundTimeAnalytics()
+    var updatedAt: Date? = nil
+}
+
+// For peak times for each 1 value added is one person who started playing at that time and day
 struct PeakAnalytics: Codable, Equatable {
-    // 24 integers (index 0 = 12AM–1AM, ... index 23 = 11PM–12AM)
     var hourlyCounts: [Int] = Array(repeating: 0, count: 24)
-    // 7 integers (index 0 = Sunday, 6 = Saturday)
     var dailyCounts: [Int] = Array(repeating: 0, count: 7)
 }
 
+// finds the total number of strokes per hole in a given week, as well as the number of times that hole has been played, then it finds the average strokes per hole that week
 struct HoleAnalytics: Codable, Equatable {
-    var totalStrokesPerHole: [Int] = Array(repeating: 0, count: 20)    // e.g., [totalHole1, totalHole2, ...]
-    var playsPerHole: [Int] = Array(repeating: 0, count: 20)          // e.g., [numPlaysHole1, numPlaysHole2, ...]
-    
-    /// Returns the average score per hole
+    var totalStrokesPerHole: [Int] = []
+    var playsPerHole: [Int] = []
+
+    mutating func ensureCount(_ n: Int) {
+        if totalStrokesPerHole.count != n { totalStrokesPerHole = Array(repeating: 0, count: n) }
+        if playsPerHole.count != n { playsPerHole = Array(repeating: 0, count: n) }
+    }
+
     func averagePerHole() -> [Double] {
         zip(totalStrokesPerHole, playsPerHole).map { total, plays in
             plays > 0 ? Double(total) / Double(plays) : 0
         }
     }
 }
-
+// finds total round time in seconds
 struct RoundTimeAnalytics: Codable, Equatable {
     var totalRoundSeconds: Int = 0          // cumulative total time of all rounds
-    
-    /// Returns the average round time in seconds
-    func averageRoundTime(for course: Course) -> Double {
-        var sumTotalGames: Int = 0
-        if let dailyCount = course.dailyCount {
-            // Sum gamesPlayed across all DailyCount values in the dictionary
-            for value in dailyCount.values {
-                sumTotalGames += value.gamesPlayed
-            }
-        }
-        if sumTotalGames > 0 {
-            return Double(totalRoundSeconds) / Double(sumTotalGames)
-        } else {
-            return 0
-        }
-    }
 }
 
-
-struct CourseLeaderboard: Codable, Identifiable {
-    var id: String
-    var allPlayers: [PlayerDTO]
-    
-    enum CodingKeys: String, CodingKey {
-        case id
-        case allPlayers
-    }
-    
-    init(id: String = "", allPlayers: [PlayerDTO] = []) {
-        self.id = id
-        self.allPlayers = allPlayers
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        id = try container.decode(String.self, forKey: .id)
-        
-        // ⭐ The important part:
-        allPlayers = (try? container.decode([PlayerDTO].self, forKey: .allPlayers)) ?? []
-    }
-    
-    var leaderBoard: [PlayerDTO] {
-        allPlayers.sorted { $0.totalStrokes < $1.totalStrokes }
-    }
+struct EmailDT: Codable, Equatable {
+    var email: String
+    var addedAt: Date
 }
 

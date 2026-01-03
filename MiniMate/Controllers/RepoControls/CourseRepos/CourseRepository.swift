@@ -31,8 +31,24 @@ final class CourseRepository {
         }
     }
     
+    func deleteCourseItem(courseID: String, dataName: String) {
+        Firestore.firestore()
+            .collection("courses")
+            .document(courseID)
+            .updateData([
+                dataName: FieldValue.delete()
+            ])
+    }
     
-    
+    func setCourseItem(courseID: String, dataName: String, object: Any) {
+        Firestore.firestore()
+            .collection("courses")
+            .document(courseID)
+            .updateData([
+                dataName: object
+            ])
+    }
+
     func listenToCourse(
         id: String,
         onUpdate: @escaping (Course?) -> Void
@@ -269,14 +285,16 @@ final class CourseRepository {
     }
     
     // MARK: Email
-    func addEmail(newEmail: String, courseID: String, completion: @escaping (Bool) -> Void) {
+    func removeEmail(email: String, courseID: String, completion: @escaping (Bool) -> Void) {
         let ref = db.collection(collectionName).document(courseID)
+        let key = emailKey(email)
 
+        // No transaction needed with map structure
         ref.updateData([
-            "emails": FieldValue.arrayUnion([newEmail])
+            "emails.\(key)": FieldValue.delete()
         ]) { error in
             if let error = error {
-                print("❌ Failed to add email: \(error)")
+                print("❌ Failed to remove email: \(error)")
                 completion(false)
             } else {
                 completion(true)
@@ -284,15 +302,16 @@ final class CourseRepository {
         }
     }
     
-    func removeEmail(email: String, courseID: String, completion: @escaping (Bool) -> Void) {
-        db.collection(collectionName)
-            .document(courseID)
-            .updateData([
-                "emails": FieldValue.arrayRemove([email])
-            ]) { error in
-                completion(error == nil)
-            }
+    func emailKey(_ email: String) -> String {
+        email
+            .lowercased()
+            .replacingOccurrences(of: ".", with: ",")
     }
+
+    func emailFromKey(_ key: String) -> String {
+        key.replacingOccurrences(of: ",", with: ".")
+    }
+
     
     // MARK: Admin Id
     func addAdminIDtoCourse(adminID: String, courseID: String, completion: @escaping (Bool) -> Void) {
@@ -347,27 +366,67 @@ final class CourseRepository {
 
     
     // MARK: - Check if email exists in course
-    func isEmailInCourse(email: String, courseID: String, completion: @escaping (Bool) -> Void) {
-        let ref = db.collection(collectionName).document(courseID)
-        
-        ref.getDocument { snapshot, error in
-            if let error = error {
-                print("❌ Fetch error: \(error)")
-                completion(false)
-                return
+    func processPlayerEmailsForGame(
+        emails: [String],
+        courseID: String,
+        completion: @escaping (Bool) -> Void
+    ) {
+        let courseRef = db.collection(collectionName).document(courseID)
+
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dayKey = formatter.string(from: Date())
+
+        let dayRef = courseRef.collection("dailyCount").document(dayKey)
+
+        let uniqueEmails = Array(Set(
+            emails.map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        ))
+
+        if uniqueEmails.isEmpty {
+            DispatchQueue.main.async { completion(true) }
+            return
+        }
+
+        db.runTransaction({ tx, errPtr -> Any? in
+            var newCount = 0
+            var returningCount = 0
+
+            for email in uniqueEmails {
+                let emailDocID = self.emailKey(email) // hash recommended
+                let emailRef = courseRef.collection("emails").document(emailDocID)
+
+                let emailSnap: DocumentSnapshot
+                do { emailSnap = try tx.getDocument(emailRef) }
+                catch let e as NSError { errPtr?.pointee = e; return nil }
+
+                if emailSnap.exists {
+                    returningCount += 1
+                } else {
+                    newCount += 1
+                    tx.setData([
+                        "addedAt": FieldValue.serverTimestamp()
+                    ], forDocument: emailRef, merge: true)
+                }
             }
-            
-            guard let data = snapshot?.data() else {
-                // Document doesn't exist → email not present
-                completion(false)
-                return
-            }
-            
-            let emails = data["emails"] as? [String] ?? []
-            completion(emails.contains(email))
+
+            var dayUpdates: [String: Any] = [
+                "dayID": dayKey,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            if newCount > 0 { dayUpdates["newPlayers"] = FieldValue.increment(Int64(newCount)) }
+            if returningCount > 0 { dayUpdates["returningPlayers"] = FieldValue.increment(Int64(returningCount)) }
+
+            tx.setData(dayUpdates, forDocument: dayRef, merge: true)
+            return nil
+        }) { _, error in
+            DispatchQueue.main.async { completion(error == nil) }
         }
     }
-
     
     // MARK: Daily Counts
     enum DailyMetric: String {
@@ -377,62 +436,148 @@ final class CourseRepository {
         case returningPlayers
     }
     
-    // MARK: - Unified Daily Metric Updater
-    func updateDailyMetric(courseID: String, metric: DailyMetric, increment: Int = 1) {
-        let ref = db.collection(collectionName).document(courseID)
+    
+    
+    func updateWeeklyAnalytics(
+        courseID: String,
+        game: Game,
+        startTime: Date,
+        endTime: Date,
+        increment: Int = 1
+    ) {
 
-        // Correct date format (calendar year)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM-dd-yyyy"
-        let todayID = formatter.string(from: Date())
+        // Use YOUR current convention for dailyCounts: Sunday=0..Saturday=6
+        let hour = Calendar.current.component(.hour, from: startTime)
+        let weekday = Calendar.current.component(.weekday, from: startTime) - 1 // Sunday=0
 
-        db.runTransaction({ (transaction, errorPointer) -> Any? in
-            let snapshot: DocumentSnapshot
+        let weekKey = makeWeekID()
+
+        // Weekly doc reference (subcollection under the course)
+        let weekRef = db.collection(collectionName)
+            .document(courseID)
+            .collection("weeklyAnalytics")
+            .document(weekKey)
+
+        let roundLengthSeconds = max(0, Int(endTime.timeIntervalSince(startTime)))
+
+        db.runTransaction({ transaction, errorPointer -> Any? in
+            let snap: DocumentSnapshot
             do {
-                snapshot = try transaction.getDocument(ref)
+                snap = try transaction.getDocument(weekRef)
             } catch let error as NSError {
                 errorPointer?.pointee = error
                 return nil
             }
 
-            // Load full data
-            var data = snapshot.data() ?? [:]
+            let data = snap.data() ?? [:]
 
-            // Load nested map
-            var dailyCounts = data["dailyCount"] as? [String: [String: Int]] ?? [:]
+            // -------------------------
+            // 1) Peak analytics
+            // -------------------------
+            let peak = data["peakAnalytics"] as? [String: Any] ?? [:]
+            var hourly = peak["hourlyCounts"] as? [Int] ?? Array(repeating: 0, count: 24)
+            var daily  = peak["dailyCounts"]  as? [Int] ?? Array(repeating: 0, count: 7)
 
-            // Build today's entry or load existing
-            var todayEntry = dailyCounts[todayID] ?? [
-                "activeUsers": 0,
-                "gamesPlayed": 0,
-                "newPlayers": 0,
-                "returningPlayers": 0
+            if hourly.count != 24 { hourly = Array(repeating: 0, count: 24) }
+            if daily.count != 7 { daily = Array(repeating: 0, count: 7) }
+
+            if hour >= 0 && hour < 24 { hourly[hour] += increment }
+            if weekday >= 0 && weekday < 7 { daily[weekday] += increment }
+
+            let updatedPeak: [String: Any] = [
+                "hourlyCounts": hourly,
+                "dailyCounts": daily
             ]
 
-            // Increment the metric
-            let key = metric.rawValue
-            todayEntry[key, default: 0] += increment
+            // -------------------------
+            // 2) Hole analytics
+            // -------------------------
+            let hole = data["holeAnalytics"] as? [String: Any] ?? [:]
 
-            // Store back into main dictionary
-            dailyCounts[todayID] = todayEntry
-            data["dailyCount"] = dailyCounts
+            let holesCount = game.numberOfHoles
+            var totalStrokes = hole["totalStrokesPerHole"] as? [Int] ?? Array(repeating: 0, count: holesCount)
+            var playsPerHole = hole["playsPerHole"] as? [Int] ?? Array(repeating: 0, count: holesCount)
 
-            // Write through transaction
-            transaction.updateData(["dailyCount": dailyCounts], forDocument: ref)
+            if totalStrokes.count != holesCount { totalStrokes = Array(repeating: 0, count: holesCount) }
+            if playsPerHole.count != holesCount { playsPerHole = Array(repeating: 0, count: holesCount) }
+
+            for player in game.players {
+                for h in player.holes {
+                    guard h.strokes != 0 else { continue }
+                    let idx = h.number - 1
+                    guard idx >= 0 && idx < holesCount else { continue }
+
+                    totalStrokes[idx] += h.strokes
+                    playsPerHole[idx] += increment
+                }
+            }
+
+            let updatedHole: [String: Any] = [
+                "totalStrokesPerHole": totalStrokes,
+                "playsPerHole": playsPerHole
+            ]
+
+            // -------------------------
+            // 3) Round time analytics
+            // -------------------------
+            let roundTime = data["roundTimeAnalytics"] as? [String: Any] ?? [:]
+            let existingSeconds = roundTime["totalRoundSeconds"] as? Int ?? 0
+
+            let updatedRoundTime: [String: Any] = [
+                "totalRoundSeconds": existingSeconds + roundLengthSeconds
+            ]
+
+            // -------------------------
+            // 4) Write back to weekly doc
+            // -------------------------
+            transaction.setData([
+                "weekID": weekKey,
+                "peakAnalytics": updatedPeak,
+                "holeAnalytics": updatedHole,
+                "roundTimeAnalytics": updatedRoundTime,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], forDocument: weekRef, merge: true)
 
             return nil
-        }) { (_, error) in
+        }) { _, error in
             if let error = error {
-                print("❌ Transaction failed: \(error.localizedDescription)")
+                print("❌ updateWeeklyAnalytics failed: \(error.localizedDescription)")
             } else {
-                print("✅ Metric updated safely in transaction: \(metric.rawValue)")
+                print("✅ Weekly analytics updated: \(weekKey)")
             }
         }
     }
     
-    func updateDailyCount(courseID: String, increment: Int = 1) {
-        updateDailyMetric(courseID: courseID, metric: .activeUsers, increment: increment)
+    // MARK: - Unified Daily Metric Updater
+    func updateDailyMetric(courseID: String, metric: DailyMetric, increment: Int = 1) {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current // or .init(secondsFromGMT: 0) if you want UTC days
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        let dayKey = formatter.string(from: Date())
+
+        let dayRef = db.collection(collectionName)
+            .document(courseID)
+            .collection("dailyCount")
+            .document(dayKey)
+
+        let key = metric.rawValue
+
+        dayRef.setData([
+            "dayID": dayKey,
+            "updatedAt": FieldValue.serverTimestamp(),
+            key: FieldValue.increment(Int64(increment))
+        ], merge: true) { error in
+            if let error = error {
+                print("❌ Daily metric update failed: \(error.localizedDescription)")
+            } else {
+                print("✅ Daily metric updated: \(key)")
+            }
+        }
     }
+
     
     func updateGameCount(courseID: String, increment: Int = 1) {
         updateDailyMetric(courseID: courseID, metric: .gamesPlayed, increment: increment)
@@ -444,172 +589,6 @@ final class CourseRepository {
     
     func updateReturningPlayers(courseID: String, increment: Int = 1) {
         updateDailyMetric(courseID: courseID, metric: .returningPlayers, increment: increment)
-    }
-    
-    // MARK: Peak Analytics
-    func incPeakAnalytics(courseID: String, increment: Int = 1) {
-        let now = Date()
-        let hour = Calendar.current.component(.hour, from: now)
-        let weekday = Calendar.current.component(.weekday, from: now) - 1 // Sunday = 0
-
-        let docRef = db.collection(collectionName).document(courseID)
-
-        db.runTransaction({ (transaction, errorPointer) -> Any? in
-            let snapshot: DocumentSnapshot
-            do {
-                snapshot = try transaction.getDocument(docRef)
-            } catch let error as NSError {
-                errorPointer?.pointee = error
-                return nil
-            }
-
-            // ===============================
-            // 1. Load existing data
-            // ===============================
-            let data = snapshot.data() ?? [:]
-            let peak = data["peakAnalytics"] as? [String: Any] ?? [:]
-
-            // Load arrays or initialize
-            var hourly = peak["hourlyCounts"] as? [Int] ?? Array(repeating: 0, count: 24)
-            var daily  = peak["dailyCounts"]  as? [Int] ?? Array(repeating: 0, count: 7)
-
-            // Ensure correct lengths
-            if hourly.count != 24 { hourly = Array(repeating: 0, count: 24) }
-            if daily.count  != 7  { daily  = Array(repeating: 0, count: 7) }
-
-            // ===============================
-            // 2. Increment values
-            // ===============================
-            hourly[hour] += increment
-            daily[weekday] += increment
-
-            // ===============================
-            // 3. Rebuild nested object
-            // ===============================
-            let updatedPeak: [String: Any] = [
-                "hourlyCounts": hourly,
-                "dailyCounts": daily
-            ]
-
-            // ===============================
-            // 4. Write full object back atomically
-            // ===============================
-            transaction.updateData(
-                ["peakAnalytics": updatedPeak],
-                forDocument: docRef
-            )
-
-            return nil
-        }) { (_, error) in
-            if let error = error {
-                print("❌ PeakAnalytics transaction failed: \(error.localizedDescription)")
-            } else {
-                print("📈 PeakAnalytics increment successful (hour \(hour), weekday \(weekday))")
-            }
-        }
-    }
-
-    // MARK: Hole Analytics
-    func addToHoleAnalytics(courseID: String, game: Game, increment: Int = 1) {
-        let docRef = db.collection(collectionName).document(courseID)
-
-        db.runTransaction({ (transaction, errorPointer) -> Any? in
-            let snap: DocumentSnapshot
-            do {
-                snap = try transaction.getDocument(docRef)
-            } catch let error as NSError {
-                errorPointer?.pointee = error
-                return nil
-            }
-
-            // Load existing analytics or create empty structure
-            let data = snap.data() ?? [:]
-            let existing = data["holeAnalytics"] as? [String: Any] ?? [:]
-
-            var totalStrokes = existing["totalStrokesPerHole"] as? [Int]
-                ?? Array(repeating: 0, count: game.numberOfHoles)
-
-            var playsPerHole = existing["playsPerHole"] as? [Int]
-                ?? Array(repeating: 0, count: game.numberOfHoles)
-
-            // Ensure array lengths match the course hole count
-            if totalStrokes.count != game.numberOfHoles {
-                totalStrokes = Array(repeating: 0, count: game.numberOfHoles)
-            }
-            if playsPerHole.count != game.numberOfHoles {
-                playsPerHole = Array(repeating: 0, count: game.numberOfHoles)
-            }
-
-            // ===============================
-            // Increment analytics for each hole played
-            // ===============================
-            for player in game.players {
-                for hole in player.holes {
-                    guard hole.strokes != 0 else { continue }
-
-                    let index = hole.number - 1
-                    guard index >= 0, index < game.numberOfHoles else { continue }
-
-                    totalStrokes[index] += hole.strokes
-                    playsPerHole[index] += increment
-                }
-            }
-
-            let updatedHole: [String: Any] = [
-                "totalStrokesPerHole": totalStrokes,
-                "playsPerHole": playsPerHole
-            ]
-
-            // Atomic write
-            transaction.updateData(["holeAnalytics": updatedHole], forDocument: docRef)
-            return nil
-
-        }) { (_, error) in
-            if let error = error {
-                print("❌ HoleAnalytics transaction failed: \(error.localizedDescription)")
-            } else {
-                print("⛳️ HoleAnalytics updated successfully for game \(game.id)")
-            }
-        }
-    }
-
-    
-    func addRoundTime(courseID: String, startTime: Date, endTime: Date) {
-        let docRef = db.collection(collectionName).document(courseID)
-
-        let roundLengthSeconds = Int(endTime.timeIntervalSince(startTime))
-
-        db.runTransaction({ (transaction, errorPointer) -> Any? in
-            let snap: DocumentSnapshot
-            do {
-                snap = try transaction.getDocument(docRef)
-            } catch let error as NSError {
-                errorPointer?.pointee = error
-                return nil
-            }
-
-            let data = snap.data() ?? [:]
-            let roundTime = data["roundTimeAnalytics"] as? [String: Any] ?? [:]
-
-            let existingSeconds = roundTime["totalRoundSeconds"] as? Int ?? 0
-
-            let updatedRoundTime: [String: Any] = [
-                "totalRoundSeconds": existingSeconds + roundLengthSeconds
-            ]
-
-            transaction.updateData(
-                ["roundTimeAnalytics": updatedRoundTime],
-                forDocument: docRef
-            )
-
-            return nil
-        }) { (_, error) in
-            if let error = error {
-                print("❌ roundTime transaction failed: \(error.localizedDescription)")
-            } else {
-                print("⏱️ Successfully added \(roundLengthSeconds)s to roundTimeAnalytics")
-            }
-        }
     }
     
     func uploadCourseImages(id: String, _ image: UIImage, key: String, completion: @escaping (Result<URL, Error>) -> Void) {
@@ -648,4 +627,14 @@ final class CourseRepository {
 struct SmallCourse: Identifiable {
     let id: String
     let name: String
+}
+
+func makeWeekID(from date: Date = Date()) -> String {
+    var calendar = Calendar(identifier: .iso8601)
+    calendar.firstWeekday = 2 // Monday
+    
+    let weekOfYear = calendar.component(.weekOfYear, from: date)
+    let yearForWeek = calendar.component(.yearForWeekOfYear, from: date)
+    
+    return String(format: "%d-W%02d", yearForWeek, weekOfYear)
 }

@@ -14,6 +14,8 @@ struct ColorHolderView: View {
     @Binding var showDeleteColor: Bool
     @Binding var showColor: Bool
     
+    var showDeleteAlert: Bool
+    
     let showFunction: () -> Void
     let deleteFunction: () -> Void
     
@@ -21,7 +23,12 @@ struct ColorHolderView: View {
         
     if let color {
         Button {
-            showDeleteColor = true
+            showFunction()
+            if showDeleteAlert {
+                showDeleteColor = true
+            } else {
+                deleteFunction()
+            }
         } label: {
             Circle()
                 .fill(.ultraThinMaterial)

@@ -342,11 +342,16 @@ final class GameViewModel: ObservableObject {
     
     func createGame(online: Bool ,startingLoc: MKMapItem?) {
         guard !game.live else { return }
+        
         objectWillChange.send()
         resetGame()
+        
         game.live = true
         onlineGame = online
         game.id = generateGameCode()
+        
+        game.hostUserId = authModel.userModel!.id
+        
         addUser()
         pushUpdate()
         listenForUpdates()
@@ -362,10 +367,6 @@ final class GameViewModel: ObservableObject {
         game.startTime = Date()
         game.started = true
         pushUpdate()
-        
-        if let courseID = course?.id {
-            self.courseRepo.incPeakAnalytics(courseID: courseID)
-        }
         
         // Flip the binding to false
         showHost.wrappedValue = false
@@ -393,6 +394,7 @@ final class GameViewModel: ObservableObject {
         // Clone all fields into a fresh Game instance
         let finished = Game(
             id:           game.id,
+            hostUserId:   game.hostUserId,
             location:     game.location,
             date:         game.date,
             completed:    game.completed,
@@ -419,34 +421,11 @@ final class GameViewModel: ObservableObject {
             endTime:      game.endTime,
         )
         
-        
-        // Analytics for course
-        if let courseID = finished.courseID {
-            // Add 1 Game to Course Analytics
-            courseRepo.updateGameCount(courseID: courseID)
-            
-            for player in finished.players {
-                // Add 1 Player to Course Analytics
-                courseRepo.updateDailyCount(courseID: courseID)
-                if let email = player.email {
-                    courseRepo.isEmailInCourse(email: email, courseID: courseID) { isInCourse in
-                        if isInCourse {
-                            // if email already in courserepo then update new players
-                            self.courseRepo.updateReturningPlayers(courseID: courseID)
-                        } else {
-                            // if email not already in courserepo then update returning players
-                            self.courseRepo.updateNewPlayers(courseID: courseID)
-                            self.courseRepo.addEmail(newEmail: email, courseID: courseID) { complete in }
-                        }
-                        // Add email once this is done
-                    }
-                }
-            }
-            courseRepo.addToHoleAnalytics(courseID: courseID, game: finished)
-            if let startTime = finished.startTime, let endTime = finished.endTime {
-                courseRepo.addRoundTime(courseID: courseID, startTime: startTime, endTime: endTime)
-            }
+        if let currentUserId = authModel.userModel?.id, currentUserId == finished.hostUserId {
+            print("running analytics")
+            processAnalytics(finishedGame: finished)
         }
+        
         
         UnifiedGameRepository(context: context).save(finished) { local, remote in
             if local || remote {
@@ -468,6 +447,21 @@ final class GameViewModel: ObservableObject {
         hasLoaded = false
         resetCourse()
         resetGame()
+    }
+    
+    func processAnalytics(finishedGame finished: Game){
+        // Analytics for course
+        if let courseID = finished.courseID {
+            // Add 1 Game to Course Analytics
+            
+            let emails = finished.players.compactMap { $0.email }
+            courseRepo.processPlayerEmailsForGame(emails: emails, courseID: courseID) { _ in }
+            courseRepo.updateGameCount(courseID: courseID)
+            
+            if let startTime = finished.startTime, let endTime = finished.endTime {
+                courseRepo.updateWeeklyAnalytics(courseID: courseID, game: finished, startTime: startTime, endTime: endTime)
+            }
+        }
     }
     
     

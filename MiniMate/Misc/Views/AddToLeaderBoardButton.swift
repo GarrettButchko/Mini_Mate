@@ -18,9 +18,9 @@ struct AddToLeaderBoardButton: View{
     let courseLeaderBoardRepo = CourseLeaderboardRepository()
     
     var body: some View {
-        if let course = course, let courseTier = course.tier, !(ProfanityFilter.containsBlockedWord(player.name) && player.incomplete) && !added && courseTier >= 2{
+        if let course = course, let courseTier = course.tier, !(ProfanityFilter.containsBlockedWord(player.name) && player.incomplete) && !added && courseTier >= 2 && player.email != nil{
             Button{
-                courseLeaderBoardRepo.addPlayerToLiveLeaderboard(player: player, courseID: course.id, email: email, max: 20, added: $added, courseRepository: CourseRepository()) { _ in }
+                courseLeaderBoardRepo.sumbitScore(courseID: course.id, player: player) { _ in }
             } label: {
                 ZStack{
                     RoundedRectangle(cornerRadius: 25)

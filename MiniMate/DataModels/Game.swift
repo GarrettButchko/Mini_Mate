@@ -4,6 +4,7 @@ import SwiftData
 @Model
 class Game: Equatable {
     @Attribute(.unique) var id: String
+    var hostUserId: String               // ✅ non-optional
     var location: MapItemDTO?
     var date: Date
     var completed: Bool
@@ -13,34 +14,43 @@ class Game: Equatable {
     var totalTime: Int
     var live: Bool
     var lastUpdated: Date
-    var courseID: String?  // <-- Added courseID
+    var courseID: String?
     var startTime: Date?
     var endTime: Date?
-    
+
     var holeInOneLastHole: Bool {
-        var temp = false
         for player in players {
-            for hole in player.holes {
-                if hole.number == 18 && hole.strokes == 1 {
-                    temp = true
-                }
+            for hole in player.holes where hole.number == 18 && hole.strokes == 1 {
+                return true
             }
         }
-        return temp
+        return false
     }
 
     @Relationship(deleteRule: .cascade, inverse: \Player.game)
     var players: [Player] = []
 
     enum CodingKeys: String, CodingKey {
-        case id, location, date, completed,
-             numberOfHoles, started, dismissed,
-             totalTime, live, lastUpdated,
-             players, courseID, editOn, startTime, endTime  // <-- added courseID
+        case id
+        case hostUserId            // ✅ ADD THIS
+        case location
+        case date
+        case completed
+        case numberOfHoles
+        case started
+        case dismissed
+        case totalTime
+        case live
+        case lastUpdated
+        case players
+        case courseID
+        case startTime
+        case endTime
     }
 
     init(
         id: String = "",
+        hostUserId: String = "",        // ✅ required
         location: MapItemDTO? = nil,
         date: Date = Date(),
         completed: Bool = false,
@@ -50,30 +60,32 @@ class Game: Equatable {
         totalTime: Int = 0,
         live: Bool = false,
         lastUpdated: Date = Date(),
-        courseID: String? = nil,  // <-- added courseID to init
+        courseID: String? = nil,
         players: [Player] = [],
         startTime: Date? = nil,
         endTime: Date? = nil
     ) {
-        self.id             = id
-        self.location       = location
-        self.date           = date
-        self.completed      = completed
-        self.numberOfHoles  = numberOfHoles
-        self.started        = started
-        self.dismissed      = dismissed
-        self.totalTime      = totalTime
-        self.live           = live
-        self.lastUpdated    = lastUpdated
-        self.courseID       = courseID  // <-- assign courseID
-        self.players        = players
-        self.startTime      = startTime
-        self.endTime        = endTime
+        self.id = id
+        self.hostUserId = hostUserId
+        self.location = location
+        self.date = date
+        self.completed = completed
+        self.numberOfHoles = numberOfHoles
+        self.started = started
+        self.dismissed = dismissed
+        self.totalTime = totalTime
+        self.live = live
+        self.lastUpdated = lastUpdated
+        self.courseID = courseID
+        self.players = players
+        self.startTime = startTime
+        self.endTime = endTime
     }
 
     func toDTO() -> GameDTO {
-        return GameDTO(
+        GameDTO(
             id: id,
+            hostUserId: hostUserId,                 // ✅ PASS THIS
             location: location,
             date: date.timeIntervalSince1970,
             completed: completed,
@@ -83,7 +95,7 @@ class Game: Equatable {
             totalTime: totalTime,
             live: live,
             lastUpdated: lastUpdated.timeIntervalSince1970,
-            courseID: courseID,  // <-- include courseID
+            courseID: courseID,
             players: players.map { $0.toDTO() },
             startTime: startTime?.timeIntervalSince1970,
             endTime: endTime?.timeIntervalSince1970
@@ -91,8 +103,9 @@ class Game: Equatable {
     }
 
     static func fromDTO(_ dto: GameDTO) -> Game {
-        return Game(
+        Game(
             id: dto.id,
+            hostUserId: dto.hostUserId,             // ✅ SET THIS
             location: dto.location,
             date: Date(timeIntervalSince1970: dto.date),
             completed: dto.completed,
@@ -102,10 +115,11 @@ class Game: Equatable {
             totalTime: dto.totalTime,
             live: dto.live,
             lastUpdated: Date(timeIntervalSince1970: dto.lastUpdated),
-            courseID: dto.courseID,  // <-- include courseID
+            courseID: dto.courseID,
             players: dto.players.map { Player.fromDTO($0) },
-            startTime: Date(timeIntervalSince1970: dto.startTime ?? 0),
-            endTime: Date(timeIntervalSince1970: dto.endTime ?? 0)
+            startTime: dto.startTime.map { Date(timeIntervalSince1970: $0) },
+            endTime: dto.endTime.map { Date(timeIntervalSince1970: $0) }
         )
     }
 }
+

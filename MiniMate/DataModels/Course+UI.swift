@@ -21,8 +21,6 @@ extension Course {
             "purple": .purple,
             "pink": .pink,
             "cyan": .cyan,
-            "mint": .mint,
-            "teal": .teal,
             "brown": .brown
         ]
 
@@ -42,8 +40,6 @@ extension Course {
             "purple": .purple,
             "pink": .pink,
             "cyan": .cyan,
-            "mint": .mint,
-            "teal": .teal,
             "brown": .brown
         ]
 

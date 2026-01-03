@@ -29,22 +29,34 @@ struct CourseSettingsView: View {
     
     let courseRepo = CourseRepository()
     
+    @State var deleteTarget: ColorDeleteTarget? = nil
+    
+    enum ColorDeleteTarget: Identifiable {
+        case courseColor(index: Int)
+
+        var id: Int {
+            switch self {
+            case .courseColor(let i): return i
+            }
+        }
+    }
+    
     var body: some View {
         VStack{
             headerView
                 .padding()
             ZStack{
                 formView
-                ColorPickerView(showColor: $showColor) { color in
+                ColorPickerView(showColor: $showColor, scoreCardColorPicker: $scoreCardColorPicker) { color in
+                    withAnimation() {
                     if scoreCardColorPicker {
                         viewModel.selectedCourse!.scoreCardColorDT = colorToString(color)
                     } else {
-                        if viewModel.selectedCourse!.courseColorsDT == nil {
-                            viewModel.selectedCourse!.courseColorsDT? = []
-                        }
-                        viewModel.selectedCourse!.courseColorsDT?.append(colorToString(color))
+                        viewModel.selectedCourse!.courseColorsDT = (viewModel.selectedCourse!.courseColorsDT ?? []) + [colorToString(color)]
+                    
+                        viewModel.selectedCourse = viewModel.selectedCourse!
                     }
-                    withAnimation() {
+                    
                         courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
                         showColor = false
                     }
@@ -301,12 +313,26 @@ struct CourseSettingsView: View {
                     HStack{
                         Text("Scorecard Color:")
                         Spacer()
-                        ColorHolderView(color: viewModel.selectedCourse?.scoreCardColor, showDeleteColor: $showDeleteColor, showColor: $showColor,
+                        ColorHolderView(color: viewModel.selectedCourse?.scoreCardColor, showDeleteColor: $showDeleteColor, showColor: $showColor, showDeleteAlert: true,
                                         showFunction:{
                             scoreCardColorPicker = true
                         }, deleteFunction: {
-                            viewModel.selectedCourse!.scoreCardColorDT = nil
-                            courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                            guard var course = viewModel.selectedCourse else { return }
+                                
+                            if scoreCardColorPicker {
+                                print("DELETE scorecard")
+                                // Clear local state
+                                withAnimation(){
+                                    course.scoreCardColorDT = nil
+                                    viewModel.selectedCourse = course
+                                }
+                                
+                                // Clear remote state (explicit delete)
+                                courseRepo.deleteCourseItem(
+                                    courseID: course.id,
+                                    dataName: "scoreCardColorDT"
+                                )
+                            }
                         })
                     }
                     
@@ -315,19 +341,64 @@ struct CourseSettingsView: View {
                             Text("Course Colors")
                         }
                         ScrollView(.horizontal) {
-                            if let colors = viewModel.selectedCourse?.courseColors {
-                                ForEach(colors, id: \.self) { color in
-                                    ColorHolderView(color: color, showDeleteColor: $showDeleteColor, showColor: $showColor) {
-                                        scoreCardColorPicker = false
-                                    } deleteFunction: {
-                                        viewModel.selectedCourse!.courseColorsDT?.removeAll(where: { $0 == colorToString(color) })
-                                        courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                            HStack{
+                                if let colors = viewModel.selectedCourse?.courseColorsDT {
+                                    ForEach(Array(colors.enumerated()), id: \.offset) { index, dt in
+                                        let color = stringToColor(dt)
+
+                                        ColorHolderView(
+                                            color: color,
+                                            showDeleteColor: $showDeleteColor,
+                                            showColor: $showColor,
+                                            showDeleteAlert: false
+                                        ) {
+                                            scoreCardColorPicker = false
+                                        } deleteFunction: {
+                                            deleteTarget = .courseColor(index: index)
+                                        }
                                     }
                                 }
+
+                                ColorHolderView(showDeleteColor: $showDeleteColor, showColor: $showColor, showDeleteAlert: false) {
+                                    scoreCardColorPicker = false
+                                } deleteFunction: { }
                             }
-                            ColorHolderView(showDeleteColor: $showDeleteColor, showColor: $showColor) {
-                                scoreCardColorPicker = false
-                            } deleteFunction: { }
+                        }
+                        .alert(item: $deleteTarget) { target in
+                            Alert(
+                                title: Text("Delete Color"),
+                                message: Text("Are you sure?"),
+                                primaryButton: .destructive(Text("Delete")) {
+                                    guard var course = viewModel.selectedCourse else { return }
+
+                                    switch target {
+                                    case .courseColor(let index):
+                                        var colors = course.courseColorsDT ?? []
+                                        guard colors.indices.contains(index) else { return }
+
+                                        colors.remove(at: index)
+
+                                        withAnimation {
+                                            course.courseColorsDT = colors
+                                            viewModel.selectedCourse = course
+                                        }
+
+                                        if colors.isEmpty {
+                                            courseRepo.deleteCourseItem(
+                                                courseID: course.id,
+                                                dataName: "courseColorsDT"
+                                            )
+                                        } else {
+                                            courseRepo.setCourseItem(
+                                                courseID: course.id,
+                                                dataName: "courseColorsDT",
+                                                object: colors
+                                            )
+                                        }
+                                    }
+                                },
+                                secondaryButton: .cancel()
+                            )
                         }
                     }
                     
@@ -339,7 +410,11 @@ struct CourseSettingsView: View {
                             get: { viewModel.selectedCourse!.link ?? "" },
                             set: {
                                 viewModel.selectedCourse!.link = $0.isEmpty ? nil : $0
-                                courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                if viewModel.selectedCourse!.link == nil {
+                                    courseRepo.deleteCourseItem(courseID: viewModel.selectedCourse!.id, dataName: "link")
+                                } else {
+                                    courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                }
                             }
                         ))
                         .padding(12)
@@ -380,7 +455,11 @@ struct CourseSettingsView: View {
                                     // Limit to 10 characters manually
                                     let newValue = String($0.prefix(40))
                                     viewModel.selectedCourse!.adTitle = newValue.isEmpty ? nil : newValue
-                                    courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                    if viewModel.selectedCourse!.adTitle == nil {
+                                        courseRepo.deleteCourseItem(courseID: viewModel.selectedCourse!.id, dataName: "adTitle")
+                                    } else {
+                                        courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                    }
                                 }
                             ))
                             .frame(minHeight: 40, maxHeight: 80)
@@ -402,7 +481,11 @@ struct CourseSettingsView: View {
                                 set: {
                                     let newValue = String($0.prefix(80))
                                     viewModel.selectedCourse!.adDescription = newValue.isEmpty ? nil : newValue
-                                    courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                    if viewModel.selectedCourse!.adDescription == nil {
+                                        courseRepo.deleteCourseItem(courseID: viewModel.selectedCourse!.id, dataName: "adDescription")
+                                    } else {
+                                        courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                    }
                                 }
                             ))
                             .frame(minHeight: 60, maxHeight: 120)
@@ -421,7 +504,11 @@ struct CourseSettingsView: View {
                                 get: { viewModel.selectedCourse!.adLink ?? "" },
                                 set: {
                                     viewModel.selectedCourse!.adLink = $0.isEmpty ? nil : $0
-                                    courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                    if viewModel.selectedCourse!.adLink == nil {
+                                        courseRepo.deleteCourseItem(courseID: viewModel.selectedCourse!.id, dataName: "adLink")
+                                    } else {
+                                        courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { _ in }
+                                    }
                                 }
                             ))
                             .padding(12)
@@ -546,4 +633,21 @@ struct CourseSettingsView: View {
     func colorToString(_ color: Color) -> String {
         return String(describing: color)
     }
+    func stringToColor(_ string: String) -> Color {
+        switch string.lowercased() {
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "cyan": return .cyan
+        case "blue": return .blue
+        case "indigo": return .indigo
+        case "purple": return .purple
+        case "pink": return .pink
+        case "brown": return .brown
+        default:
+            return .clear // fallback (important)
+        }
+    }
+
 }
