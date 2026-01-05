@@ -110,7 +110,7 @@ extension MKMapItem {
                 timeZone: self.timeZone?.identifier,
                 url: self.url?.absoluteString,
                 address: newAddress,
-                coordinate: CoordinateDTO(latitude: self.location.coordinate.latitude, longitude: self.location.coordinate.latitude)
+                coordinate: CoordinateDTO(latitude: self.location.coordinate.latitude, longitude: self.location.coordinate.longitude)
             )
         } else {
             return MapItemDTO(
@@ -120,7 +120,7 @@ extension MKMapItem {
                 timeZone: self.timeZone?.identifier,
                 url: self.url?.absoluteString,
                 address: newAddress,
-                coordinate: CoordinateDTO(latitude: self.placemark.coordinate.latitude, longitude: self.placemark.coordinate.latitude)
+                coordinate: CoordinateDTO(latitude: self.placemark.coordinate.latitude, longitude: self.placemark.coordinate.longitude)
             )
         }
     }

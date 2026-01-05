@@ -163,10 +163,12 @@ struct CourseListView: View {
                 if viewModel.userCourses.isEmpty {
                     if authModel.userModel?.adminCourses.count ?? 0 > 1 {
                         viewModel.getCourses()
-                    } else {
+                    } else if authModel.userModel?.adminCourses.count == 1{
                         viewModel.getCourse {
                             viewManager.navigateToCourseTab(1)
                         }
+                    } else {
+                        viewModel.loadingCourse = false
                     }
                 }
             }

@@ -11,7 +11,8 @@ import Foundation
 
 @Model
 class UserModel: Identifiable, Equatable {
-    @Attribute(.unique) var id: String
+    @Attribute(.unique) var googleId: String
+    var appleId: String?
     var name: String
     var photoURL: URL?
     var email: String?
@@ -21,22 +22,20 @@ class UserModel: Identifiable, Equatable {
     var accountType: String
     var adminCourses: [String] = []
 
-    enum CodingKeys: String, CodingKey {
-        case id, name, photoURL, email, isPro, gameIDs, lastUpdated, accountType, adminCourses
-    }
-
     init(
-        id: String,
+        googleId: String,
+        appleId: String? = nil,
         name: String,
         photoURL: URL? = nil,
         email: String? = nil,
         isPro: Bool = false,
         gameIDs: [String] = [],
-        lastUpdated: Date = Date(),
+        lastUpdated: Date = .now,
         accountType: String,
         adminCourses: [String] = []
     ) {
-        self.id = id
+        self.googleId = googleId
+        self.appleId = appleId
         self.name = name
         self.photoURL = photoURL
         self.email = email
@@ -47,9 +46,14 @@ class UserModel: Identifiable, Equatable {
         self.adminCourses = adminCourses
     }
 
+    static func == (lhs: UserModel, rhs: UserModel) -> Bool {
+        return lhs.googleId == rhs.googleId
+    }
+
     func toDTO() -> UserDTO {
         return UserDTO(
-            id: id,
+            googleId: googleId,
+            appleId: appleId,
             name: name,
             photoURL: photoURL,
             email: email,
@@ -63,7 +67,8 @@ class UserModel: Identifiable, Equatable {
 
     static func fromDTO(_ dto: UserDTO) -> UserModel {
         return UserModel(
-            id: dto.id,
+            googleId: dto.googleId,
+            appleId: dto.appleId,
             name: dto.name,
             photoURL: dto.photoURL,
             email: dto.email,
@@ -75,3 +80,4 @@ class UserModel: Identifiable, Equatable {
         )
     }
 }
+

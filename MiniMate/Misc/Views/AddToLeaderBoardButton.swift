@@ -18,7 +18,7 @@ struct AddToLeaderBoardButton: View{
     let courseLeaderBoardRepo = CourseLeaderboardRepository()
     
     var body: some View {
-        if let course = course, let courseTier = course.tier, !(ProfanityFilter.containsBlockedWord(player.name) && player.incomplete) && !added && courseTier >= 2 && player.email != nil{
+        if let course = course, !(ProfanityFilter.containsBlockedWord(player.name) && player.incomplete) && !added && course.tier >= 2 && player.email != nil{
             Button{
                 courseLeaderBoardRepo.sumbitScore(courseID: course.id, player: player) { _ in }
             } label: {

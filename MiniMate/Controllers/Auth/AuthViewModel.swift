@@ -54,10 +54,7 @@ class AuthViewModel: ObservableObject {
     
     /// The key we use for all our DB reads/writes.
     var currentUserIdentifier: String? {
-        if let appleID = appleUserID {
-            return appleID
-        }
-        return firebaseUser?.uid
+        firebaseUser?.uid
     }
     
     private let loc = LocFuncs()
@@ -249,7 +246,7 @@ class AuthViewModel: ObservableObject {
         if let credential = credential {
             reauthDelete(credential: credential)
         } else {
-            if let email = email, let password = password, email.isEmpty && password.isEmpty{
+            if let email = email, let password = password, !email.isEmpty && !password.isEmpty{
                 let credential = EmailAuthProvider.credential(withEmail: email, password: password)
                 reauthDelete(credential: credential)
             }
@@ -295,7 +292,7 @@ class AuthViewModel: ObservableObject {
                 withAnimation(){
                     showSignUp.wrappedValue = true
                 }
-                errorMessage.wrappedValue = "No User Found Plase Sign Up"
+                errorMessage.wrappedValue = "No User Found Please Sign Up"
             case .success(let firebaseUser):
                 self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email)
             }

@@ -389,80 +389,138 @@ final class GameViewModel: ObservableObject {
     func finishAndPersistGame(in context: ModelContext) {
         stopListening()
         game.endTime = Date()
-        
-        
-        // Clone all fields into a fresh Game instance
+
         let finished = Game(
-            id:           game.id,
-            hostUserId:   game.hostUserId,
-            location:     game.location,
-            date:         game.date,
-            completed:    game.completed,
+            id: game.id,
+            hostUserId: game.hostUserId,
+            location: game.location,
+            date: game.date,
+            completed: game.completed,
             numberOfHoles: game.numberOfHoles,
-            started:      game.started,
-            dismissed:    game.dismissed,
-            totalTime:    game.totalTime,
-            live:         game.live,
-            lastUpdated:  game.lastUpdated,
-            courseID:     game.courseID,
-            players:      game.players.map { player in
+            started: game.started,
+            dismissed: game.dismissed,
+            totalTime: game.totalTime,
+            live: game.live,
+            lastUpdated: game.lastUpdated,
+            courseID: game.courseID,
+            players: game.players.map { player in
                 Player(
-                    id:       player.id,
-                    userId:   player.userId,
-                    name:     player.name,
+                    id: player.id,
+                    userId: player.userId,
+                    name: player.name,
                     photoURL: player.photoURL,
-                    holes:    player.holes.map {
-                        Hole(number: $0.number, strokes: $0.strokes)
-                    },
+                    holes: player.holes.map { Hole(number: $0.number, strokes: $0.strokes) },
                     email: player.email
                 )
             },
-            startTime:    game.startTime,
-            endTime:      game.endTime,
+            startTime: game.startTime,
+            endTime: game.endTime
         )
-        
-        if let currentUserId = authModel.userModel?.id, currentUserId == finished.hostUserId {
-            print("running analytics")
-            processAnalytics(finishedGame: finished)
-        }
-        
-        
+
+        let group = DispatchGroup()
+        var allOK = true
+
+        // 1) Save game
+        group.enter()
         UnifiedGameRepository(context: context).save(finished) { local, remote in
             if local || remote {
                 print("Saved Game Everywhere")
                 self.authModel.userModel?.gameIDs.append(finished.id)
-                
-                if let userModel = self.authModel.userModel {
-                    UserRepository(context: context).saveRemote(id: self.authModel.currentUserIdentifier!, userModel: userModel) { completed in
+
+                if let userModel = self.authModel.userModel,
+                   let uid = self.authModel.currentUserIdentifier {
+                    UserRepository(context: context).saveRemote(id: uid, userModel: userModel) { _ in
                         print("Updated online user")
                     }
                 }
             } else {
                 print("Error Saving Game")
+                allOK = false
+            }
+            group.leave()
+        }
+
+        // 2) Analytics (host only)
+        if let currentUserId = authModel.userModel?.id,
+           currentUserId == finished.hostUserId {
+
+            group.enter()
+            print("running analytics")
+            processAnalytics(finishedGame: finished) { success in
+                if !success { allOK = false }
+                group.leave()
+            }
+        }
+
+        // 3) Final reset ONLY after everything finishes
+        group.notify(queue: .main) {
+            if allOK {
+                print("✅ Save + analytics completed")
+            } else {
+                print("⚠️ Save and/or analytics failed")
+            }
+
+            // If you truly need to update the live game state, do it BEFORE this notify,
+            // or do a minimal "dismissed/completed" update here.
+            self.objectWillChange.send()
+            self.hasLoaded = false
+            self.resetCourse()
+            self.resetGame()
+        }
+    }
+
+    func processAnalytics(
+        finishedGame finished: Game,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard let courseID = finished.courseID else {
+            completion(false)
+            return
+        }
+        
+        let group = DispatchGroup()
+        var allSucceeded = true
+        
+        // 1️⃣ Emails (new / returning players)
+        let emails = finished.players.compactMap { $0.email }
+        group.enter()
+        courseRepo.processPlayerEmailsForGame(
+            emails: emails,
+            courseID: courseID
+        ) { success in
+            if !success { allSucceeded = false }
+            group.leave()
+        }
+        
+        // 2️⃣ Games played count
+        group.enter()
+        courseRepo.updateGameCount(courseID: courseID) { success in
+            if !success { allSucceeded = false }
+            group.leave()
+        }
+        
+        // 3️⃣ Weekly analytics (if times exist)
+        if let startTime = finished.startTime,
+           let endTime = finished.endTime {
+            
+            group.enter()
+            courseRepo.updateWeeklyAnalytics(
+                courseID: courseID,
+                game: finished,
+                startTime: startTime,
+                endTime: endTime
+            ) { success in
+                if !success { allSucceeded = false }
+                group.leave()
             }
         }
         
-        pushUpdate()
-        objectWillChange.send()
-        hasLoaded = false
-        resetCourse()
-        resetGame()
-    }
-    
-    func processAnalytics(finishedGame finished: Game){
-        // Analytics for course
-        if let courseID = finished.courseID {
-            // Add 1 Game to Course Analytics
-            
-            let emails = finished.players.compactMap { $0.email }
-            courseRepo.processPlayerEmailsForGame(emails: emails, courseID: courseID) { _ in }
-            courseRepo.updateGameCount(courseID: courseID)
-            
-            if let startTime = finished.startTime, let endTime = finished.endTime {
-                courseRepo.updateWeeklyAnalytics(courseID: courseID, game: finished, startTime: startTime, endTime: endTime)
-            }
+        // 4️⃣ Notify once EVERYTHING is done
+        group.notify(queue: .main) {
+            completion(allSucceeded)
         }
     }
+
     
     
     // MARK: Course

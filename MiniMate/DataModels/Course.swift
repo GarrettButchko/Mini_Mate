@@ -9,85 +9,36 @@ struct Course: Codable, Identifiable, Equatable {
     var id: String
     var name: String
     var password: String
-    var isClaimed: Bool
-    
-    var supported: Bool
-    
+    var isClaimed: Bool = false
+
+    var supported: Bool = false
+
     var logo: String?
     var scoreCardColorDT: String?
     var courseColorsDT: [String]? = []
     
-    var link: String?
-    
     var pars: [Int]?
     
-    var tier: Int?
-    var adminIDs: [String]?
+    var socialLinks: [String: String]?
+    var link: String?
     
-    var customAdActive: Bool
+    // location & context
+    var latitude: Double
+    var longitude: Double
+    var isSeasonal: Bool?
+    var indoor: Bool?
+
+    // admin stuff
+    var tier: Int = 1
+    var adminIDs: [String] = []
+
+    //custom ad
+    var customAdActive: Bool = false
     var adTitle: String?
     var adDescription: String?
     var adLink: String?
     var adImage: String?
-    
-    // MARK: - Init
-    init(
-        id: String = "",
-        name: String = "",
-        supported: Bool = false,
-        password: String = PasswordGenerator.generate(.strong()),
-        logo: String? = nil,
-        scoreCardColorDT: String? = nil,
-        link: String? = nil,
-        pars: [Int]? = nil,
-        adActive: Bool = false,
-        adTitle: String? = nil,
-        adDescription: String? = nil,
-        adLink: String? = nil,
-        adImage: String? = nil,
-        tier: Int? = 1,
-        adminIDs: [String]? = [],
-        isClaimed: Bool = false,
-        courseColorsDT: [String]? = []
-    ) {
-            self.id = id
-            self.name = name
-            self.supported = supported
-            self.logo = logo
-            self.scoreCardColorDT = scoreCardColorDT
-            self.link = link
-            self.pars = pars
-            self.customAdActive = adActive
-            self.adTitle = adTitle
-            self.adDescription = adDescription
-            self.adLink = adLink
-            self.adImage = adImage
-            self.tier = tier
-            self.password = password
-            self.adminIDs = adminIDs
-            self.isClaimed = isClaimed
-            self.courseColorsDT = courseColorsDT
-    }
-    
-    static func == (lhs: Course, rhs: Course) -> Bool {
-        return lhs.id == rhs.id &&
-        lhs.name == rhs.name &&
-        lhs.logo == rhs.logo &&
-        lhs.scoreCardColorDT == rhs.scoreCardColorDT &&
-        lhs.link == rhs.link &&
-        lhs.pars == rhs.pars &&
-        lhs.adTitle == rhs.adTitle &&
-        lhs.adDescription == rhs.adDescription &&
-        lhs.adLink == rhs.adLink &&
-        lhs.adImage == rhs.adImage &&
-        lhs.tier == rhs.tier &&
-        lhs.password == rhs.password &&
-        lhs.supported == rhs.supported &&
-        lhs.adminIDs == rhs.adminIDs &&
-        lhs.customAdActive == rhs.customAdActive &&
-        lhs.isClaimed == rhs.isClaimed &&
-        lhs.courseColorsDT == rhs.courseColorsDT
-    }
+    var adClicks: Int?
 }
 
 struct DailyCount: Codable, Equatable {
@@ -133,10 +84,5 @@ struct HoleAnalytics: Codable, Equatable {
 // finds total round time in seconds
 struct RoundTimeAnalytics: Codable, Equatable {
     var totalRoundSeconds: Int = 0          // cumulative total time of all rounds
-}
-
-struct EmailDT: Codable, Equatable {
-    var email: String
-    var addedAt: Date
 }
 

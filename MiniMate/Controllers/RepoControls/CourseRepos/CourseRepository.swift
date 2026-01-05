@@ -224,8 +224,10 @@ final class CourseRepository {
             let newCourse = Course(
                 id: courseID,
                 name: location.name ?? "N/A",
+                password: PasswordGenerator.generate(.strong()),
                 supported: false,
-                password: PasswordGenerator.generate(.strong())
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude
             )
             
             do {
@@ -373,61 +375,92 @@ final class CourseRepository {
     ) {
         let courseRef = db.collection(collectionName).document(courseID)
 
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone.current
-        formatter.dateFormat = "yyyy-MM-dd"
-        let dayKey = formatter.string(from: Date())
-
-        let dayRef = courseRef.collection("dailyCount").document(dayKey)
-
         let uniqueEmails = Array(Set(
-            emails.map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
+            emails
+                .map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
         ))
 
-        if uniqueEmails.isEmpty {
+        guard !uniqueEmails.isEmpty else {
             DispatchQueue.main.async { completion(true) }
             return
         }
 
+        let todayID = makeDayID()
+        let dayRef = courseRef.collection("dailyCount").document(todayID)
+
         db.runTransaction({ tx, errPtr -> Any? in
+            // -------------------------
+            // 1) READ PHASE (all reads first)
+            // -------------------------
+            var snapsByEmail: [(email: String, snap: DocumentSnapshot?)] = []
+            snapsByEmail.reserveCapacity(uniqueEmails.count)
+
+            for email in uniqueEmails {
+                let emailDocID = self.emailKey(email)
+                let emailRef = courseRef.collection("emails").document(emailDocID)
+
+                do {
+                    let snap = try tx.getDocument(emailRef)
+                    snapsByEmail.append((email: email, snap: snap))
+                } catch let e as NSError {
+                    errPtr?.pointee = e
+                    return nil
+                }
+            }
+
+            // -------------------------
+            // 2) COMPUTE + WRITE PHASE
+            // -------------------------
             var newCount = 0
             var returningCount = 0
 
-            for email in uniqueEmails {
-                let emailDocID = self.emailKey(email) // hash recommended
+            for entry in snapsByEmail {
+                let email = entry.email
+                let snap = entry.snap
+
+                let emailDocID = self.emailKey(email)
                 let emailRef = courseRef.collection("emails").document(emailDocID)
 
-                let emailSnap: DocumentSnapshot
-                do { emailSnap = try tx.getDocument(emailRef) }
-                catch let e as NSError { errPtr?.pointee = e; return nil }
-
-                if emailSnap.exists {
-                    returningCount += 1
+                if let snap, snap.exists {
+                    let lastPlayed = snap.get("lastPlayed") as? String
+                    if lastPlayed != todayID {
+                        returningCount += 1
+                        tx.setData(["lastPlayed": todayID], forDocument: emailRef, merge: true)
+                    }
                 } else {
+                    // first time ever
                     newCount += 1
-                    tx.setData([
-                        "addedAt": FieldValue.serverTimestamp()
-                    ], forDocument: emailRef, merge: true)
+                    tx.setData(["lastPlayed": todayID], forDocument: emailRef, merge: true)
                 }
             }
 
             var dayUpdates: [String: Any] = [
-                "dayID": dayKey,
+                "dayID": todayID,
                 "updatedAt": FieldValue.serverTimestamp()
             ]
             if newCount > 0 { dayUpdates["newPlayers"] = FieldValue.increment(Int64(newCount)) }
             if returningCount > 0 { dayUpdates["returningPlayers"] = FieldValue.increment(Int64(returningCount)) }
 
             tx.setData(dayUpdates, forDocument: dayRef, merge: true)
-            return nil
+
+            return true
         }) { _, error in
-            DispatchQueue.main.async { completion(error == nil) }
+            DispatchQueue.main.async {
+                if let error = error as NSError? {
+                    print("❌ processPlayerEmailsForGame failed:",
+                          "code=\(error.code)",
+                          "domain=\(error.domain)",
+                          "msg=\(error.localizedDescription)")
+                    completion(false)
+                } else {
+                    completion(true)
+                }
+            }
         }
     }
-    
+
+
     // MARK: Daily Counts
     enum DailyMetric: String {
         case activeUsers
@@ -443,7 +476,8 @@ final class CourseRepository {
         game: Game,
         startTime: Date,
         endTime: Date,
-        increment: Int = 1
+        increment: Int = 1,
+        completion: @escaping (Bool) -> Void
     ) {
 
         // Use YOUR current convention for dailyCounts: Sunday=0..Saturday=6
@@ -542,18 +576,25 @@ final class CourseRepository {
         }) { _, error in
             if let error = error {
                 print("❌ updateWeeklyAnalytics failed: \(error.localizedDescription)")
+                completion(false)
             } else {
                 print("✅ Weekly analytics updated: \(weekKey)")
+                completion(true)
             }
         }
     }
     
     // MARK: - Unified Daily Metric Updater
-    func updateDailyMetric(courseID: String, metric: DailyMetric, increment: Int = 1) {
+    func updateDailyMetric(
+        courseID: String,
+        metric: DailyMetric,
+        increment: Int = 1,
+        completion: @escaping (Bool) -> Void
+    ) {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone.current // or .init(secondsFromGMT: 0) if you want UTC days
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM-dd"
 
         let dayKey = formatter.string(from: Date())
@@ -565,31 +606,39 @@ final class CourseRepository {
 
         let key = metric.rawValue
 
-        dayRef.setData([
-            "dayID": dayKey,
-            "updatedAt": FieldValue.serverTimestamp(),
-            key: FieldValue.increment(Int64(increment))
-        ], merge: true) { error in
+        dayRef.setData(
+            [
+                "dayID": dayKey,
+                "updatedAt": FieldValue.serverTimestamp(),
+                key: FieldValue.increment(Int64(increment))
+            ],
+            merge: true
+        ) { error in
             if let error = error {
                 print("❌ Daily metric update failed: \(error.localizedDescription)")
+                completion(false)
             } else {
                 print("✅ Daily metric updated: \(key)")
+                completion(true)
             }
         }
     }
 
+
     
-    func updateGameCount(courseID: String, increment: Int = 1) {
-        updateDailyMetric(courseID: courseID, metric: .gamesPlayed, increment: increment)
+    func updateGameCount(courseID: String, increment: Int = 1, completion: @escaping (Bool) -> Void) {
+        updateDailyMetric(courseID: courseID, metric: .gamesPlayed, increment: increment){ complete in
+            completion(complete)
+        }
     }
     
-    func updateNewPlayers(courseID: String, increment: Int = 1) {
-        updateDailyMetric(courseID: courseID, metric: .newPlayers, increment: increment)
-    }
+    //func updateNewPlayers(courseID: String, increment: Int = 1) {
+      //  updateDailyMetric(courseID: courseID, metric: .newPlayers, increment: increment)
+    //}
     
-    func updateReturningPlayers(courseID: String, increment: Int = 1) {
-        updateDailyMetric(courseID: courseID, metric: .returningPlayers, increment: increment)
-    }
+    //func updateReturningPlayers(courseID: String, increment: Int = 1) {
+      //  updateDailyMetric(courseID: courseID, metric: .returningPlayers, increment: increment)
+    //}
     
     func uploadCourseImages(id: String, _ image: UIImage, key: String, completion: @escaping (Result<URL, Error>) -> Void) {
         guard let data = image.pngData() else {
@@ -637,4 +686,15 @@ func makeWeekID(from date: Date = Date()) -> String {
     let yearForWeek = calendar.component(.yearForWeekOfYear, from: date)
     
     return String(format: "%d-W%02d", yearForWeek, weekOfYear)
+}
+
+func makeDayID(from date: Date = Date()) -> String {
+    var calendar = Calendar(identifier: .iso8601)
+    calendar.timeZone = TimeZone.current
+
+    let year  = calendar.component(.year, from: date)
+    let month = calendar.component(.month, from: date)
+    let day   = calendar.component(.day, from: date)
+
+    return String(format: "%04d-%02d-%02d", year, month, day)
 }

@@ -7,7 +7,8 @@
 import Foundation
 
 struct UserDTO: Codable {
-    var id: String
+    var googleId: String
+    var appleId: String?
     var name: String
     var photoURL: URL?
     var email: String?
