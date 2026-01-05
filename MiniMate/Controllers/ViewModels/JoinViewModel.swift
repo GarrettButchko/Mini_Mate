@@ -49,7 +49,7 @@ final class JoinViewModel: ObservableObject {
     }
 
     func leaveGame() {
-        guard let userID = authModel.userModel?.id else { return }
+        guard let userID = authModel.userModel?.googleId else { return }
 
         gameModel.leaveGame(userId: userID)
         gameCode = ""

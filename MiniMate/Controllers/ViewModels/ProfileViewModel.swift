@@ -72,13 +72,11 @@ final class ProfileViewModel: ObservableObject {
                         self.viewManager.navigateToWelcome()
                         
                         if let userModel = self.authModel.userModel {
-                            let model = UserModel(id: userModel.id, name: userModel.name, photoURL: nil, email: userModel.email, gameIDs: [], accountType: "apple")
+                            let model = UserModel(googleId: userModel.googleId, appleId: userModel.appleId, name: userModel.name, photoURL: nil, email: userModel.email, gameIDs: [], accountType: "apple")
                             
                             self.cleanupLocalDataAndExit(deleteUnifed: false)
                             
-                            self.userRepo.saveRemote(id: self.authModel.currentUserIdentifier!, userModel: model) { _ in
-                                self.authModel.setRawAppleId(nil)
-                            }
+                            self.userRepo.saveRemote(id: self.authModel.currentUserIdentifier!, userModel: model) { _ in }
                         }
                     case .failure(let err):
                         self.botMessage = err.localizedDescription
@@ -136,7 +134,7 @@ final class ProfileViewModel: ObservableObject {
 
         // ✅ Snapshot ALL value types BEFORE navigation
         let gameIDs = userModel.gameIDs
-        let userID  = userModel.id
+        let userID  = userModel.googleId
 
         // Now it's safe to leave the context
         viewManager.navigateToWelcome()

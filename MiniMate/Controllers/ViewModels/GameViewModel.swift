@@ -161,7 +161,7 @@ final class GameViewModel: ObservableObject {
         objectWillChange.send() // notify before mutating
         lastUpdated = Date()
         game.lastUpdated = lastUpdated
-        if onlineGame && authModel.userModel?.id != "IDGuest" {
+        if onlineGame {
             liveGameRepo.addOrUpdateGame(game) { _ in }
         }
     }
@@ -286,11 +286,11 @@ final class GameViewModel: ObservableObject {
     func addUser() {
         guard let user = authModel.userModel else { return }
         // don’t add the same user twice
-        guard !game.players.contains(where: { $0.userId == user.id }) else { return }
+        guard !game.players.contains(where: { $0.userId == user.googleId }) else { return }
         
         objectWillChange.send()
         let newPlayer = Player(
-            userId: user.id,
+            userId: user.googleId,
             name: user.name,
             photoURL: user.photoURL,
             inGame: true,
@@ -350,7 +350,7 @@ final class GameViewModel: ObservableObject {
         onlineGame = online
         game.id = generateGameCode()
         
-        game.hostUserId = authModel.userModel!.id
+        game.hostUserId = authModel.userModel!.googleId
         
         addUser()
         pushUpdate()
@@ -441,7 +441,7 @@ final class GameViewModel: ObservableObject {
         }
 
         // 2) Analytics (host only)
-        if let currentUserId = authModel.userModel?.id,
+        if let currentUserId = authModel.userModel?.googleId,
            currentUserId == finished.hostUserId {
 
             group.enter()

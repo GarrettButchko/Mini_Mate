@@ -18,7 +18,7 @@ struct LocFuncs {
     ///   - context: The SwiftData `ModelContext` used to query the store
     /// - Returns: The matching `UserModel` if found, otherwise `nil`
     func fetchUser(by id: String, context: ModelContext) -> UserModel? {
-        let predicate = #Predicate<UserModel> { $0.id == id } // ✅ uses stored id
+        let predicate = #Predicate<UserModel> { $0.googleId == id } // ✅ uses stored id
         let descriptor = FetchDescriptor<UserModel>(predicate: predicate)
 
         do {

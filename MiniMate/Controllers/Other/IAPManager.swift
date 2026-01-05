@@ -44,7 +44,7 @@ class IAPManager: ObservableObject {
                 }
                 
                 if let userModel = authModel.userModel {
-                    UserRepository().saveRemote(id: userModel.id, userModel: userModel) { completed in
+                    UserRepository().saveRemote(id: userModel.googleId, userModel: userModel) { completed in
                         print("Updated online user")
                     }
                 }

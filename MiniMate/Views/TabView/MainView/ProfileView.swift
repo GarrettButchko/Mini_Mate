@@ -126,7 +126,7 @@ struct ProfileView: View {
                             
                             HStack {
                                 Text("UID:")
-                                Text(user.id)
+                                Text(user.googleId)
                             }
                             
                             HStack {

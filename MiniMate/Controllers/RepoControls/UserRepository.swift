@@ -26,6 +26,7 @@ final class UserRepository {
         name: String? = nil,
         authModel: AuthViewModel,
         signInMethod: SignInMethod? = nil,
+        appleId: String? = nil,
         completion: @escaping () -> Void
     ) {
         let local = fetchLocal(id: id)
@@ -48,7 +49,8 @@ final class UserRepository {
                 firebaseUser: firebaseUser,
                 name: name,
                 authModel: authModel,
-                signInMethod: signInMethod
+                signInMethod: signInMethod,
+                appleId: appleId
             ) {
                 completion() // ✅ reconcile finished
             }
@@ -63,6 +65,7 @@ final class UserRepository {
         name: String?,
         authModel: AuthViewModel,
         signInMethod: SignInMethod? = nil,
+        appleId: String? = nil,
         completion: @escaping() -> Void
     ) {
         switch (local, remote) {
@@ -117,12 +120,12 @@ final class UserRepository {
         }
     }
     
-    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, signInMethod: SignInMethod? = nil, completion: @escaping () -> Void){
+    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, signInMethod: SignInMethod? = nil, appleId: String? = nil, completion: @escaping () -> Void){
         
         let finalName  = name ?? firebaseUser?.displayName ?? "User#\(String(id.prefix(5)))"
         let finalEmail = firebaseUser?.email ?? "Email"
         
-        let newUser = UserModel(id: id, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [], accountType: signInMethod!.rawValue)
+        let newUser = UserModel(googleId: id, appleId: appleId, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [], accountType: signInMethod!.rawValue)
         
         saveLocal(context: context!, model: newUser) { _ in }
         saveRemote(id: id, userModel: newUser) { _ in }
@@ -229,7 +232,7 @@ final class UserRepository {
     
     func fetchLocal(id: String) -> UserModel? {
         let descriptor = FetchDescriptor<UserModel>(
-            predicate: #Predicate { $0.id == id }
+            predicate: #Predicate { $0.googleId == id }
         )
         
         do {
@@ -242,7 +245,7 @@ final class UserRepository {
     
     func deleteLocal(id: String, completion: @escaping (Bool) -> Void) {
         let descriptor = FetchDescriptor<UserModel>(
-            predicate: #Predicate { $0.id == id }
+            predicate: #Predicate { $0.googleId == id }
         )
         
         do {

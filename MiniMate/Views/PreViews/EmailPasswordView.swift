@@ -20,12 +20,16 @@ struct EmailPasswordView: View {
     @Binding var height: CGFloat
     var geometry: GeometryProxy
     
-    @State private var email = ""
-    @State private var password = ""
-    @State private var confirmPassword = ""
+    @Binding var email: String
+    @Binding var password: String
+    @Binding var confirmPassword: String
+    
+    let keyboardHeight: CGFloat
+    
     @State private var errorMessage: String?
 
-    @FocusState private var isTextFieldFocused: Bool
+    typealias Field = SignInView.Field
+    var isTextFieldFocused: FocusState<Field?>.Binding
 
     private let characterLimit = 15
     
@@ -38,12 +42,14 @@ struct EmailPasswordView: View {
     }
 
     var body: some View {
+        
+        ScrollView {
             VStack {
             
                 // Back Button
                 HStack {
                     Button(action: {
-                        isTextFieldFocused = false
+                        isTextFieldFocused.wrappedValue = nil
                         withAnimation {
                             showEmail = false
                         }
@@ -63,7 +69,7 @@ struct EmailPasswordView: View {
                     Spacer()
                 }
                 
-                Spacer()
+                Spacer(minLength: 50)
                 // Title
                 VStack(spacing: 8) {
                     HStack {
@@ -79,34 +85,17 @@ struct EmailPasswordView: View {
                         Spacer()
                     }
                 }
-                Spacer()
+                Spacer(minLength: 50)
 
                 // Form Fields
                 VStack(spacing: 20) {
                     // Email Field
-                    VStack(alignment: .leading) {
-                        Text("Email")
-                            .foregroundColor(.secondary)
-                        HStack {
-                            Image(systemName: "envelope")
-                                .foregroundColor(.secondary)
-                            TextField("example@example", text: $email)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
-                                .focused($isTextFieldFocused)
-                        }
-                        .padding()
-                        .background(RoundedRectangle(cornerRadius: 25)
-                            .fill(.ultraThinMaterial))
-                        .overlay(RoundedRectangle(cornerRadius: 25)
-                            .stroke(.ultraThickMaterial))
-                    }
+                    
 
-                    passwordField(title: "Password", text: $password)
+                    
                     
                     if showSignUp {
-                        passwordField(title: "Confirm Password", text: $confirmPassword)
+                        passwordField(title: "Confirm Password", text: $confirmPassword, equals: .confirm)
                     }
 
                     Button {
@@ -146,11 +135,42 @@ struct EmailPasswordView: View {
                 Spacer()
             }
             .padding()
+            .padding(.bottom, keyboardHeight + 20)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .clipShape(RoundedRectangle(cornerRadius: 35))
     }
+    
+    var emailSection: some View {
+        VStack(alignment: .leading) {
+            Text("Email")
+                .foregroundColor(.secondary)
+            HStack {
+                Image(systemName: "envelope")
+                    .foregroundColor(.secondary)
+                TextField("example@example", text: $email)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .focused(isTextFieldFocused, equals: .email)
+            }
+            .padding()
+            .background(RoundedRectangle(cornerRadius: 25)
+                .fill(.ultraThinMaterial))
+            .overlay(RoundedRectangle(cornerRadius: 25)
+                .stroke(.ultraThickMaterial))
+        }
+    }
+    
+    var passwordSection: some View {
+        passwordField(title: "Password", text: $password, equals: .password)
+    }
+    
+    var confirmSection: some View
 
     // MARK: - Helpers
 
-    private func passwordField(title: String, text: Binding<String>, image: String = "lock") -> some View {
+    private func passwordField(title: String, text: Binding<String>, image: String = "lock", equals: Field) -> some View {
         VStack(alignment: .leading) {
             Text(title)
                 .foregroundColor(.secondary)
@@ -158,7 +178,7 @@ struct EmailPasswordView: View {
                 Image(systemName: image)
                     .foregroundColor(.secondary)
                 SecureField("••••••", text: text)
-                    .focused($isTextFieldFocused)
+                    .focused(isTextFieldFocused, equals: equals)
                     .onChange(of: text.wrappedValue) { _ , newValue in
                         if newValue.count > characterLimit {
                             text.wrappedValue = String(newValue.prefix(characterLimit))

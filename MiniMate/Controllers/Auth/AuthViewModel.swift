@@ -37,20 +37,7 @@ class AuthViewModel: ObservableObject {
         self.userModel = user
     }
     
-    @Published private(set) var rawAppleUserID: String? {
-           didSet {
-               if let id = rawAppleUserID {
-                   UserDefaults.standard.set(id, forKey: "rawAppleUserID")
-               }
-           }
-       }
-    
     var currentNonce: String?
-    
-    /// A sanitized version you can safely use as a Firebase key.
-    var appleUserID: String? {
-        rawAppleUserID?.sanitizedForFirebaseID()
-    }
     
     /// The key we use for all our DB reads/writes.
     var currentUserIdentifier: String? {
@@ -61,14 +48,9 @@ class AuthViewModel: ObservableObject {
     
     init() {
         self.firebaseUser = Auth.auth().currentUser
-        self.rawAppleUserID = UserDefaults.standard.string(forKey: "rawAppleUserID")
     }
     
     // MARK: - Firebase Authentication
-    
-    func setRawAppleId(_ rawID: String?) {
-        rawAppleUserID = rawID
-    }
     
     func refreshUID() {
         self.firebaseUser = Auth.auth().currentUser
@@ -111,7 +93,7 @@ class AuthViewModel: ObservableObject {
         request.nonce = sha256(nonce)
     }
     
-    func signInWithApple(_ authorization: ASAuthorization, context: ModelContext, completion: @escaping (Result<User, Error>, String?) -> Void) {
+    func signInWithApple(_ authorization: ASAuthorization, context: ModelContext, completion: @escaping (Result<User, Error>, String?, String?) -> Void) {
         // 1️⃣ Extract the Apple credential + nonce
         guard
             let cred      = authorization.credential as? ASAuthorizationAppleIDCredential,
@@ -123,7 +105,7 @@ class AuthViewModel: ObservableObject {
                 domain: "AuthViewModel",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid Apple credential"]
-            )), nil)
+            )), nil, nil)
         }
         
         // 2️⃣ Build the OAuth credential & sign in
@@ -137,14 +119,13 @@ class AuthViewModel: ObservableObject {
         
         Auth.auth().signIn(with: oauthCred) { [self] authResult, error in
             if let error = error {
-                return completion(.failure(error), nil)
+                return completion(.failure(error), nil, nil)
             }
             if let result = authResult {
                 DispatchQueue.main.async {
                     self.firebaseUser = result.user     // <-- REQUIRED
                 }
-                rawAppleUserID = cred.user
-                completion(.success(result.user), cred.fullName?.formatted())
+                completion(.success(result.user), cred.fullName?.formatted(), cred.user)
             }
         }
     }
@@ -230,9 +211,6 @@ class AuthViewModel: ObservableObject {
             try Auth.auth().signOut()
             DispatchQueue.main.async {
                 self.firebaseUser = nil
-                if self.appleUserID != nil {
-                    self.rawAppleUserID = nil
-                }
             }
         } catch {
             print("❌ Sign-out error: \(error.localizedDescription)")
@@ -274,7 +252,7 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User?, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil) {
+    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User?, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil, appleId: String? = nil) {
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
         repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod) {

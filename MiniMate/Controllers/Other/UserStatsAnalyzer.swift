@@ -18,7 +18,7 @@ class UserStatsAnalyzer {
     init(user: UserModel, games: [Game], context: ModelContext) {
         self.gameIDs = user.gameIDs
         self.games = games
-        self.userID = user.id
+        self.userID = user.googleId
     }
 
     // MARK: - Basic Stats

@@ -11,13 +11,15 @@ import FirebaseAuth
 import SwiftData
 
 struct SignInView: View {
+    enum Field: Hashable { case email, password, confirm }
     
     @State var showEmailSignIn: Bool = false
     @State var errorMessage: String? = ""
     @State var height: CGFloat = 0
     
-    @State private var email = ""
-    @State private var password = ""
+    @State var email = ""
+    @State var password = ""
+    @State var confirmPassword = ""
     
     @Environment(\.modelContext) var context
     @Environment(\.colorScheme)  var colorScheme
@@ -25,7 +27,8 @@ struct SignInView: View {
     @ObservedObject var authModel : AuthViewModel
     @ObservedObject var viewManager : ViewManager
 
-    @FocusState private var isTextFieldFocused: Bool
+    @StateObject private var keyboard = KeyboardObserver()
+    @FocusState private var isTextFieldFocused: Field?
     
     var gradientColors: [Color] = [.blue, .green]
 
@@ -93,11 +96,11 @@ struct SignInView: View {
                             
                         } else {
                             // Ensure EmailPasswordView initializer accepts 'height: Binding<CGFloat>' and 'geometry: GeometryProxy' parameters.
-                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry)
+                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused)
                                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                         }
                     }
-                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 35))
                     .frame(height: height)
                     .frame(maxWidth: 430)
                     .animation(.bouncy.speed(1.5), value: height)
@@ -108,9 +111,9 @@ struct SignInView: View {
                 }
             }
             .onAppear {
-                //withAnimation{
+                withAnimation{
                     height = 220
-                //}
+                }
             }
         }
     }
@@ -184,12 +187,12 @@ struct StartButtons: View {
                 case .failure(let err):
                     errorMessage = err.localizedDescription
                 case .success(let authorization):
-                    authModel.signInWithApple(authorization, context: context) { signInResult, name in
+                    authModel.signInWithApple(authorization, context: context) { signInResult, name, appleId in
                         switch signInResult {
                         case .failure(let err):
                             errorMessage = err.localizedDescription
                         case .success(let firebaseUser):
-                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple)
+                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple, appleId: appleId)
                         }
                     }
                 }
