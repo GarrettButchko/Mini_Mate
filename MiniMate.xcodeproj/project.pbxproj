@@ -106,6 +106,7 @@
 				"Shared-Assets.xcassets",
 				Views/PreViews/EmailPasswordView.swift,
 				Views/PreViews/SignInView.swift,
+				Views/PreViews/VerifyView.swift,
 				Views/PreViews/WelcomeView.swift,
 				Views/TabView/Game/GameReviewView.swift,
 				Views/TabView/MainView/ProfileView.swift,

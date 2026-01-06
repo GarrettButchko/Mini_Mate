@@ -72,7 +72,7 @@ final class ProfileViewModel: ObservableObject {
                         self.viewManager.navigateToWelcome()
                         
                         if let userModel = self.authModel.userModel {
-                            let model = UserModel(googleId: userModel.googleId, appleId: userModel.appleId, name: userModel.name, photoURL: nil, email: userModel.email, gameIDs: [], accountType: "apple")
+                            let model = UserModel(googleId: userModel.googleId, appleId: userModel.appleId, name: userModel.name, photoURL: nil, email: userModel.email, gameIDs: [], accountType: ["apple"])
                             
                             self.cleanupLocalDataAndExit(deleteUnifed: false)
                             
@@ -195,9 +195,9 @@ final class ProfileViewModel: ObservableObject {
     }
     
     func deleteAccount(user: UserModel) {
-        if user.accountType == "google" {
+        if user.accountType.contains("google") {
             activeDeleteAlert = .google
-        } else if user.accountType == "apple" {
+        } else if user.accountType.contains("apple") {
             activeDeleteAlert = .apple
         } else {
             activeDeleteAlert = .email

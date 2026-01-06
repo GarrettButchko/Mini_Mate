@@ -252,12 +252,17 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User?, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil, appleId: String? = nil) {
+    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil, appleId: String? = nil, navToHome: Bool = true, completion: @escaping(() -> Void)) {
         errorMessage.wrappedValue = nil
         let repo = UserRepository(context: context)
-        repo.loadOrCreateUser(id: authModel.currentUserIdentifier!, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod) {
-            Task { @MainActor in
-                viewManager.navigateAfterSignIn()
+        repo.loadOrCreateUser(id: user.uid, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod) {
+            if navToHome {
+                Task { @MainActor in
+                    completion()
+                    viewManager.navigateAfterSignIn()
+                }
+            } else {
+                completion()
             }
         }
     }
@@ -272,7 +277,7 @@ class AuthViewModel: ObservableObject {
                 }
                 errorMessage.wrappedValue = "No User Found Please Sign Up"
             case .success(let firebaseUser):
-                self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email)
+                self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email){}
             }
         }
     }

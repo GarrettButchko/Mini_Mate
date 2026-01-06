@@ -19,7 +19,7 @@ class UserModel: Identifiable, Equatable {
     var isPro: Bool = false
     var gameIDs: [String] = []
     var lastUpdated: Date
-    var accountType: String
+    var accountType: [String] = []
     var adminCourses: [String] = []
 
     init(
@@ -31,7 +31,7 @@ class UserModel: Identifiable, Equatable {
         isPro: Bool = false,
         gameIDs: [String] = [],
         lastUpdated: Date = .now,
-        accountType: String,
+        accountType: [String] = [],
         adminCourses: [String] = []
     ) {
         self.googleId = googleId

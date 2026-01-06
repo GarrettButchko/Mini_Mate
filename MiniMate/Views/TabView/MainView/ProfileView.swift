@@ -38,6 +38,8 @@ struct ProfileView: View {
     
     @State private var pickedImage: UIImage? = nil
     
+    @State private var showPro: Bool = false
+    
     @StateObject private var viewModel: ProfileViewModel
     
     init(
@@ -132,8 +134,15 @@ struct ProfileView: View {
                             HStack {
                                 Text("Pro:")
                                 Text((user.isPro ? "Yes" : "No"))
+                                
+                                if !user.isPro {
+                                    Spacer()
+                                    Button("Get Pro Now!") {
+                                        showPro = true
+                                    }
+                                    .padding(.horizontal)
+                                }
                             }
-                            
                             
                         } else {
                             Text("User data not available.")
@@ -162,7 +171,7 @@ struct ProfileView: View {
                                     viewModel.editProfile = false
                                 }
                             }
-                            if user.accountType == "email" {
+                            if user.accountType.contains("email") && !user.accountType.contains("google") {
                                 Button("Password Reset") {
                                     viewModel.passwordReset(user: user)
                                 }
@@ -248,6 +257,9 @@ struct ProfileView: View {
                 }
             } message: {
                 Text("This will permanently delete your account.")
+            }
+            .sheet(isPresented: $showPro) {
+                ProView(showSheet: $showPro, authModel: authModel)
             }
         }
     }

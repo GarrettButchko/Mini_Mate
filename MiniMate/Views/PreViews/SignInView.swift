@@ -14,6 +14,7 @@ struct SignInView: View {
     enum Field: Hashable { case email, password, confirm }
     
     @State var showEmailSignIn: Bool = false
+    @State var verifyMode: Bool = false
     @State var errorMessage: String? = ""
     @State var height: CGFloat = 0
     
@@ -95,9 +96,17 @@ struct SignInView: View {
                             .padding()
                             
                         } else {
-                            // Ensure EmailPasswordView initializer accepts 'height: Binding<CGFloat>' and 'geometry: GeometryProxy' parameters.
-                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused)
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                           
+                            if verifyMode {
+                                VerifyView(viewManager: viewManager, authModel: authModel, showVerify: $verifyMode, showEmail: $showEmailSignIn)
+                                    .transition(.move(edge: .trailing))
+                            } else {
+                                EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused, verifyMode: $verifyMode)
+                                    .transition(verifyMode ? .move(edge: .leading) : .opacity.combined(with: .move(edge: .bottom)))
+                            }
+                        
+                            
+
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 35))
@@ -106,8 +115,6 @@ struct SignInView: View {
                     .animation(.bouncy.speed(1.5), value: height)
                     .padding()
                     .padding(.bottom)
-                    
-                    
                 }
             }
             .onAppear {
@@ -157,7 +164,7 @@ struct StartButtons: View {
                 authModel.signInWithGoogle(context: context) { result in
                     switch result {
                     case .success(let firebaseUser):
-                        authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .google)
+                        authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .google){}
                     case .failure(let error):
                         errorMessage = error.localizedDescription
                     }
@@ -192,7 +199,7 @@ struct StartButtons: View {
                         case .failure(let err):
                             errorMessage = err.localizedDescription
                         case .success(let firebaseUser):
-                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple, appleId: appleId)
+                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple, appleId: appleId){}
                         }
                     }
                 }

@@ -69,25 +69,36 @@ final class UserRepository {
         completion: @escaping() -> Void
     ) {
         switch (local, remote) {
-
+            
         case let (local?, remote?):
             
             let delta = abs(local.lastUpdated.timeIntervalSince(remote.lastUpdated))
             
             
             if delta < 0.5 {
+                if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
+                    local.accountType.append(signInMethod)
+                }
+                saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
+                    completion()
+                }
                 print("🔄 Already in sync")
                 completion()
             } else if local.lastUpdated > remote.lastUpdated {
                 
-                print("\(local.lastUpdated) > \(remote.lastUpdated)")
+                if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
+                    local.accountType.append(signInMethod)
+                }
                 
                 saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
                     print("🔄 Local → Remote")
                     completion()
                 }
             } else {
-                print("\(local.lastUpdated) < \(remote.lastUpdated)")
+                
+                if let signInMethod = signInMethod?.rawValue, !remote.accountType.contains(signInMethod) {
+                    remote.accountType.append(signInMethod)
+                }
                 
                 saveLocal(context: context!, model: remote, updatedLastUpdated: false) { _ in
                     print("🔄 Remote → Local")
@@ -97,14 +108,24 @@ final class UserRepository {
                     }
                 }
             }
-
+            
         case let (local?, nil):
+            
+            if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
+                local.accountType.append(signInMethod)
+            }
+            
             saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
                 print("🔄 Local → Remote (no remote)")
                 completion()
             }
-
+            
         case let (nil, remote?):
+            
+            if let signInMethod = signInMethod?.rawValue, !remote.accountType.contains(signInMethod) {
+                remote.accountType.append(signInMethod)
+            }
+            
             saveLocal(context: context!, model: remote, updatedLastUpdated: false) { _ in
                 print("🔄 Remote → Local (no local)")
                 DispatchQueue.main.async {
@@ -112,7 +133,7 @@ final class UserRepository {
                     completion()
                 }
             }
-
+            
         case (nil, nil):
             createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel, signInMethod: signInMethod) {
                 completion()
@@ -125,7 +146,7 @@ final class UserRepository {
         let finalName  = name ?? firebaseUser?.displayName ?? "User#\(String(id.prefix(5)))"
         let finalEmail = firebaseUser?.email ?? "Email"
         
-        let newUser = UserModel(googleId: id, appleId: appleId, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [], accountType: signInMethod!.rawValue)
+        let newUser = UserModel(googleId: id, appleId: appleId, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [], accountType: [signInMethod!.rawValue])
         
         saveLocal(context: context!, model: newUser) { _ in }
         saveRemote(id: id, userModel: newUser) { _ in }
@@ -133,6 +154,12 @@ final class UserRepository {
             authModel.setUserModel(newUser)
             print("✅ Created new user")
             completion()
+        }
+    }
+    
+    func addAccountTypeIfNeeded(_ type: String, to list: inout [String]) {
+        if !list.contains(type) {
+            list.append(type)
         }
     }
     
