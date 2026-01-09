@@ -26,14 +26,6 @@ extension MapItemDTO {
             item.phoneNumber = self.phoneNumber
             item.url = self.url != nil ? URL(string: self.url!) : nil
             
-            if let categoryRaw = self.poiCategory {
-                item.pointOfInterestCategory = MKPointOfInterestCategory(rawValue: categoryRaw)
-            }
-            
-            if let timeZoneID = self.timeZone {
-                item.timeZone = TimeZone(identifier: timeZoneID)
-            }
-            
             return item
         } else {
             
@@ -43,14 +35,6 @@ extension MapItemDTO {
             item.name = self.name
             item.phoneNumber = self.phoneNumber
             item.url = self.url != nil ? URL(string: self.url!) : nil
-            
-            if let categoryRaw = self.poiCategory {
-                item.pointOfInterestCategory = MKPointOfInterestCategory(rawValue: categoryRaw)
-            }
-            
-            if let timeZoneID = self.timeZone {
-                item.timeZone = TimeZone(identifier: timeZoneID)
-            }
             
             return item
         }
@@ -105,9 +89,7 @@ extension MKMapItem {
         if #available(iOS 26.0, *) {
             return MapItemDTO(
                 name: self.name,
-                poiCategory: self.pointOfInterestCategory?.rawValue,
                 phoneNumber: self.phoneNumber,
-                timeZone: self.timeZone?.identifier,
                 url: self.url?.absoluteString,
                 address: newAddress,
                 coordinate: CoordinateDTO(latitude: self.location.coordinate.latitude, longitude: self.location.coordinate.longitude)
@@ -115,9 +97,7 @@ extension MKMapItem {
         } else {
             return MapItemDTO(
                 name: self.name,
-                poiCategory: self.pointOfInterestCategory?.rawValue,
                 phoneNumber: self.phoneNumber,
-                timeZone: self.timeZone?.identifier,
                 url: self.url?.absoluteString,
                 address: newAddress,
                 coordinate: CoordinateDTO(latitude: self.placemark.coordinate.latitude, longitude: self.placemark.coordinate.longitude)

@@ -13,20 +13,21 @@ final class KeyboardObserver: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     init() {
-        let willShow = NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
-        let willChange = NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
-        let willHide = NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
-
-        willShow
-            .merge(with: willChange)
+        let willShowOrChange = NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+            .merge(with: NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification))
             .compactMap { $0.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect }
-            .map { $0.height }
-            .sink { [weak self] in self?.height = $0 }
-            .store(in: &cancellables)
+            .map(\.height)
 
-        willHide
-            .map { _ in }
-            .sink { [weak self] in self?.height = 0 }
+        let willHide = NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+            .map { _ in CGFloat(0) }
+
+        willShowOrChange
+            .merge(with: willHide)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newHeight in
+                DispatchQueue.main.async { self?.height = newHeight }
+            }
             .store(in: &cancellables)
     }
 }
+

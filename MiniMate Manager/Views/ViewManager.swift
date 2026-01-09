@@ -38,9 +38,10 @@ class ViewManager: AppNavigationManaging, ObservableObject{
     @Published var currentView: ViewType
 
     init() {
-        if Auth.auth().currentUser != nil {
+        if Auth.auth().currentUser != nil && Auth.auth().currentUser!.isEmailVerified {
             self.currentView = .courseList
         } else {
+            try? Auth.auth().signOut()
             self.currentView = .welcome
         }
     }

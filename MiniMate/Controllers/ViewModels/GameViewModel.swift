@@ -13,6 +13,12 @@ import MapKit
 import Combine
 import SwiftData
 
+struct GuestData {
+    var id: String
+    var email: String?
+    var name: String
+}
+
 @dynamicMemberLookup
 final class GameViewModel: ObservableObject {
     
@@ -183,7 +189,7 @@ final class GameViewModel: ObservableObject {
     func listenForUpdates() {
         guard onlineGame else { return }
         guard let ref = gameRef() else {
-            print("⚠️ Invalid game.id “\(game.id)” — skipping Firebase call")
+            print("Invalid game.id or not online — skipping Firebase call")
             return
         }
         
@@ -283,24 +289,40 @@ final class GameViewModel: ObservableObject {
         pushUpdate()
     }
     
-    func addUser() {
-        guard let user = authModel.userModel else { return }
-        // don’t add the same user twice
-        guard !game.players.contains(where: { $0.userId == user.googleId }) else { return }
-        
-        objectWillChange.send()
-        let newPlayer = Player(
-            userId: user.googleId,
-            name: user.name,
-            photoURL: user.photoURL,
-            inGame: true,
-            email: user.email
-        )
-        initializeHoles(for: newPlayer)
-        withAnimation(){
-            game.players.append(newPlayer)
+    func addUser(guestData: GuestData? = nil) {
+        if let guestData = guestData {
+            objectWillChange.send()
+            let newPlayer = Player(
+                userId: guestData.id,
+                name: guestData.name,
+                photoURL: nil,
+                inGame: true,
+                email: guestData.email
+            )
+            initializeHoles(for: newPlayer)
+            withAnimation(){
+                game.players.append(newPlayer)
+            }
+            pushUpdate()
+        } else {
+            guard let user = authModel.userModel else { return }
+            // don’t add the same user twice
+            guard !game.players.contains(where: { $0.userId == user.googleId }) else { return }
+            
+            objectWillChange.send()
+            let newPlayer = Player(
+                userId: user.googleId,
+                name: user.name,
+                photoURL: user.photoURL,
+                inGame: true,
+                email: user.email
+            )
+            initializeHoles(for: newPlayer)
+            withAnimation(){
+                game.players.append(newPlayer)
+            }
+            pushUpdate()
         }
-        pushUpdate()
     }
     
     
@@ -312,11 +334,11 @@ final class GameViewModel: ObservableObject {
         pushUpdate()
     }
     
-    func joinGame(id: String, completion: @escaping (Bool) -> Void) {
+    func joinGame(id: String, userId: String, completion: @escaping (Bool) -> Void) {
         guard onlineGame else { return }
         resetGame()
         liveGameRepo.fetchGame(id: id) { game in
-            if let game = game, !game.dismissed, !game.started, !game.completed {
+            if let game = game, !game.dismissed && !game.started && !game.completed && !game.players.contains(where: { $0.userId == userId }) {
                 self.setGame(game)
                 self.addUser()
                 self.listenForUpdates()
@@ -340,21 +362,37 @@ final class GameViewModel: ObservableObject {
     
     // MARK: Game State
     
-    func createGame(online: Bool ,startingLoc: MKMapItem?) {
-        guard !game.live else { return }
-        
-        objectWillChange.send()
-        resetGame()
-        
-        game.live = true
-        onlineGame = online
-        game.id = generateGameCode()
-        
-        game.hostUserId = authModel.userModel!.googleId
-        
-        addUser()
-        pushUpdate()
-        listenForUpdates()
+    func createGame(online: Bool = false, guestData: GuestData? = nil) {
+        if let guestData = guestData {
+            guard !game.live else { return }
+            
+            objectWillChange.send()
+            resetGame()
+            
+            game.live = true
+            onlineGame = online
+            game.id = generateGameCode()
+            
+            game.hostUserId = guestData.id
+            
+            addUser(guestData: guestData)
+            pushUpdate()
+        } else {
+            guard !game.live else { return }
+            
+            objectWillChange.send()
+            resetGame()
+            
+            game.live = true
+            onlineGame = online
+            game.id = generateGameCode()
+            
+            game.hostUserId = authModel.userModel!.googleId
+            
+            addUser()
+            pushUpdate()
+            listenForUpdates()
+        }
     }
     
     func startGame(showHost: Binding<Bool>) {
@@ -386,7 +424,7 @@ final class GameViewModel: ObservableObject {
     }
     
     /// Deep-clone the game you just finished, persist it locally & remotely, then reset.
-    func finishAndPersistGame(in context: ModelContext) {
+    func finishAndPersistGame(in context: ModelContext, isGuest: Bool = false) {
         stopListening()
         game.endTime = Date()
 
@@ -421,28 +459,36 @@ final class GameViewModel: ObservableObject {
         var allOK = true
 
         // 1) Save game
-        group.enter()
-        UnifiedGameRepository(context: context).save(finished) { local, remote in
-            if local || remote {
-                print("Saved Game Everywhere")
-                self.authModel.userModel?.gameIDs.append(finished.id)
+        if !isGuest {
+            group.enter()
+            UnifiedGameRepository(context: context).save(finished) { local, remote in
+                if local || remote {
+                    print("Saved Game Everywhere")
+                    self.authModel.userModel?.gameIDs.append(finished.id)
 
-                if let userModel = self.authModel.userModel,
-                   let uid = self.authModel.currentUserIdentifier {
-                    UserRepository(context: context).saveRemote(id: uid, userModel: userModel) { _ in
-                        print("Updated online user")
+                    if let userModel = self.authModel.userModel,
+                       let uid = self.authModel.currentUserIdentifier {
+                        UserRepository(context: context).saveRemote(id: uid, userModel: userModel) { _ in
+                            print("Updated online user")
+                        }
                     }
+                } else {
+                    print("Error Saving Game")
+                    allOK = false
                 }
-            } else {
-                print("Error Saving Game")
-                allOK = false
+                group.leave()
             }
-            group.leave()
+        } else {
+            group.enter()
+            LocalGameRepository(context: context).save(finished) { _ in
+                print("Saved Guest Game")
+                group.leave()
+            }
         }
 
         // 2) Analytics (host only)
         if let currentUserId = authModel.userModel?.googleId,
-           currentUserId == finished.hostUserId {
+           currentUserId == finished.hostUserId || isGuest {
 
             group.enter()
             print("running analytics")
@@ -526,10 +572,19 @@ final class GameViewModel: ObservableObject {
     // MARK: Course
     func findClosestLocationAndLoadCourse(locationHandler: LocationHandler, showTextAndButtons: Binding<Bool>) {
         
-        guard !hasLoaded else {
-                print("⛔️ Already loaded closest course — skipping")
-                return
+        guard !hasLoaded else { return }
+
+        guard locationHandler.hasLocationAccess else {
+            print("⚠️ No location permission yet")
+            return
+        }
+        guard locationHandler.userLocation != nil else {
+            print("⏳ Waiting for user location...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.findClosestLocationAndLoadCourse(locationHandler: locationHandler, showTextAndButtons: showTextAndButtons)
             }
+            return
+        }
         // Guard to prevent multiple calls
         print("🚀 Starting findClosestLocationAndLoadCourse()")
         

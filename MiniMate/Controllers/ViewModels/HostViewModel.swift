@@ -29,18 +29,23 @@ final class HostViewModel: ObservableObject {
     }
     
     func tick(showHost: Binding<Bool>) {
+        guard gameModel.isOnline else { return }   // ✅ offline = no timer behavior
+
         let expire = lastUpdated.addingTimeInterval(ttl)
         timeRemaining = max(0, expire.timeIntervalSinceNow)
-        
+
         if timeRemaining == 0 {
             showHost.wrappedValue = false
         }
     }
+
     
     func resetTimer() {
+        guard gameModel.isOnline else { return }   // ✅ offline = don't reset timer
+
         lastUpdated = Date()
         gameModel.setLastUpdated(lastUpdated)
-        timeRemaining = ttl   // Immediately update the timer UI
+        timeRemaining = ttl
     }
     
     func addPlayer(newPlayerName: Binding<String>, newPlayerEmail: Binding<String>) {
@@ -92,7 +97,8 @@ final class HostViewModel: ObservableObject {
         resetTimer()
     }
     
-    func exit(showTxtButtons: Binding<Bool>){
+    func exit(showTxtButtons: Binding<Bool>, email: Binding<String>){
+        email.wrappedValue = ""
         handler.selectedItem = nil
         gameModel.setLocation(nil)
         gameModel.resetCourse()

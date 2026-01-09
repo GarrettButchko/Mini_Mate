@@ -30,8 +30,6 @@ struct EmailPasswordView: View {
 
     typealias Field = SignInView.Field
     var isTextFieldFocused: FocusState<Field?>.Binding
-    
-    @Binding var verifyMode: Bool
 
     private let characterLimit = 15
     
@@ -44,123 +42,139 @@ struct EmailPasswordView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack {
-                    
-                    // Back Button
-                    HStack {
-                        Button(action: {
-                            isTextFieldFocused.wrappedValue = nil
-                            withAnimation {
-                                showEmail = false
+        ZStack{
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack {
+                        
+                        // Back Button
+                        Spacer(minLength: 90)
+                        // Title
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text(showSignUp ? "Sign Up" : "Login")
+                                    .font(.system(size: 40, weight: .bold))
+                                    .foregroundColor(.primary)
+                                Spacer()
                             }
-                            
-                            height = 220
-                            
-                        }) {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Image(systemName: "arrow.left")
-                                        .font(.headline)
-                                        .foregroundStyle(.green)
-                                )
+                            HStack {
+                                Text(showSignUp ? "Enter email and password" : "Enter email and password")
+                                    .font(.system(size: 20, weight: .light))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
                         }
-                        Spacer()
-                    }
-                    
-                    Spacer(minLength: 50)
-                    // Title
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text(showSignUp ? "Sign Up" : "Login")
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(.primary)
-                            Spacer()
-                        }
-                        HStack {
-                            Text("Enter email and password")
-                                .font(.system(size: 20, weight: .light))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                        }
-                    }
-                    Spacer(minLength: 50)
-                    
-                    // Form Fields
-                    VStack(spacing: 20) {
-                        // Email Field
+                        Spacer(minLength: 50)
                         
-                        emailSection.id(Field.email)
-                        passwordSection.id(Field.password)
-                        if showSignUp { confirmSection.id(Field.confirm) }
-                        
-                        Button {
-                            if !showSignUp {
-                                authModel.signInUIManage(email: email, password: password, authModel: authModel, errorMessage: $errorMessage, showSignUp: $showSignUp, context: context, viewManager: viewManager)
-                            } else {
-                                
-                                authModel.createUser(email: email, password: password) { result in
-                                    switch result {
-                                    case .success(let firebaseUser):
-                                        authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .email, navToHome: false){
-                                            Auth.auth().currentUser?.sendEmailVerification { error in
-                                                authModel.logout()
-                                                DispatchQueue.main.async {
-                                                    if let error = error {
-                                                        errorMessage = "Couldn’t send verification email: \(error.localizedDescription)"
-                                                    } else {
-                                                        withAnimation(){
-                                                            verifyMode = true
+                        // Form Fields
+                        VStack(spacing: 20) {
+                            // Email Field
+                            
+                            emailSection.id(Field.email)
+                            passwordSection.id(Field.password)
+                            if showSignUp { confirmSection.id(Field.confirm) }
+                            
+                            Button {
+                                if !showSignUp {
+                                    authModel.signInUIManage(email: $email, password: $password, confirmPassword: $confirmPassword, isTextFieldFocused: isTextFieldFocused, authModel: authModel, errorMessage: $errorMessage, showSignUp: $showSignUp, context: context, viewManager: viewManager)
+                                } else {
+                                    
+                                    authModel.createUser(email: email, password: password) { result in
+                                        switch result {
+                                        case .success(let firebaseUser):
+                                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .email, navToHome: false){
+                                                Auth.auth().currentUser?.sendEmailVerification { error in
+                                                    DispatchQueue.main.async {
+                                                        if let error = error {
+                                                            errorMessage = "Couldn’t send verification email: \(error.localizedDescription)"
+                                                        } else {
+                                                            withAnimation {
+                                                                showSignUp = false
+                                                                email = ""
+                                                                password = ""
+                                                                confirmPassword = ""
+                                                                isTextFieldFocused.wrappedValue = nil
+                                                                errorMessage = "Please Verify Your Email To Continue"
+                                                            }
+                                                            authModel.logout() // ✅ AFTER email is sent
                                                         }
                                                     }
                                                 }
                                             }
+                                        case .failure(let error):
+                                            errorMessage = error.localizedDescription
                                         }
-                                    case .failure(let error):
-                                        errorMessage = error.localizedDescription
                                     }
                                 }
+                            } label: {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 25)
+                                        .frame(width: 150, height: 50)
+                                        .foregroundColor(.green)
+                                    Text(showSignUp ? "Sign Up" : "Login")
+                                        .foregroundColor(.white)
+                                }
+                                .opacity(disabled ? 0.5 : 1)
                             }
-                        } label: {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 25)
-                                    .frame(width: 150, height: 50)
-                                    .foregroundColor(.green)
-                                Text(showSignUp ? "Sign Up" : "Login")
+                            .disabled(disabled)
+                            
+                            // Error
+                            if let errorMessage = errorMessage {
+                                Text(errorMessage)
                                     .foregroundColor(.white)
+                                    .font(.caption)
+                                    .multilineTextAlignment(.center)
                             }
-                            .opacity(disabled ? 0.5 : 1)
                         }
-                        .disabled(disabled)
-                        
-                        // Error
-                        if let errorMessage = errorMessage {
-                            Text(errorMessage)
-                                .foregroundColor(.white)
-                                .font(.caption)
-                                .multilineTextAlignment(.center)
-                        }
+                        Spacer()
+                        Spacer()
                     }
-                    Spacer()
-                    Spacer()
+                    .padding()
+                    .padding(.bottom, keyboardHeight + 20)
                 }
-                .padding()
-                .padding(.bottom, keyboardHeight + 20)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .onChange(of: keyboardHeight) { _, newHeight in
-                guard newHeight > 0, let field = isTextFieldFocused.wrappedValue else { return }
-                DispatchQueue.main.async {
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        proxy.scrollTo(field, anchor: .top)
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: keyboardHeight) { _, newHeight in
+                    guard newHeight > 0, let field = isTextFieldFocused.wrappedValue else { return }
+                    DispatchQueue.main.async {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo(field, anchor: .top)
+                        }
                     }
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 35))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 35))
+        
+        VStack{
+            HStack {
+                Button(action: {
+                    isTextFieldFocused.wrappedValue = nil
+                    withAnimation {
+                        showEmail = false
+                        showSignUp = false
+                        email = ""
+                        password = ""
+                        confirmPassword = ""
+                        errorMessage = nil
+                    }
+                    
+                    height = 220
+                    
+                }) {
+                    Circle()
+                        .ifAvailableGlassEffect()
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Image(systemName: "arrow.left")
+                                .font(.headline)
+                                .foregroundStyle(.green)
+                        )
+                }
+                Spacer()
+            }
+            Spacer()
+        }
+        .padding()
     }
     
     var emailSection: some View {

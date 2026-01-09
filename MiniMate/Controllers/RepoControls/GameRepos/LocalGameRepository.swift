@@ -37,6 +37,33 @@ class LocalGameRepository {
         }
     }
     
+    func fetchGuestGame(completion: @escaping (Game?) -> Void) {
+        do {
+            let descriptor = FetchDescriptor<Game>(predicate: #Predicate { $0.hostUserId.contains("guest") })
+            let results = try context.fetch(descriptor)
+            completion(results.first)
+        } catch {
+            print("❌ Failed to fetch locally by id:", error)
+            completion(nil)
+        }
+    }
+    
+    func deleteGuestGame(completion: @escaping (Bool) -> Void) {
+        do {
+            let descriptor = FetchDescriptor<Game>(predicate: #Predicate { $0.hostUserId.contains("guest")  })
+            if let game = try context.fetch(descriptor).first {
+                context.delete(game)
+                try context.save()
+                completion(true)
+            } else {
+                completion(false)
+            }
+        } catch {
+            print("❌ Failed to delete locally:", error)
+            completion(false)
+        }
+    }
+    
     func fetchAll(ids: [String], completion: @escaping ([Game]) -> Void) {
         do {
             let allGames = try context.fetch(FetchDescriptor<Game>())

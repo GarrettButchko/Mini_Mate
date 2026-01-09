@@ -133,7 +133,7 @@ struct ProfileView: View {
                             
                             HStack {
                                 Text("Pro:")
-                                Text((user.isPro ? "Yes" : "No"))
+                                Text((user.isPro ? "Yes" : "Not Yet!"))
                                 
                                 if !user.isPro {
                                     Spacer()

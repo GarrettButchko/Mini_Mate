@@ -78,17 +78,21 @@ struct JoinView: View {
                 Button {
                     viewModel.joinGame()
                 } label: {
-                    Text("Join Game")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
-                        )
-                        .padding(.horizontal)
-                        .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
+                    HStack(alignment: .center){
+                        Image(systemName: "person.2.badge.plus.fill")
+                        Text("Join Game")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
+                    )
+                    .padding(.horizontal)
+                    .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
+                    
                 }
                 .disabled(viewModel.gameCode.isEmpty)
             }

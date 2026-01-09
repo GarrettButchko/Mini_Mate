@@ -8,9 +8,7 @@ import Foundation
 
 struct MapItemDTO: Codable, Equatable {
     let name: String?
-    let poiCategory: String?
     let phoneNumber: String?
-    let timeZone: String?
     let url: String?
     
     let address: AddressDTO?

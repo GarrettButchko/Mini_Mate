@@ -19,20 +19,19 @@ struct ContentView: View {
     @State private var selectedTab = 1
     @State private var previousView: ViewType?
     
+    // need this for guest host view
+    @State private var showHost: Bool = true
+    
     init() {
         // 1) create your AuthViewModel first
         let auth = AuthViewModel()
         _authModel = StateObject(wrappedValue: auth)
         
-        // 2) create an initial Game (or fetch one from your context)
-        let initialGame =  Game(id: "", date: Date(), completed: false, numberOfHoles: 18, started: false, dismissed: false, live: false, lastUpdated: Date(), players: [])
-        
         // 3) now inject both into your GameViewModel
         _gameModel = StateObject(
             wrappedValue: GameViewModel(
-                game: initialGame,
+                game: Game(),
                 authModel: auth,
-                onlineGame: true,
                 course: nil
             )
         )
@@ -58,7 +57,10 @@ struct ContentView: View {
                     }
                 case .signIn:
                     SignInView(authModel: authModel, viewManager: viewManager)
+                case .host(let gameViewModel):
+                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: LocationHandler(), gameModel: gameViewModel, isGuest: true)
                 }
+            
                 
             }
             .transition(currentTransition)

@@ -24,18 +24,22 @@ struct HostView: View {
     @ObservedObject var gameModel: GameViewModel
     @StateObject var viewModel: HostViewModel
     
+    var isGuest: Bool
+    
     init(
             showHost: Binding<Bool>,
             authModel: AuthViewModel,
             viewManager: ViewManager,
             locationHandler: LocationHandler,
-            gameModel: GameViewModel
+            gameModel: GameViewModel,
+            isGuest: Bool = false
         ) {
             self._showHost = showHost
             self.authModel = authModel
             self.viewManager = viewManager
             self.locationHandler = locationHandler
             self.gameModel = gameModel
+            self.isGuest = isGuest
             
             // Correct way to initialize a StateObject with dependencies
             _viewModel = StateObject(wrappedValue: HostViewModel(gameModel: gameModel, handler: locationHandler))
@@ -47,10 +51,12 @@ struct HostView: View {
     
     private var mainContent: some View {
         VStack {
-            Capsule()
-                .frame(width: 38, height: 6)
-                .foregroundColor(.gray)
-                .padding(10)
+            if !isGuest {
+                Capsule()
+                    .frame(width: 38, height: 6)
+                    .foregroundColor(.gray)
+                    .padding(10)
+            }
             
             HStack {
                 Text(viewModel.gameModel.isOnline ? "Hosting Game" : "Game Setup")
@@ -65,6 +71,11 @@ struct HostView: View {
                 playersSection
             }
             startGameSection
+            
+            if isGuest {
+                Color.clear
+                    .frame(width: 20, height: 30)
+            }
         }
         .onChange(of: showHost) { _, newValue in
             if !newValue && !gameModel.started {
@@ -86,13 +97,16 @@ struct HostView: View {
                 viewModel.addPlayer(newPlayerName: $newPlayerName, newPlayerEmail: $newPlayerEmail)
             }
             .disabled(
+                gameModel.getCourse() != nil
+                ?
                 newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                 newPlayerEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                 ProfanityFilter.containsBlockedWord(newPlayerName) ||
                 !newPlayerEmail.isValidEmail
+                :
+                newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                ProfanityFilter.containsBlockedWord(newPlayerName)
             )
-
-
             .tint(.blue)
             
             Button("Cancel", role: .cancel) {}
@@ -238,7 +252,7 @@ struct HostView: View {
                         // Exit Button
                         Button(action: {
                             withAnimation {
-                                viewModel.exit(showTxtButtons: $showTextAndButtons)
+                                viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail)
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -303,16 +317,19 @@ struct HostView: View {
         Button {
             viewModel.startGame(viewManager: viewManager, showHost: $showHost)
         } label: {
-            Text("Start Game")
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill(Color.blue)
-                        .padding(.horizontal)
-                )
+            HStack{
+                Image(systemName: "play.fill")
+                Text("Start Game")
+            }
+            .font(.headline)
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 25)
+                    .fill(Color.blue)
+                    .padding(.horizontal)
+            )
         }
     }
 }

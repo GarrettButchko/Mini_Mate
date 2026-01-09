@@ -35,7 +35,7 @@ final class JoinViewModel: ObservableObject {
     func joinGame() {
         guard !gameCode.isEmpty else { return }
 
-        gameModel.joinGame(id: gameCode) { [weak self] success in
+        gameModel.joinGame(id: gameCode, userId: authModel.userModel!.googleId) { [weak self] success in
             guard let self else { return }
 
             if success {

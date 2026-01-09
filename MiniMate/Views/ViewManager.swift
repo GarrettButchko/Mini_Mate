@@ -15,6 +15,7 @@ enum ViewType {
     case gameReview(Game)
     case ad
     case signIn
+    case host(GameViewModel)
 }
 
 /// Manages app navigation state based on authentication status
@@ -24,9 +25,10 @@ class ViewManager: AppNavigationManaging, ObservableObject{
     @Published var currentView: ViewType
 
     init() {
-        if Auth.auth().currentUser != nil {
+        if Auth.auth().currentUser != nil && Auth.auth().currentUser!.isEmailVerified {
             self.currentView = .main(1)
         } else {
+            try? Auth.auth().signOut()
             self.currentView = .welcome
         }
     }
@@ -59,6 +61,9 @@ class ViewManager: AppNavigationManaging, ObservableObject{
         navigateToMain(1)
     }
     
+    func navigateToHost(gameViewModel: GameViewModel) {
+        currentView = .host(gameViewModel)
+    }
 }
 
 extension ViewType: Equatable {
@@ -69,7 +74,8 @@ extension ViewType: Equatable {
             (.scoreCard, .scoreCard),
             (.gameReview, .gameReview),
             (.ad, .ad),
-            (.signIn, .signIn):
+            (.signIn, .signIn),
+            (.host, .host):
             return true
         default:
             return false

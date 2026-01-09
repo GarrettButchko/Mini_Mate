@@ -225,7 +225,7 @@ struct MainView: View {
                                     HStack(spacing: 16) {
                                         gameModeButton(title: "Host", icon: "antenna.radiowaves.left.and.right", color: .purple) {
                                             
-                                                gameModel.createGame(online: true, startingLoc: nil)
+                                                gameModel.createGame(online: true)
                                                 showHost = true
                                             
                                         }
@@ -255,7 +255,7 @@ struct MainView: View {
                                     HStack(spacing: 16) {
                                         gameModeButton(title: "Quick", icon: "person.fill", color: .blue) {
                                             if !disablePlaying {
-                                                gameModel.createGame(online: false, startingLoc: nil)
+                                                gameModel.createGame(online: false)
                                                 showHost = true
                                                 withAnimation {
                                                     isOnlineMode = false

@@ -14,7 +14,6 @@ struct SignInView: View {
     enum Field: Hashable { case email, password, confirm }
     
     @State var showEmailSignIn: Bool = false
-    @State var verifyMode: Bool = false
     @State var errorMessage: String? = ""
     @State var height: CGFloat = 0
     
@@ -96,17 +95,8 @@ struct SignInView: View {
                             .padding()
                             
                         } else {
-                           
-                            if verifyMode {
-                                VerifyView(viewManager: viewManager, authModel: authModel, showVerify: $verifyMode, showEmail: $showEmailSignIn)
-                                    .transition(.move(edge: .trailing))
-                            } else {
-                                EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused, verifyMode: $verifyMode)
-                                    .transition(verifyMode ? .move(edge: .leading) : .opacity.combined(with: .move(edge: .bottom)))
-                            }
-                        
-                            
-
+                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 35))
@@ -121,6 +111,7 @@ struct SignInView: View {
                 withAnimation{
                     height = 220
                 }
+                authModel.firebaseUser = nil
             }
         }
     }
@@ -134,6 +125,10 @@ struct StartButtons: View {
     @Binding var height: CGFloat
     @Binding var errorMessage: String?
     
+    @State var showGuestAlert: Bool = false
+    @State var guestName: String = ""
+    @State var guestEmail: String = ""
+    
     var authModel: AuthViewModel
     var viewManager: ViewManager
     
@@ -142,6 +137,64 @@ struct StartButtons: View {
     var body: some View {
         VStack(){
             // Email / Password Button
+            #if MINIMATE
+            Button {
+                withAnimation {
+                    showGuestAlert = true
+                }
+            } label: {
+                HStack{
+                    Image(systemName: "play.fill")
+                    Text("Guest Play")
+                }
+                .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(.ultraThinMaterial)
+                )
+            
+            }
+            .buttonStyle(.plain)
+            .alert("Welcome To MiniMate!", isPresented: $showGuestAlert) {
+                
+                TextField("Name", text: $guestName)
+                    .characterLimit($guestName, maxLength: 18)
+                
+                
+                TextField("Email (Optional)", text: $guestEmail)
+                    .autocapitalization(.none)   // starts lowercase / no auto-cap
+                    .keyboardType(.emailAddress)
+                
+                    
+                Button("Play") {
+                    let gameView = GameViewModel(game: Game(), authModel: authModel, course: nil)
+                    
+                    gameView.createGame(guestData: GuestData(id: "guest-\(UUID().uuidString.prefix(6))", email: guestEmail == "" ? nil : guestEmail, name: guestName))
+                    
+                    viewManager.navigateToHost(gameViewModel: gameView)
+                }
+                .disabled(
+                    guestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                    ProfanityFilter.containsBlockedWord(guestName) ||
+                    (
+                        !guestEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                        !guestEmail.isValidEmail
+                    )
+                )
+                .tint(.blue)
+                
+                Button("Cancel", role: .cancel) {
+                    guestName = ""
+                    guestEmail = ""
+                }
+            } message: {
+                Text("Name is required. Email is optional — used only for course analytics.")
+            }
+            #endif
+            
             Button {
                 withAnimation {
                     showEmailSignIn = true
@@ -151,10 +204,14 @@ struct StartButtons: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 25)
                         .foregroundStyle(.green)
-                    Text("Email / Password")
-                        .foregroundStyle(.white)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
+                    
+                    HStack{
+                        Image(systemName: "envelope.fill")
+                        Text("Sign in with Email")
+                    }
+                    .font(.system(size: 18))
+                    .foregroundStyle(.white)
+                    .fontWeight(.semibold)
                 }
             }
             .frame(height: 50)

@@ -79,6 +79,23 @@ class AuthViewModel: ObservableObject {
         return result
     }
     
+    func refreshVerificationStatus(completion: @escaping (Bool) -> Void) {
+        guard let user = Auth.auth().currentUser else {
+            completion(false)
+            return
+        }
+
+        user.reload { error in
+            if let error = error {
+                print("Reload error:", error.localizedDescription)
+                completion(false)
+            } else {
+                completion(user.isEmailVerified)
+            }
+        }
+    }
+
+    
     /// Hashes input with SHA256 and returns the hex string.
     func sha256(_ input: String) -> String {
         let inputData = Data(input.utf8)
@@ -268,8 +285,8 @@ class AuthViewModel: ObservableObject {
     }
     
     
-    func signInUIManage(email: String, password: String, authModel: AuthViewModel, errorMessage: Binding<String?>, showSignUp: Binding<Bool>, context: ModelContext, viewManager: ViewManager) {
-        authModel.signIn(email: email, password: password) { result in
+    func signInUIManage(email: Binding<String>, password: Binding<String>, confirmPassword: Binding<String>, isTextFieldFocused: FocusState<SignInView.Field?>.Binding, authModel: AuthViewModel, errorMessage: Binding<String?>, showSignUp: Binding<Bool>, context: ModelContext, viewManager: ViewManager) {
+        authModel.signIn(email: email.wrappedValue, password: password.wrappedValue) { result in
             switch result {
             case .failure(_):
                 withAnimation(){
@@ -277,7 +294,24 @@ class AuthViewModel: ObservableObject {
                 }
                 errorMessage.wrappedValue = "No User Found Please Sign Up"
             case .success(let firebaseUser):
-                self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email){}
+                if firebaseUser.isEmailVerified {
+                    self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email){}
+                } else {
+                    Auth.auth().currentUser?.sendEmailVerification { error in
+                        DispatchQueue.main.async {
+                            if let error = error {
+                                errorMessage.wrappedValue = "Couldn’t send verification email: \(error.localizedDescription)"
+                            } else {
+                                email.wrappedValue = ""
+                                password.wrappedValue  = ""
+                                confirmPassword.wrappedValue  = ""
+                                isTextFieldFocused.wrappedValue = nil
+                                errorMessage.wrappedValue = "Please Verify Your Email To Continue"
+                                authModel.logout() // ✅ AFTER email is sent
+                            }
+                        }
+                    }
+                }
             }
         }
     }
