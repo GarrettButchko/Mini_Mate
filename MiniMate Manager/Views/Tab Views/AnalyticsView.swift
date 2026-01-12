@@ -18,19 +18,48 @@ enum AnalyticsSection: String, CaseIterable, Identifiable {
 }
 
 struct AnalyticsObject{
-    var
+    var type: AnalyticsSection
+    var icon: String
+    var color: Color
 }
 
+let analyticsObjects: [String: AnalyticsObject] = [
+    AnalyticsSection.overview.rawValue: AnalyticsObject(
+        type: .overview,
+        icon: "square.grid.2x2",
+        color: .blue
+    ),
 
+    AnalyticsSection.growth.rawValue: AnalyticsObject(
+        type: .growth,
+        icon: "chart.line.uptrend.xyaxis",
+        color: .green
+    ),
 
+    AnalyticsSection.retention.rawValue: AnalyticsObject(
+        type: .retention,
+        icon: "arrow.triangle.2.circlepath",
+        color: .orange
+    ),
+
+    AnalyticsSection.operations.rawValue: AnalyticsObject(
+        type: .operations,
+        icon: "clock",
+        color: .purple
+    ),
+
+    AnalyticsSection.experience.rawValue: AnalyticsObject(
+        type: .experience,
+        icon: "star",
+        color: .pink
+    )
+]
 
 struct AnalyticsView: View {
 
     @EnvironmentObject var viewModel: CourseViewModel
 
-    @FocusState private var focusedSection: AnalyticsSection?
-    
-    let analyticsSections: [AnalyticsObject] = []
+    @State private var selectedSection: AnalyticsSection = .overview
 
     var body: some View {
         VStack {
@@ -40,19 +69,49 @@ struct AnalyticsView: View {
                     .fontWeight(.bold)
                 Spacer()
             }
+            .padding([.horizontal, .top])
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(AnalyticsSection.allCases) { section in
-                        Button(section.rawValue) {
-                            focusedSection = section
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(AnalyticsSection.allCases) { section in
+                            let obj = analyticsObjects[section.rawValue]!
+                                Button {
+                                    withAnimation(.snappy) {
+                                        selectedSection = section
+                                        proxy.scrollTo(section, anchor: .leading) // ✅ shove to front
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: obj.icon)
+                                        
+                                        Text(section.rawValue)
+                                            .fontWeight(.bold)
+                                            .transition(.move(edge: .leading).combined(with: .opacity))
+                                    }
+                                }
+                                .id(section)
+                                .foregroundStyle(obj.color)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 11)
+                                .background(
+                                    selectedSection == section ? obj.color.opacity(0.3) : .clear
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 25)
+                                        .stroke(obj.color.opacity(0.3), lineWidth: 4)
+                                        .opacity(selectedSection != section ? 0.5 : 0)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 25))
+                            
                         }
-                        .focused($focusedSection, equals: section)
-                        .padding()
-                        .background(
-                            focusedSection == section ? .blue.opacity(0.5) : .clear
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+                .contentMargins(.horizontal, 16, for: .scrollContent)
+                .onAppear {
+                    DispatchQueue.main.async {
+                        selectedSection = .overview
+                        proxy.scrollTo(AnalyticsSection.overview, anchor: .leading)
                     }
                 }
             }
@@ -60,10 +119,18 @@ struct AnalyticsView: View {
             ScrollView(.vertical) {
                 // content for focusedSection goes here
             }
+            .padding(.horizontal)
         }
-        .padding()
-        .onAppear {
-            focusedSection = .overview   // ✅ default focus
-        }
+    }
+}
+
+struct AnalyticsOverView: View {
+    
+    @EnvironmentObject var viewModel: CourseViewModel
+    
+    var body: some View {
+        
+        
+        
     }
 }

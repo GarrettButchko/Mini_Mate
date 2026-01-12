@@ -73,7 +73,6 @@ final class CourseViewModel: ObservableObject {
         self.selectedCourse = course
     }
     
-    
     func getCourses(){
         loadingCourse = true
         if hasCourse{
