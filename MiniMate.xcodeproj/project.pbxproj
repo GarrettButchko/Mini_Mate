@@ -70,6 +70,7 @@
 			membershipExceptions = (
 				Controllers/Auth/AppleReauthCoordinator.swift,
 				Controllers/Auth/AuthViewModel.swift,
+				Controllers/Other/KeyboardObserver.swift,
 				Controllers/Other/LocFuncs.swift,
 				Controllers/Other/NetworkChecker.swift,
 				Controllers/RepoControls/CourseRepos/CourseLeaderboardRepository.swift,

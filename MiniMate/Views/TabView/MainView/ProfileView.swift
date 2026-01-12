@@ -38,7 +38,9 @@ struct ProfileView: View {
     
     @State private var pickedImage: UIImage? = nil
     
+    #if MINIMATE
     @State private var showPro: Bool = false
+    #endif
     
     @StateObject private var viewModel: ProfileViewModel
     
@@ -135,6 +137,7 @@ struct ProfileView: View {
                                 Text("Pro:")
                                 Text((user.isPro ? "Yes" : "Not Yet!"))
                                 
+                                #if MINIMATE
                                 if !user.isPro {
                                     Spacer()
                                     Button("Get Pro Now!") {
@@ -142,6 +145,7 @@ struct ProfileView: View {
                                     }
                                     .padding(.horizontal)
                                 }
+                                #endif
                             }
                             
                         } else {
@@ -258,9 +262,11 @@ struct ProfileView: View {
             } message: {
                 Text("This will permanently delete your account.")
             }
+            #if MINIMATE
             .sheet(isPresented: $showPro) {
                 ProView(showSheet: $showPro, authModel: authModel)
             }
+            #endif
         }
     }
 }

@@ -125,7 +125,9 @@ struct SignInView: View {
 struct StartButtons: View {
     @Environment(\.modelContext) var context
     @Environment(\.colorScheme) var colorScheme
+    #if MINIMATE
     @EnvironmentObject var gameModel: GameViewModel
+    #endif
     
     @Binding var showEmailSignIn: Bool
     @Binding var height: CGFloat
@@ -306,7 +308,7 @@ struct StartButtons: View {
         .onAppear(){
             withAnimation{
                 #if MANAGER
-                height = 220
+                height = 210
                 #endif
                 
                 #if MINIMATE

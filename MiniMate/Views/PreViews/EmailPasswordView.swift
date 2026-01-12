@@ -171,7 +171,7 @@ struct EmailPasswordView: View {
                     }
                     
                     #if MANAGER
-                    height = 220
+                    height = 210
                     #endif
                     
                     #if MINIMATE

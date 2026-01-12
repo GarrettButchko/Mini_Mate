@@ -215,7 +215,7 @@ struct CourseSettingsView: View {
                                 
                                 courseRepo.addOrUpdateCourse(viewModel.selectedCourse!) { complete in
                                     if complete {
-                                        if let userID = authModel.userModel?.id {
+                                        if let userID = authModel.userModel?.googleId {
                                             courseRepo.keepOnlyAdminID(id: userID, courseID: viewModel.selectedCourse!.id) { _ in }
                                         }
                                     }
