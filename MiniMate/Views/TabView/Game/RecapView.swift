@@ -7,9 +7,8 @@
 import SwiftUI
 import ConfettiSwiftUI
 
-struct RecapView<VM: ViewManager & ObservableObject, AM: ObservableObject, Content: View>: View {
+struct RecapView<VM: ViewManager & ObservableObject, Content: View>: View {
     @Environment(\.modelContext) private var context
-    @ObservedObject var authModel: AM
     @StateObject var viewManager: VM
     
     @State var confettiTrigger: Bool = false
@@ -21,6 +20,8 @@ struct RecapView<VM: ViewManager & ObservableObject, AM: ObservableObject, Conte
     let course: Course?
     
     let game: Game?
+    
+    var isGuest: Bool
     
     var sortedPlayers: [Player] {
         guard let game = game else { return [] }

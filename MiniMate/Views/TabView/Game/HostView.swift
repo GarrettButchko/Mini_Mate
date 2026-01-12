@@ -9,6 +9,7 @@ import MapKit
 struct HostView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject var gameModel: GameViewModel
     
     @Binding var showHost: Bool
     @State var showTextAndButtons = false
@@ -21,7 +22,6 @@ struct HostView: View {
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var viewManager: ViewManager
     @ObservedObject var locationHandler: LocationHandler
-    @ObservedObject var gameModel: GameViewModel
     @StateObject var viewModel: HostViewModel
     
     var isGuest: Bool
@@ -31,18 +31,16 @@ struct HostView: View {
             authModel: AuthViewModel,
             viewManager: ViewManager,
             locationHandler: LocationHandler,
-            gameModel: GameViewModel,
             isGuest: Bool = false
         ) {
             self._showHost = showHost
             self.authModel = authModel
             self.viewManager = viewManager
             self.locationHandler = locationHandler
-            self.gameModel = gameModel
             self.isGuest = isGuest
             
             // Correct way to initialize a StateObject with dependencies
-            _viewModel = StateObject(wrappedValue: HostViewModel(gameModel: gameModel, handler: locationHandler))
+            _viewModel = StateObject(wrappedValue: HostViewModel(handler: locationHandler))
         }
     
     var body: some View {
@@ -58,13 +56,29 @@ struct HostView: View {
                     .padding(10)
             }
             
-            HStack {
-                Text(viewModel.gameModel.isOnline ? "Hosting Game" : "Game Setup")
+            HStack(spacing: 10){
+                
+                if isGuest {
+                    Button {
+                        viewManager.navigateToSignIn()
+                    } label: {
+                        ZStack{
+                            Circle()
+                                .fill(.blue)
+                            Image(systemName: "chevron.left")
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 35, height: 35)
+                    }
+                }
+                
+                Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
                     .font(.title)
                     .fontWeight(.bold)
-                    .padding(.leading, 30)
+                    
                 Spacer()
             }
+            .padding(.leading, 20)
             
             Form {
                 gameInfoSection
@@ -94,7 +108,7 @@ struct HostView: View {
             }
                 
             Button("Add") {
-                viewModel.addPlayer(newPlayerName: $newPlayerName, newPlayerEmail: $newPlayerEmail)
+                viewModel.addPlayer(newPlayerName: $newPlayerName, newPlayerEmail: $newPlayerEmail, gameModel: gameModel)
             }
             .disabled(
                 gameModel.getCourse() != nil
@@ -120,7 +134,7 @@ struct HostView: View {
             Button("Cancel", role: .cancel) {}
         }
         .onReceive(viewModel.timer) { _ in
-            viewModel.tick(showHost: $showHost)
+            viewModel.tick(showHost: $showHost, gameModel: gameModel)
         }
     }
     
@@ -145,7 +159,7 @@ struct HostView: View {
                 
                 DatePicker("Date & Time", selection: gameModel.binding(for: \.date))
                     .onChange(of: locationHandler.selectedItem) { _, newValue in
-                        viewModel.handleLocationChange(newValue)
+                        viewModel.handleLocationChange(newValue, gameModel: gameModel)
                     }
 
                 
@@ -215,7 +229,7 @@ struct HostView: View {
                     
                     if !showTextAndButtons {
                         Button {
-                            viewModel.searchNearby(showTxtButtons: $showTextAndButtons)
+                            viewModel.searchNearby(showTxtButtons: $showTextAndButtons, gameModel: gameModel)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "magnifyingglass")
@@ -234,7 +248,7 @@ struct HostView: View {
                         // Retry Button
                         Button(action: {
                             withAnimation(){
-                                viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating)
+                                viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, gameModel: gameModel)
                             }
                         }) {
                             Image(systemName: "arrow.trianglehead.2.clockwise")
@@ -252,7 +266,7 @@ struct HostView: View {
                         // Exit Button
                         Button(action: {
                             withAnimation {
-                                viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail)
+                                viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail, gameModel: gameModel)
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -267,7 +281,7 @@ struct HostView: View {
                     }
                 }
                 .onAppear {
-                    viewModel.setUp(showTxtButtons: $showTextAndButtons)
+                    viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel)
                 }
             }
         }
@@ -280,13 +294,13 @@ struct HostView: View {
                     ForEach(gameModel.gameValue.players) { player in
                         PlayerIconView(player: player, isRemovable: player.userId.count == 6) {
                             viewModel.playerToDelete = player.userId
-                            viewModel.resetTimer()
+                            viewModel.resetTimer(gameModel)
                             showDeleteAlert = true
                         }
                     }
                     Button(action: {
                         showAddPlayerAlert = true
-                        viewModel.resetTimer()
+                        viewModel.resetTimer(gameModel)
                     }) {
                         VStack {
                             ZStack {
@@ -315,7 +329,10 @@ struct HostView: View {
     
     private var startGameSection: some View {
         Button {
-            viewModel.startGame(viewManager: viewManager, showHost: $showHost)
+            viewModel.startGame(viewManager: viewManager, showHost: $showHost, isGuest: isGuest, gameModel: gameModel)
+            if isGuest{
+                LocalGameRepository(context: context).deleteGuestGame(){ _ in}
+            }
         } label: {
             HStack{
                 Image(systemName: "play.fill")

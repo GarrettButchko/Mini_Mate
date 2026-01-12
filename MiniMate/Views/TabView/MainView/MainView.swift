@@ -230,7 +230,7 @@ struct MainView: View {
                                             
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler, gameModel: gameModel)
+                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler)
                                                 .presentationDetents([.large])
                                         }
                                         
@@ -265,7 +265,7 @@ struct MainView: View {
                                             }
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler, gameModel: gameModel)
+                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler)
                                                 .presentationDetents([.large])
                                         }
                                         

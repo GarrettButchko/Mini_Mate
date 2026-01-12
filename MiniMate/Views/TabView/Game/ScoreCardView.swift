@@ -26,6 +26,8 @@ struct ScoreCardView: View {
     
     @State var passGame: Game? = nil
     
+    var isGuest: Bool
+    
     var body: some View {
         ZStack{
             VStack {
@@ -46,10 +48,10 @@ struct ScoreCardView: View {
                 }
             }
             if showRecap, let pg = passGame {
-                RecapView(authModel: authModel, viewManager: viewManager, course: gameModel.getCourse(), game: pg){
+                RecapView(viewManager: viewManager, course: gameModel.getCourse(), game: pg, isGuest: isGuest){
                     Button {
-                        if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
-                                viewManager.navigateToAd()
+                        if NetworkChecker.shared.isConnected && (isGuest || !authModel.userModel!.isPro) {
+                            viewManager.navigateToAd(isGuest)
                         } else {
                             viewManager.navigateToMain(1)
                         }
@@ -58,7 +60,7 @@ struct ScoreCardView: View {
                             RoundedRectangle(cornerRadius: 25)
                                 .fill(Color.blue)
                                 .frame(width: 220, height: 60)
-                            Text("Go Back to Main Menu")
+                            Text(isGuest ? "Back to Sign In Manu" : "Go Back to Main Menu")
                                 .foregroundColor(.white).fontWeight(.bold)
                                 .padding(.horizontal, 30)
                         }
@@ -167,8 +169,7 @@ struct ScoreCardView: View {
                 SyncedScrollViewRepresentable(scrollOffset: $scrollOffset, syncSourceID: $uuid) {
                     PlayerColumnsView(
                         players: gameModel.binding(for: \.players),
-                        game: gameModel.bindingForGame(),
-                        authModel: authModel, gameModel: gameModel, online: gameModel.isOnline
+                        game: gameModel.bindingForGame(), gameModel: gameModel, online: gameModel.isOnline
                     )
                 }
             }
@@ -321,7 +322,7 @@ struct ScoreCardView: View {
                     .padding()
                 }
             } else {
-                if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
+                if NetworkChecker.shared.isConnected && (isGuest || !authModel.userModel!.isPro) {
                     BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6716977198") // Replace with real one later
                         .frame(height: 50)
                         .padding(.top, 5)
@@ -350,7 +351,6 @@ struct ScoreCardView: View {
 struct PlayerScoreColumnView: View {
     @Binding var player: Player
     @ObservedObject var gameModel: GameViewModel
-    @StateObject var authModel: AuthViewModel
     var onlineGame: Bool
     
     var body: some View {
@@ -381,7 +381,6 @@ struct HoleRowView: View {
 struct PlayerColumnsView: View {
     @Binding var players: [Player]
     @Binding var game: Game
-    @StateObject var authModel: AuthViewModel
     @StateObject var gameModel: GameViewModel
     let online: Bool
     
@@ -395,7 +394,6 @@ struct PlayerColumnsView: View {
                     PlayerScoreColumnView(
                         player: $player,
                         gameModel: gameModel,
-                        authModel: authModel,
                         onlineGame: online
                     )
                     .frame(width: 100)

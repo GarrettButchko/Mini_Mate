@@ -13,7 +13,6 @@ final class HostViewModel: ObservableObject {
     @Published var timeRemaining: TimeInterval = 0
     @Published var playerToDelete: String?
     
-    let gameModel: GameViewModel
     let courseRepo = CourseRepository()
     let handler: LocationHandler
     
@@ -22,13 +21,12 @@ final class HostViewModel: ObservableObject {
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
-    init(gameModel: GameViewModel, handler: LocationHandler) {
-        self.gameModel = gameModel
+    init(handler: LocationHandler) {
         self.handler = handler
         self.timeRemaining = ttl
     }
     
-    func tick(showHost: Binding<Bool>) {
+    func tick(showHost: Binding<Bool>, gameModel: GameViewModel) {
         guard gameModel.isOnline else { return }   // ✅ offline = no timer behavior
 
         let expire = lastUpdated.addingTimeInterval(ttl)
@@ -40,7 +38,7 @@ final class HostViewModel: ObservableObject {
     }
 
     
-    func resetTimer() {
+    func resetTimer(_ gameModel: GameViewModel) {
         guard gameModel.isOnline else { return }   // ✅ offline = don't reset timer
 
         lastUpdated = Date()
@@ -48,26 +46,26 @@ final class HostViewModel: ObservableObject {
         timeRemaining = ttl
     }
     
-    func addPlayer(newPlayerName: Binding<String>, newPlayerEmail: Binding<String>) {
+    func addPlayer(newPlayerName: Binding<String>, newPlayerEmail: Binding<String>, gameModel: GameViewModel) {
         gameModel.addLocalPlayer(named: newPlayerName.wrappedValue, email: newPlayerEmail.wrappedValue)
         newPlayerName.wrappedValue = ""
         newPlayerEmail.wrappedValue = ""
-        resetTimer()
+        resetTimer(gameModel)
     }
     
-    func deletePlayer() {
+    func deletePlayer(gameModel: GameViewModel) {
         if let id = playerToDelete {
             gameModel.removePlayer(userId: id)
-            resetTimer()
+            resetTimer(gameModel)
         }
     }
     
-    func startGame(viewManager: ViewManager, showHost: Binding<Bool>) {
+    func startGame(viewManager: ViewManager, showHost: Binding<Bool>, isGuest: Bool = false, gameModel: GameViewModel) {
         gameModel.startGame(showHost: showHost)
-        viewManager.navigateToScoreCard()
+        viewManager.navigateToScoreCard(isGuest)
     }
     
-    func handleLocationChange(_ item: MKMapItem?) {
+    func handleLocationChange(_ item: MKMapItem?, gameModel: GameViewModel) {
         guard let name = item?.name else { return }
         
         courseRepo.courseNameExistsAndSupported(name) { exists in
@@ -75,29 +73,29 @@ final class HostViewModel: ObservableObject {
             
             self.courseRepo.fetchCourseByName(name) { course in
                 let holes = course?.pars?.count ?? 18
-                self.gameModel.setNumberOfHole(holes)
+                gameModel.setNumberOfHole(holes)
             }
         }
-        resetTimer()
+        resetTimer(gameModel)
     }
     
-    func searchNearby(showTxtButtons: Binding<Bool>) {
+    func searchNearby(showTxtButtons: Binding<Bool>, gameModel: GameViewModel) {
         gameModel.setHasLoaded(false)
         gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
-        resetTimer()
+        resetTimer(gameModel)
     }
     
-    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>) {
+    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>, gameModel: GameViewModel) {
         isRotating.wrappedValue = true
-        searchNearby(showTxtButtons: showTxtButtons)
+        searchNearby(showTxtButtons: showTxtButtons, gameModel: gameModel)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             isRotating.wrappedValue = false
         }
-        resetTimer()
+        resetTimer(gameModel)
     }
     
-    func exit(showTxtButtons: Binding<Bool>, email: Binding<String>){
+    func exit(showTxtButtons: Binding<Bool>, email: Binding<String>, gameModel: GameViewModel){
         email.wrappedValue = ""
         handler.selectedItem = nil
         gameModel.setLocation(nil)
@@ -105,7 +103,7 @@ final class HostViewModel: ObservableObject {
         showTxtButtons.wrappedValue = false
     }
     
-    func setUp(showTxtButtons: Binding<Bool>) {
+    func setUp(showTxtButtons: Binding<Bool>, gameModel: GameViewModel) {
         if gameModel.getCourse() == nil && !gameModel.getHasLoaded() {
             gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
             gameModel.setHasLoaded(true)

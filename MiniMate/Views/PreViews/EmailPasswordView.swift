@@ -24,9 +24,11 @@ struct EmailPasswordView: View {
     @Binding var password: String
     @Binding var confirmPassword: String
     
+    @Binding var guestGame: Game?
+    
     let keyboardHeight: CGFloat
     
-    @State private var errorMessage: String?
+    @State private var errorMessage: (message: String?, type: Bool) = (nil, false)
 
     typealias Field = SignInView.Field
     var isTextFieldFocused: FocusState<Field?>.Binding
@@ -86,7 +88,7 @@ struct EmailPasswordView: View {
                                                 Auth.auth().currentUser?.sendEmailVerification { error in
                                                     DispatchQueue.main.async {
                                                         if let error = error {
-                                                            errorMessage = "Couldn’t send verification email: \(error.localizedDescription)"
+                                                            errorMessage = (message: "Couldn’t send verification email: \(error.localizedDescription)", type: false)
                                                         } else {
                                                             withAnimation {
                                                                 showSignUp = false
@@ -94,7 +96,7 @@ struct EmailPasswordView: View {
                                                                 password = ""
                                                                 confirmPassword = ""
                                                                 isTextFieldFocused.wrappedValue = nil
-                                                                errorMessage = "Please Verify Your Email To Continue"
+                                                                errorMessage = (message: "Please Verify Your Email To Continue", type: true)
                                                             }
                                                             authModel.logout() // ✅ AFTER email is sent
                                                         }
@@ -102,7 +104,7 @@ struct EmailPasswordView: View {
                                                 }
                                             }
                                         case .failure(let error):
-                                            errorMessage = error.localizedDescription
+                                            errorMessage = (message: error.localizedDescription, type: false)
                                         }
                                     }
                                 }
@@ -119,11 +121,21 @@ struct EmailPasswordView: View {
                             .disabled(disabled)
                             
                             // Error
-                            if let errorMessage = errorMessage {
-                                Text(errorMessage)
-                                    .foregroundColor(.white)
+                            if let errorMessageText = errorMessage.message {
+                                Text(errorMessageText)
+                                    .foregroundColor(errorMessage.type ? .green : .red)
                                     .font(.caption)
                                     .multilineTextAlignment(.center)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(
+                                        ZStack{
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(.ultraThinMaterial)
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(errorMessage.type ? .green.opacity(0.2) : .red.opacity(0.2))
+                                        }
+                                    )
                             }
                         }
                         Spacer()
@@ -155,10 +167,20 @@ struct EmailPasswordView: View {
                         email = ""
                         password = ""
                         confirmPassword = ""
-                        errorMessage = nil
+                        errorMessage.message = nil
                     }
                     
+                    #if MANAGER
                     height = 220
+                    #endif
+                    
+                    #if MINIMATE
+                    if guestGame != nil {
+                        height = 360
+                    } else {
+                        height = 255
+                    }
+                    #endif
                     
                 }) {
                     Circle()
@@ -193,8 +215,6 @@ struct EmailPasswordView: View {
             .padding()
             .background(RoundedRectangle(cornerRadius: 25)
                 .fill(.ultraThinMaterial))
-            .overlay(RoundedRectangle(cornerRadius: 25)
-                .stroke(.ultraThickMaterial))
         }
     }
     
@@ -226,8 +246,6 @@ struct EmailPasswordView: View {
             .padding()
             .background(RoundedRectangle(cornerRadius: 25)
                 .fill(.ultraThinMaterial))
-            .overlay(RoundedRectangle(cornerRadius: 25)
-                .stroke(.ultraThickMaterial))
         }
     }
 }

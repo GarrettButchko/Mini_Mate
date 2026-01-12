@@ -20,7 +20,7 @@ struct GuestData {
 }
 
 @dynamicMemberLookup
-final class GameViewModel: ObservableObject {
+final class GameViewModel: ObservableObject, Observable {
     
     // Published Game State
     @Published private var game: Game

@@ -46,19 +46,23 @@ struct ContentView: View {
                 case .welcome:
                     WelcomeView(viewManager: viewManager)
                     
-                case .scoreCard:
-                    ScoreCardView(viewManager: viewManager, authModel: authModel, gameModel: gameModel)
+                case .scoreCard(let isGuest):
+                    ScoreCardView(viewManager: viewManager, authModel: authModel, gameModel: gameModel, isGuest: isGuest)
                     
                 case .gameReview(let gameModel):
                     GameReviewView(viewManager: viewManager, game: gameModel, showBackToStatsButton: true)
-                case .ad:
+                case .ad(let isGuest):
                     InterstitialAdView(adUnitID: "ca-app-pub-8261962597301587/3394145015") {
-                        viewManager.currentView = .main(1)
+                        if isGuest {
+                            viewManager.navigateToSignIn()
+                        } else {
+                            viewManager.currentView = .main(1)
+                        }
                     }
                 case .signIn:
                     SignInView(authModel: authModel, viewManager: viewManager)
-                case .host(let gameViewModel):
-                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: LocationHandler(), gameModel: gameViewModel, isGuest: true)
+                case .host:
+                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: LocationHandler(), isGuest: true)
                 }
             
                 
@@ -86,6 +90,7 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.all, edges: .bottom)
+        .environment(gameModel)
     }
     
     // MARK: - Custom transition based on view switch

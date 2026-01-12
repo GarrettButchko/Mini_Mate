@@ -269,8 +269,8 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User, name: String? = nil, errorMessage: Binding<String?>, signInMethod: SignInMethod? = nil, appleId: String? = nil, navToHome: Bool = true, completion: @escaping(() -> Void)) {
-        errorMessage.wrappedValue = nil
+    func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User, name: String? = nil, errorMessage: Binding<(message: String?, type: Bool)>, signInMethod: SignInMethod? = nil, appleId: String? = nil, navToHome: Bool = true, completion: @escaping(() -> Void)) {
+        errorMessage.wrappedValue = (message: nil, type: false)
         let repo = UserRepository(context: context)
         repo.loadOrCreateUser(id: user.uid, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod) {
             if navToHome {
@@ -285,14 +285,14 @@ class AuthViewModel: ObservableObject {
     }
     
     
-    func signInUIManage(email: Binding<String>, password: Binding<String>, confirmPassword: Binding<String>, isTextFieldFocused: FocusState<SignInView.Field?>.Binding, authModel: AuthViewModel, errorMessage: Binding<String?>, showSignUp: Binding<Bool>, context: ModelContext, viewManager: ViewManager) {
+    func signInUIManage(email: Binding<String>, password: Binding<String>, confirmPassword: Binding<String>, isTextFieldFocused: FocusState<SignInView.Field?>.Binding, authModel: AuthViewModel, errorMessage: Binding<(message: String?, type: Bool)>, showSignUp: Binding<Bool>, context: ModelContext, viewManager: ViewManager) {
         authModel.signIn(email: email.wrappedValue, password: password.wrappedValue) { result in
             switch result {
             case .failure(_):
                 withAnimation(){
                     showSignUp.wrappedValue = true
                 }
-                errorMessage.wrappedValue = "No User Found Please Sign Up"
+                errorMessage.wrappedValue = (message: "No User Found Please Sign Up", type: false)
             case .success(let firebaseUser):
                 if firebaseUser.isEmailVerified {
                     self.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: errorMessage, signInMethod: .email){}
@@ -300,13 +300,13 @@ class AuthViewModel: ObservableObject {
                     Auth.auth().currentUser?.sendEmailVerification { error in
                         DispatchQueue.main.async {
                             if let error = error {
-                                errorMessage.wrappedValue = "Couldn’t send verification email: \(error.localizedDescription)"
+                                errorMessage.wrappedValue = (message: "Couldn’t send verification email: \(error.localizedDescription)", type: false)
                             } else {
                                 email.wrappedValue = ""
                                 password.wrappedValue  = ""
                                 confirmPassword.wrappedValue  = ""
                                 isTextFieldFocused.wrappedValue = nil
-                                errorMessage.wrappedValue = "Please Verify Your Email To Continue"
+                                errorMessage.wrappedValue = (message: "Please Verify Your Email To Continue", type: true)
                                 authModel.logout() // ✅ AFTER email is sent
                             }
                         }

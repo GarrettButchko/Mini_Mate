@@ -9,12 +9,13 @@ import SwiftUI
 import _AuthenticationServices_SwiftUI
 import FirebaseAuth
 import SwiftData
+import MarqueeText
 
 struct SignInView: View {
     enum Field: Hashable { case email, password, confirm }
     
     @State var showEmailSignIn: Bool = false
-    @State var errorMessage: String? = ""
+    @State var errorMessage: (message: String?, type: Bool) = (nil, false)
     @State var height: CGFloat = 0
     
     @State var email = ""
@@ -26,6 +27,8 @@ struct SignInView: View {
     
     @ObservedObject var authModel : AuthViewModel
     @ObservedObject var viewManager : ViewManager
+    
+    @State var guestGame: Game? = nil
 
     @StateObject private var keyboard = KeyboardObserver()
     @FocusState private var isTextFieldFocused: Field?
@@ -40,7 +43,7 @@ struct SignInView: View {
                 Rectangle()
                     .foregroundStyle(Gradient(colors: gradientColors))
                     .ignoresSafeArea()
-                VStack{
+                VStack(spacing: 10){
                     HStack(alignment: .top){
                         VStack(alignment: .leading){
                             Text("Welcome to,")
@@ -71,12 +74,9 @@ struct SignInView: View {
                     }
                     .padding(.horizontal)
                     
-                    
                     Spacer()
                     
-                   // Text(errorMessage ?? "")
                     
-                    Spacer()
                     
                     ZStack{
                         RoundedRectangle(cornerRadius: 35)
@@ -84,18 +84,23 @@ struct SignInView: View {
                             
                         
                         if !showEmailSignIn {
-                            StartButtons(
-                                showEmailSignIn: $showEmailSignIn,
-                                height: $height,
-                                errorMessage: $errorMessage,
-                                authModel: authModel,
-                                viewManager: viewManager,
-                                geometry: geometry
-                            )
+                            
+                            VStack{
+                                
+                                
+                                StartButtons(
+                                    showEmailSignIn: $showEmailSignIn,
+                                    height: $height,
+                                    errorMessage: $errorMessage,
+                                    guestGame: $guestGame, authModel: authModel,
+                                    viewManager: viewManager,
+                                    geometry: geometry
+                                )
+                            }
                             .padding()
                             
                         } else {
-                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused)
+                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, guestGame: $guestGame, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused)
                                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                         }
                     }
@@ -108,10 +113,10 @@ struct SignInView: View {
                 }
             }
             .onAppear {
-                withAnimation{
-                    height = 220
-                }
+                
                 authModel.firebaseUser = nil
+                
+                
             }
         }
     }
@@ -120,14 +125,17 @@ struct SignInView: View {
 struct StartButtons: View {
     @Environment(\.modelContext) var context
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var gameModel: GameViewModel
     
     @Binding var showEmailSignIn: Bool
     @Binding var height: CGFloat
-    @Binding var errorMessage: String?
+    @Binding var errorMessage: (message: String?, type: Bool)
     
     @State var showGuestAlert: Bool = false
     @State var guestName: String = ""
     @State var guestEmail: String = ""
+    
+    @Binding var guestGame: Game?
     
     var authModel: AuthViewModel
     var viewManager: ViewManager
@@ -138,6 +146,36 @@ struct StartButtons: View {
         VStack(){
             // Email / Password Button
             #if MINIMATE
+            
+            if let guestGame = guestGame {
+                
+                HStack{
+                    VStack(alignment: .leading, spacing: 6) {
+                        
+                        Text("Save Guest-Play Game?")
+                            .font(.headline)
+                            .foregroundStyle(.mainOpp)
+                        
+                        Text("Sign in to save it to your profile.")
+                            .font(.subheadline)
+                            .foregroundStyle(.mainOpp.opacity(0.6))
+                        
+                        Text("Game played on: \(guestGame.date.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption)
+                            .foregroundStyle(.mainOpp.opacity(0.7))
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 18)
+                .padding(.horizontal, 22)
+                .background{
+                    RoundedRectangle(cornerRadius: 25)
+                        .foregroundStyle(.ultraThinMaterial)
+                }
+            }
+            
+            
             Button {
                 withAnimation {
                     showGuestAlert = true
@@ -170,11 +208,8 @@ struct StartButtons: View {
                 
                     
                 Button("Play") {
-                    let gameView = GameViewModel(game: Game(), authModel: authModel, course: nil)
-                    
-                    gameView.createGame(guestData: GuestData(id: "guest-\(UUID().uuidString.prefix(6))", email: guestEmail == "" ? nil : guestEmail, name: guestName))
-                    
-                    viewManager.navigateToHost(gameViewModel: gameView)
+                    gameModel.createGame(guestData: GuestData(id: "guest-\(UUID().uuidString.prefix(6))", email: guestEmail == "" ? nil : guestEmail, name: guestName))
+                    viewManager.navigateToHost()
                 }
                 .disabled(
                     guestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
@@ -192,6 +227,9 @@ struct StartButtons: View {
                 }
             } message: {
                 Text("Name is required. Email is optional — used only for course analytics.")
+            }
+            .onAppear{
+                
             }
             #endif
             
@@ -223,7 +261,7 @@ struct StartButtons: View {
                     case .success(let firebaseUser):
                         authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .google){}
                     case .failure(let error):
-                        errorMessage = error.localizedDescription
+                        errorMessage = (message: error.localizedDescription, type: false)
                     }
                   }
             } label: {
@@ -249,12 +287,12 @@ struct StartButtons: View {
             } onCompletion: { result in
                 switch result {
                 case .failure(let err):
-                    errorMessage = err.localizedDescription
+                    errorMessage = (message: err.localizedDescription, type: false)
                 case .success(let authorization):
                     authModel.signInWithApple(authorization, context: context) { signInResult, name, appleId in
                         switch signInResult {
                         case .failure(let err):
-                            errorMessage = err.localizedDescription
+                            errorMessage = (message: err.localizedDescription, type: false)
                         case .success(let firebaseUser):
                             authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple, appleId: appleId){}
                         }
@@ -264,6 +302,24 @@ struct StartButtons: View {
             .signInWithAppleButtonStyle(colorScheme == .light ? .black : .white)
             .frame(height: 50)
             .cornerRadius(25)
+        }
+        .onAppear(){
+            withAnimation{
+                #if MANAGER
+                height = 220
+                #endif
+                
+                #if MINIMATE
+                LocalGameRepository(context: context).fetchGuestGame { game in
+                    guestGame = game
+                    if guestGame != nil {
+                        height = 360
+                    } else {
+                        height = 255
+                    }
+                }
+                #endif
+            }
         }
     }
 }

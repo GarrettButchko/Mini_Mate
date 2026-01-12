@@ -11,11 +11,11 @@ import FirebaseAuth
 enum ViewType {
     case main(Int)
     case welcome
-    case scoreCard
+    case scoreCard(Bool)
     case gameReview(Game)
-    case ad
+    case ad(Bool)
     case signIn
-    case host(GameViewModel)
+    case host
 }
 
 /// Manages app navigation state based on authentication status
@@ -45,12 +45,12 @@ class ViewManager: AppNavigationManaging, ObservableObject{
         currentView = .welcome
     }
     
-    func navigateToScoreCard() {
-        currentView = .scoreCard
+    func navigateToScoreCard(_ isGuest: Bool = false) {
+        currentView = .scoreCard(isGuest)
     }
     
-    func navigateToAd() {
-        currentView = .ad
+    func navigateToAd(_ isGuest: Bool = false) {
+        currentView = .ad(isGuest)
     }
     
     func navigateToGameReview(_ gameModel: Game) {
@@ -61,8 +61,8 @@ class ViewManager: AppNavigationManaging, ObservableObject{
         navigateToMain(1)
     }
     
-    func navigateToHost(gameViewModel: GameViewModel) {
-        currentView = .host(gameViewModel)
+    func navigateToHost() {
+        currentView = .host
     }
 }
 
