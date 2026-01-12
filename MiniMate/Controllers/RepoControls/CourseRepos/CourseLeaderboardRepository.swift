@@ -39,29 +39,46 @@ final class CourseLeaderboardRepository {
             .limit(to: limit)
             .getDocuments { snap, err in
                 guard let docs = snap?.documents, err == nil else {
-                    DispatchQueue.main.async { completion([]) }
+                    Task { @MainActor in completion([]) }
                     return
                 }
-                let items: [LeaderboardEntry] = docs.compactMap { try? $0.data(as: LeaderboardEntry.self) }
-                DispatchQueue.main.async { completion(items) }
+
+                Task { @MainActor in
+                    let items: [LeaderboardEntry] = docs.compactMap {
+                        try? $0.data(as: LeaderboardEntry.self)
+                    }
+                    completion(items)
+                }
             }
     }
+
     
     // MARK: - Fetch Top N (Weekly)
     
-    func fetchTopWeekly(courseID: String, weekID: String, limit: Int = 25, completion: @escaping ([LeaderboardEntry]) -> Void) {
+    func fetchTopWeekly(
+        courseID: String,
+        weekID: String,
+        limit: Int = 25,
+        completion: @escaping ([LeaderboardEntry]) -> Void
+    ) {
         weeklyEntriesRef(courseID: courseID, weekID: weekID)
             .order(by: "totalStrokes", descending: false)
             .limit(to: limit)
             .getDocuments { snap, err in
                 guard let docs = snap?.documents, err == nil else {
-                    DispatchQueue.main.async { completion([]) }
+                    Task { @MainActor in completion([]) }
                     return
                 }
-                let items: [LeaderboardEntry] = docs.compactMap { try? $0.data(as: LeaderboardEntry.self) }
-                DispatchQueue.main.async { completion(items) }
+
+                Task { @MainActor in
+                    let items: [LeaderboardEntry] = docs.compactMap {
+                        try? $0.data(as: LeaderboardEntry.self)
+                    }
+                    completion(items)
+                }
             }
     }
+
     
     // MARK: - Live Listening (All-time)
     

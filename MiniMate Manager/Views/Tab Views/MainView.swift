@@ -22,7 +22,7 @@ struct MainView: View {
     
     var body: some View {
         VStack{
-            HStack {
+            HStack(alignment: .center){
                 Button {
                     viewManager.navigateToCourseList()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -30,7 +30,15 @@ struct MainView: View {
                     }
                 } label: {
                     Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                        .background{
+                            Circle()
+                                .fill(Color(.blue))
+                                .frame(width: 35, height: 35)
+                        }
                 }
+                .padding(.leading, 8)
+                .padding(.trailing, 14)
                     
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Course Dashboard For,")
@@ -101,7 +109,7 @@ struct MainView: View {
                 }
                 
                 VStack{
-                    HStack(spacing: 8){
+                    HStack(spacing: 14){
                         Button {
                             showLeaderBoardSheet = true
                         } label: {
