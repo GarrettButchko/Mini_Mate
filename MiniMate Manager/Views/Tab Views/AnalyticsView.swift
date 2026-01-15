@@ -55,6 +55,22 @@ let analyticsObjects: [String: AnalyticsObject] = [
     )
 ]
 
+/*
+ Retention
+ 
+ Repeat Rate
+
+ % of active players with playCount >= 2 (for a period, you’ll filter by lastPlayed in range)
+
+ Avg Time to Return
+
+ average of daysBetween(firstSeen, secondSeen) for players where secondSeen != nil
+
+ 30-Day Retention
+
+ % of players whose firstSeen is in range AND secondSeen <= firstSeen + 30
+ */
+
 struct AnalyticsView: View {
 
     @EnvironmentObject var viewModel: CourseViewModel

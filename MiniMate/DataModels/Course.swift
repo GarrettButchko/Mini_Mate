@@ -86,3 +86,11 @@ struct RoundTimeAnalytics: Codable, Equatable {
     var totalRoundSeconds: Int = 0          // cumulative total time of all rounds
 }
 
+struct CourseEmail: Codable, Identifiable, Equatable {
+    var id: String            // docID = emailKey(email)
+    var firstSeen: String
+    var secondTolastPlayed: String
+    var lastPlayed: String
+    var playCount: Int
+}
+

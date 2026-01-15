@@ -148,7 +148,7 @@ struct MainTabView: View {
             guard authModel.userModel == nil else { return }   // already loaded
             guard let id = authModel.currentUserIdentifier else { return }
 
-            userRepo.loadOrCreateUser(id: id, authModel: authModel) {
+            userRepo.loadOrCreateUser(id: id, authModel: authModel) { _ in
                 Task { await iapManager.isPurchasedPro(authModel: authModel) }
             }
         }

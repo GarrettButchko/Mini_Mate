@@ -261,7 +261,7 @@ struct StartButtons: View {
                 authModel.signInWithGoogle(context: context) { result in
                     switch result {
                     case .success(let firebaseUser):
-                        authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .google){}
+                        authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .google, guestGame: $guestGame){}
                     case .failure(let error):
                         errorMessage = (message: error.localizedDescription, type: false)
                     }
@@ -296,7 +296,7 @@ struct StartButtons: View {
                         case .failure(let err):
                             errorMessage = (message: err.localizedDescription, type: false)
                         case .success(let firebaseUser):
-                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple, appleId: appleId){}
+                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, name: name, errorMessage: $errorMessage, signInMethod: .apple, appleId: appleId, guestGame: $guestGame){}
                         }
                     }
                 }

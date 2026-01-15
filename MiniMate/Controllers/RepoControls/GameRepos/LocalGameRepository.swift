@@ -39,14 +39,36 @@ class LocalGameRepository {
     
     func fetchGuestGame(completion: @escaping (Game?) -> Void) {
         do {
-            let descriptor = FetchDescriptor<Game>(predicate: #Predicate { $0.hostUserId.contains("guest") })
-            let results = try context.fetch(descriptor)
-            completion(results.first)
+            // 1) Fetch guest game
+            let gameDescriptor = FetchDescriptor<Game>(
+                predicate: #Predicate { $0.hostUserId.contains("guest") }
+            )
+            let games = try context.fetch(gameDescriptor)
+            guard let guestGame = games.first else {
+                completion(nil)
+                return
+            }
+
+            let guestGameID = guestGame.id
+
+            // 2) Fetch all players
+            let playerDescriptor = FetchDescriptor<UserModel>()
+            let users = try context.fetch(playerDescriptor)
+
+            // 3) Check if any player already references this game
+            let isReferenced = users.contains(where: { user in
+                user.gameIDs.contains(guestGameID)
+            })
+
+            // 4) Only return if truly orphaned
+            completion(isReferenced ? nil : guestGame)
+
         } catch {
-            print("❌ Failed to fetch locally by id:", error)
+            print("❌ Failed to fetch guest game safely:", error)
             completion(nil)
         }
     }
+
     
     func deleteGuestGame(completion: @escaping (Bool) -> Void) {
         do {

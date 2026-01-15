@@ -116,11 +116,11 @@ class UserStatsAnalyzer {
     }
     
     var usersScoreOfLatestGame: Int {
-        latestGame?.players.first(where: {$0.userId == userID || $0.userId == "IDGuest"})?.totalStrokes ?? 0
+        latestGame?.players.first(where: {$0.userId == userID || $0.userId.contains("guest")})?.totalStrokes ?? 0
     }
     
     var usersHolesOfLatestGame: [Hole] {
-        latestGame?.players.first(where: {$0.userId == userID || $0.userId == "IDGuest"})?.holes ?? []
+        latestGame?.players.first(where: {$0.userId == userID || $0.userId.contains("guest")})?.holes ?? []
     }
     
     var hasGames: Bool {

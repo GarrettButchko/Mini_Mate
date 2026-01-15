@@ -27,7 +27,8 @@ final class UserRepository {
         authModel: AuthViewModel,
         signInMethod: SignInMethod? = nil,
         appleId: String? = nil,
-        completion: @escaping () -> Void
+        guestGame: Game? = nil,
+        creation: @escaping (Bool) -> Void
     ) {
         let local = fetchLocal(id: id)
 
@@ -36,7 +37,7 @@ final class UserRepository {
             DispatchQueue.main.async {
                 print("✅ Found local user immediately")
                 authModel.setUserModel(local)
-                completion()   // ✅ local done, reconcile not done
+                creation(false)   // ✅ local done, reconcile not done
             }
         }
 
@@ -50,9 +51,10 @@ final class UserRepository {
                 name: name,
                 authModel: authModel,
                 signInMethod: signInMethod,
-                appleId: appleId
-            ) {
-                completion() // ✅ reconcile finished
+                appleId: appleId,
+                guestGame: guestGame
+            ) { result in
+                creation(result) // ✅ reconcile finished
             }
         }
     }
@@ -66,7 +68,8 @@ final class UserRepository {
         authModel: AuthViewModel,
         signInMethod: SignInMethod? = nil,
         appleId: String? = nil,
-        completion: @escaping() -> Void
+        guestGame: Game? = nil,
+        creation: @escaping(Bool) -> Void
     ) {
         switch (local, remote) {
             
@@ -80,10 +83,10 @@ final class UserRepository {
                     local.accountType.append(signInMethod)
                 }
                 saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
-                    completion()
+                    creation(false)
                 }
                 print("🔄 Already in sync")
-                completion()
+                creation(false)
             } else if local.lastUpdated > remote.lastUpdated {
                 
                 if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
@@ -92,7 +95,7 @@ final class UserRepository {
                 
                 saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
                     print("🔄 Local → Remote")
-                    completion()
+                    creation(false)
                 }
             } else {
                 
@@ -104,7 +107,7 @@ final class UserRepository {
                     print("🔄 Remote → Local")
                     DispatchQueue.main.async {
                         authModel.setUserModel(remote)
-                        completion()
+                        creation(false)
                     }
                 }
             }
@@ -117,7 +120,7 @@ final class UserRepository {
             
             saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
                 print("🔄 Local → Remote (no remote)")
-                completion()
+                creation(false)
             }
             
         case let (nil, remote?):
@@ -130,23 +133,27 @@ final class UserRepository {
                 print("🔄 Remote → Local (no local)")
                 DispatchQueue.main.async {
                     authModel.setUserModel(remote)
-                    completion()
+                    creation(false)
                 }
             }
             
         case (nil, nil):
-            createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel, signInMethod: signInMethod) {
-                completion()
+            createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel, signInMethod: signInMethod, guestGame: guestGame) {
+                creation(true)
             }
         }
     }
     
-    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, signInMethod: SignInMethod? = nil, appleId: String? = nil, completion: @escaping () -> Void){
+    func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, signInMethod: SignInMethod? = nil, appleId: String? = nil, guestGame: Game?, completion: @escaping () -> Void){
         
         let finalName  = name ?? firebaseUser?.displayName ?? "User#\(String(id.prefix(5)))"
         let finalEmail = firebaseUser?.email ?? "Email"
         
         let newUser = UserModel(googleId: id, appleId: appleId, name: finalName, photoURL: firebaseUser?.photoURL, email: finalEmail, gameIDs: [], accountType: [signInMethod!.rawValue])
+        
+        if let guestGame {
+            newUser.gameIDs.append(guestGame.id)
+        }
         
         saveLocal(context: context!, model: newUser) { _ in }
         saveRemote(id: id, userModel: newUser) { _ in }

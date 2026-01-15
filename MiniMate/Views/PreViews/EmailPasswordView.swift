@@ -78,13 +78,13 @@ struct EmailPasswordView: View {
                             
                             Button {
                                 if !showSignUp {
-                                    authModel.signInUIManage(email: $email, password: $password, confirmPassword: $confirmPassword, isTextFieldFocused: isTextFieldFocused, authModel: authModel, errorMessage: $errorMessage, showSignUp: $showSignUp, context: context, viewManager: viewManager)
+                                    authModel.signInUIManage(email: $email, password: $password, confirmPassword: $confirmPassword, isTextFieldFocused: isTextFieldFocused, authModel: authModel, errorMessage: $errorMessage, showSignUp: $showSignUp, context: context, viewManager: viewManager, guestGame: $guestGame)
                                 } else {
                                     
                                     authModel.createUser(email: email, password: password) { result in
                                         switch result {
                                         case .success(let firebaseUser):
-                                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .email, navToHome: false){
+                                            authModel.createOrSignInUserAndNavigateToHome(context: context, authModel: authModel, viewManager: viewManager, user: firebaseUser, errorMessage: $errorMessage, signInMethod: .email, navToHome: false, guestGame: $guestGame){
                                                 Auth.auth().currentUser?.sendEmailVerification { error in
                                                     DispatchQueue.main.async {
                                                         if let error = error {

@@ -81,6 +81,7 @@
 				Controllers/ViewModels/GameReviewViewModel.swift,
 				Controllers/ViewModels/ProfileViewModel.swift,
 				Controllers/ViewModels/WelcomeViewModel.swift,
+				DataModels/AnalyticsSnapshot.swift,
 				DataModels/Course.swift,
 				"DataModels/Course+UI.swift",
 				DataModels/Game.swift,

@@ -390,16 +390,13 @@ final class CourseRepository {
         let dayRef = courseRef.collection("dailyCount").document(todayID)
 
         db.runTransaction({ tx, errPtr -> Any? in
-            // -------------------------
-            // 1) READ PHASE (all reads first)
-            // -------------------------
+
+            // 1) READS
             var snapsByEmail: [(email: String, snap: DocumentSnapshot?)] = []
             snapsByEmail.reserveCapacity(uniqueEmails.count)
 
             for email in uniqueEmails {
-                let emailDocID = self.emailKey(email)
-                let emailRef = courseRef.collection("emails").document(emailDocID)
-
+                let emailRef = courseRef.collection("emails").document(self.emailKey(email))
                 do {
                     let snap = try tx.getDocument(emailRef)
                     snapsByEmail.append((email: email, snap: snap))
@@ -409,29 +406,49 @@ final class CourseRepository {
                 }
             }
 
-            // -------------------------
-            // 2) COMPUTE + WRITE PHASE
-            // -------------------------
+            // 2) COMPUTE + WRITES
             var newCount = 0
             var returningCount = 0
 
             for entry in snapsByEmail {
-                let email = entry.email
-                let snap = entry.snap
+                let emailRef = courseRef.collection("emails").document(self.emailKey(entry.email))
 
-                let emailDocID = self.emailKey(email)
-                let emailRef = courseRef.collection("emails").document(emailDocID)
+                if let snap = entry.snap, snap.exists {
+                    let lastPlayed = (snap.get("lastPlayed") as? String) ?? ""
+                    let firstSeen  = (snap.get("firstSeen") as? String) ?? lastPlayed
+                    let playCount  = (snap.get("playCount") as? Int) ?? 0
+                    let secondSeen = snap.get("secondSeen") as? String
 
-                if let snap, snap.exists {
-                    let lastPlayed = snap.get("lastPlayed") as? String
+                    // unique returners for the day
                     if lastPlayed != todayID {
                         returningCount += 1
-                        tx.setData(["lastPlayed": todayID], forDocument: emailRef, merge: true)
                     }
+
+                    var updates: [String: Any] = [
+                        "firstSeen": firstSeen, // backfill if needed
+                        "playCount": playCount + 1
+                    ]
+
+                    // update last/previous only if new day (keeps "previousPlayed" meaningful)
+                    if lastPlayed != todayID {
+                        updates["previousPlayed"] = lastPlayed.isEmpty ? todayID : lastPlayed
+                        updates["lastPlayed"] = todayID
+                    }
+
+                    // set secondSeen exactly once: on 2nd ever play
+                    if playCount == 1 && secondSeen == nil {
+                        updates["secondSeen"] = todayID
+                    }
+
+                    tx.setData(updates, forDocument: emailRef, merge: true)
+
                 } else {
-                    // first time ever
                     newCount += 1
-                    tx.setData(["lastPlayed": todayID], forDocument: emailRef, merge: true)
+                    tx.setData([
+                        "firstSeen": todayID,
+                        "lastPlayed": todayID,
+                        "playCount": 1
+                    ], forDocument: emailRef, merge: true)
                 }
             }
 

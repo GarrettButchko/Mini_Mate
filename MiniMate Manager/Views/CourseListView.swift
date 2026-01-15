@@ -159,7 +159,7 @@ struct CourseListView: View {
         }
         .onAppear {
             viewModel.bind(authModel: authModel)
-            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) {
+            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) { _ in
                 if viewModel.userCourses.isEmpty {
                     if authModel.userModel?.adminCourses.count ?? 0 > 1 {
                         viewModel.getCourses()
