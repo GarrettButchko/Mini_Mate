@@ -18,11 +18,9 @@ final class CourseViewModel: ObservableObject {
     @Published var hasAppeared = false
     
     private let courseRepo: CourseRepository
-    private let locationHandler: LocationHandler
 
-    init(courseRepo: CourseRepository = CourseRepository(), locationHandler: LocationHandler) {
+    init(courseRepo: CourseRepository = CourseRepository()) {
         self.courseRepo = courseRepo
-        self.locationHandler = locationHandler
     }
 
     // MARK: - Marker Coloring
@@ -51,7 +49,7 @@ final class CourseViewModel: ObservableObject {
         }
     }
     
-    func onAppearance() {
+    func onAppearance(locationHandler: LocationHandler) {
         if !hasAppeared {
             hasAppeared = true
             isUpperHalf = false
@@ -65,7 +63,7 @@ final class CourseViewModel: ObservableObject {
         self.position = position
     }
     
-    func searchNearby(){
+    func searchNearby(locationHandler: LocationHandler){
         withAnimation {
             isUpperHalf.toggle()
             
@@ -79,7 +77,7 @@ final class CourseViewModel: ObservableObject {
         }
     }
     
-    func cancel(){
+    func cancel(locationHandler: LocationHandler){
         withAnimation {
             isUpperHalf = false
             locationHandler.mapItems = []
@@ -87,14 +85,14 @@ final class CourseViewModel: ObservableObject {
         }
     }
     
-    func updatePosition(mapItem: MKMapItem) {
+    func updatePosition(mapItem: MKMapItem, locationHandler: LocationHandler) {
         withAnimation(){
             locationHandler.setSelectedItem(mapItem)
             position = locationHandler.updateCameraPosition(locationHandler.bindingForSelectedItem().wrappedValue)
         }
     }
     
-    func getDirections(){
+    func getDirections(locationHandler: LocationHandler){
         let launchOptions = [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
         locationHandler.bindingForSelectedItem().wrappedValue?.openInMaps(launchOptions: launchOptions)
     }

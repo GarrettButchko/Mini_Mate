@@ -10,6 +10,7 @@ struct HostView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var gameModel: GameViewModel
+    @EnvironmentObject var locationHandler: LocationHandler
     
     @Binding var showHost: Bool
     @State var showTextAndButtons = false
@@ -21,7 +22,7 @@ struct HostView: View {
     
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var viewManager: ViewManager
-    @ObservedObject var locationHandler: LocationHandler
+    
     @StateObject var viewModel: HostViewModel
     
     var isGuest: Bool
@@ -30,17 +31,15 @@ struct HostView: View {
             showHost: Binding<Bool>,
             authModel: AuthViewModel,
             viewManager: ViewManager,
-            locationHandler: LocationHandler,
             isGuest: Bool = false
         ) {
             self._showHost = showHost
             self.authModel = authModel
             self.viewManager = viewManager
-            self.locationHandler = locationHandler
             self.isGuest = isGuest
             
             // Correct way to initialize a StateObject with dependencies
-            _viewModel = StateObject(wrappedValue: HostViewModel(handler: locationHandler))
+            _viewModel = StateObject(wrappedValue: HostViewModel())
         }
     
     var body: some View {
@@ -61,6 +60,7 @@ struct HostView: View {
                 if isGuest {
                     Button {
                         viewManager.navigateToSignIn()
+                        gameModel.dismissGame()
                     } label: {
                         ZStack{
                             Circle()
@@ -221,6 +221,9 @@ struct HostView: View {
                                         .transition(.move(edge: .top).combined(with: .opacity))
                                     Spacer()
                                 }
+                                .onAppear {
+                                    print("HostView handler:", ObjectIdentifier(locationHandler))
+                                }
                             }
                         }
                     }
@@ -229,7 +232,7 @@ struct HostView: View {
                     
                     if !showTextAndButtons {
                         Button {
-                            viewModel.searchNearby(showTxtButtons: $showTextAndButtons, gameModel: gameModel)
+                            viewModel.searchNearby(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "magnifyingglass")
@@ -248,7 +251,7 @@ struct HostView: View {
                         // Retry Button
                         Button(action: {
                             withAnimation(){
-                                viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, gameModel: gameModel)
+                                viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, gameModel: gameModel, handler: locationHandler)
                             }
                         }) {
                             Image(systemName: "arrow.trianglehead.2.clockwise")
@@ -266,7 +269,7 @@ struct HostView: View {
                         // Exit Button
                         Button(action: {
                             withAnimation {
-                                viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail, gameModel: gameModel)
+                                viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail, gameModel: gameModel, handler: locationHandler)
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -280,10 +283,11 @@ struct HostView: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
-                .onAppear {
-                    viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel)
-                }
+                
             }
+        }
+        .onAppear {
+            viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
         }
     }
     

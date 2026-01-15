@@ -9,6 +9,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     
     @StateObject private var viewManager = ViewManager()
+    @StateObject var locationHandler = LocationHandler()
     @StateObject private var authModel: AuthViewModel
     @StateObject private var gameModel: GameViewModel
     
@@ -62,7 +63,7 @@ struct ContentView: View {
                 case .signIn:
                     SignInView(authModel: authModel, viewManager: viewManager)
                 case .host:
-                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: LocationHandler(), isGuest: true)
+                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, isGuest: true)
                 }
             
                 
@@ -91,6 +92,7 @@ struct ContentView: View {
         }
         .ignoresSafeArea(.all, edges: .bottom)
         .environment(gameModel)
+        .environment(locationHandler)
     }
     
     // MARK: - Custom transition based on view switch
@@ -114,7 +116,7 @@ struct MainTabView: View {
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var gameModel: GameViewModel
     //let ad: Ad?
-    @StateObject var locationHandler = LocationHandler()
+    
     @StateObject var iapManager = IAPManager()
     
     private var userRepo: UserRepository { UserRepository(context: context)}
@@ -135,11 +137,11 @@ struct MainTabView: View {
                 .tabItem { Label("Stats", systemImage: "chart.bar.xaxis") }
                 .tag(0)
             
-            MainView(viewManager: viewManager, authModel: authModel, locationHandler: locationHandler, gameModel: gameModel)
+            MainView(viewManager: viewManager, authModel: authModel, gameModel: gameModel)
                 .tabItem { Label("Home", systemImage: "house.fill") }
                 .tag(1)
             if NetworkChecker.shared.isConnected {
-                CourseView(viewManager: viewManager, authModel: authModel, locationHandler: locationHandler)
+                CourseView(viewManager: viewManager, authModel: authModel)
                     .tabItem { Label("Courses", systemImage: "figure.golf") }
                     .tag(2)
             }
@@ -152,5 +154,6 @@ struct MainTabView: View {
                 Task { await iapManager.isPurchasedPro(authModel: authModel) }
             }
         }
+        
     }
 }

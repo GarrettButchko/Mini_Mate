@@ -12,21 +12,20 @@ import MapKit
 
 struct CourseView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject var locationHandler: LocationHandler
     
     @ObservedObject var viewManager: ViewManager
     @ObservedObject var authModel: AuthViewModel
-    @ObservedObject var locationHandler: LocationHandler
     @StateObject var courseViewModel: CourseViewModel
     
     @StateObject var viewModel = LookAroundViewModel()
     
-    init(viewManager: ViewManager, authModel: AuthViewModel, locationHandler: LocationHandler) {
+    init(viewManager: ViewManager, authModel: AuthViewModel) {
         self.viewManager = viewManager
         self.authModel = authModel
-        self.locationHandler = locationHandler
         _courseViewModel = StateObject(
-                    wrappedValue: CourseViewModel(locationHandler: locationHandler)
-                )
+            wrappedValue: CourseViewModel()
+        )
     }
     
     var body: some View {
@@ -117,7 +116,7 @@ struct CourseView: View {
             }
         }
         .onAppear {
-            courseViewModel.onAppearance()
+            courseViewModel.onAppearance(locationHandler: locationHandler)
         }
     }
     
@@ -154,7 +153,7 @@ struct CourseView: View {
     
     var searchButton: some View {
         Button {
-            courseViewModel.searchNearby()
+            courseViewModel.searchNearby(locationHandler: locationHandler)
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 25)
@@ -181,7 +180,7 @@ struct CourseView: View {
                     .foregroundStyle(.mainOpp)
                 Spacer()
                 Button {
-                    courseViewModel.cancel()
+                    courseViewModel.cancel(locationHandler: locationHandler)
                 } label: {
                     
                     Text("Cancel")
@@ -203,7 +202,7 @@ struct CourseView: View {
                             }
                             SearchResultRow(item: mapItem, userLocation: userCoord)
                                 .onTapGesture {
-                                    courseViewModel.updatePosition(mapItem: mapItem)
+                                    courseViewModel.updatePosition(mapItem: mapItem, locationHandler: locationHandler)
                                 }
                         }
                     } else {
@@ -248,7 +247,7 @@ struct CourseView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Button(action: {
-                        courseViewModel.getDirections()
+                        courseViewModel.getDirections(locationHandler: locationHandler)
                     }) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 15)

@@ -9,17 +9,17 @@ import Contacts
 import MapKit
 import SwiftUI
 
-class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
+class LocationHandler: NSObject, ObservableObject, Observable, CLLocationManagerDelegate {
     @Published var mapItems: [MKMapItem] = []
     @Published var selectedItem: MKMapItem?
     @Published var userLocation: CLLocationCoordinate2D?
     private let manager = CLLocationManager()
-
+    
     var hasLocationAccess: Bool {
         (manager.authorizationStatus == .authorizedAlways
-            || manager.authorizationStatus == .authorizedWhenInUse)
+         || manager.authorizationStatus == .authorizedWhenInUse)
     }
-
+    
     override init() {
         super.init()
         manager.delegate = self
@@ -27,9 +27,9 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.requestWhenInUseAuthorization()
         manager.startUpdatingLocation()
     }
-
+    
     // MARK: - CLLocationManagerDelegate
-
+    
     func locationManager(
         _ manager: CLLocationManager,
         didChangeAuthorization status: CLAuthorizationStatus
@@ -43,7 +43,7 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
             break
         }
     }
-
+    
     func locationManager(
         _ manager: CLLocationManager,
         didUpdateLocations locations: [CLLocation]
@@ -53,37 +53,44 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
             self.userLocation = location.coordinate
         }
     }
-
+    
     func locationManager(
         _ manager: CLLocationManager,
         didFailWithError error: Error
     ) {
         print("Location manager failed: \(error.localizedDescription)")
     }
-
+    
     // MARK: - Bindings
     func bindingForSelectedItem() -> Binding<MKMapItem?> {
         Binding(
             get: { self.selectedItem },
-            set: { self.selectedItem = $0 }
+            set: { new in
+                DispatchQueue.main.async {
+                    self.selectedItem = new
+                }
+            }
         )
     }
-
+    
     func bindingForSelectedItemID() -> Binding<String?> {
         Binding(
             get: { self.selectedItem?.idString },
             set: { newID in
-                self.selectedItem = self.mapItems.first(where: {
-                    $0.idString == newID
-                })
+                DispatchQueue.main.async {
+                    self.selectedItem = self.mapItems.first(where: { $0.idString == newID })
+                }
             }
         )
     }
-
+    
     func setSelectedItem(_ item: MKMapItem?) {
-        selectedItem = item
+        DispatchQueue.main.async {
+            self.selectedItem = item
+        }
     }
-
+    
+    
     // MARK: - Search
     func performSearch(
         in region: MKCoordinateRegion,
@@ -95,7 +102,7 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
         if #available(iOS 18.0, *) {
             request.pointOfInterestFilter = .init(including: [.miniGolf])
         }
-
+        
         let search = MKLocalSearch(request: request)
         search.start { response, error in
             if let error = error {
@@ -108,7 +115,7 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
                 DispatchQueue.main.async { completion(false) }
                 return
             }
-
+            
             let sorted: [MKMapItem]
             if let coord = self.userLocation {
                 let userLoc = CLLocation(
@@ -125,14 +132,17 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
                         longitude: b.placemark.coordinate.longitude
                     )
                     return la.distance(from: userLoc)
-                        < lb.distance(from: userLoc)
+                    < lb.distance(from: userLoc)
                 }
             } else {
                 sorted = items
             }
-
+            
             DispatchQueue.main.async {
                 self.mapItems = sorted
+                if self.selectedItem == nil {
+                    self.selectedItem = sorted.first   // ✅ THIS fixes “No location found”
+                }
                 completion(true)
             }
         }
@@ -147,38 +157,38 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
             completion(false, nil)
             return
         }
-
+        
         let adjustedCoordinate = CLLocationCoordinate2D(
             latitude: userLocation.latitude + upwardOffset,
             longitude: userLocation.longitude
         )
-
+        
         let region = MKCoordinateRegion(
             center: adjustedCoordinate,
             span: span
         )
-
+        
         performSearch(in: region) { success in
             let newPosition = success ? self.updateCameraPosition(nil) : nil
             completion(success, newPosition)
         }
     }
-
+    
     func findClosestMiniGolf(completion: @escaping (MKMapItem?) -> Void) {
         guard let userLoc = userLocation else {
             completion(nil)
             return
         }
-
+        
         let region = makeRegion(centeredOn: userLoc, radiusInMeters: 8046.72)  // 5 miles in meters
-
+        
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = "mini golf"
         request.region = region
         if #available(iOS 18.0, *) {
             request.pointOfInterestFilter = .init(including: [.miniGolf])
         }
-
+        
         let search = MKLocalSearch(request: request)
         search.start { response, error in
             guard error == nil, let items = response?.mapItems, !items.isEmpty
@@ -186,7 +196,7 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
                 completion(nil)
                 return
             }
-
+            
             let userLocation = CLLocation(
                 latitude: userLoc.latitude,
                 longitude: userLoc.longitude
@@ -201,19 +211,22 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
                     longitude: $1.placemark.coordinate.longitude
                 )
                 return a.distance(from: userLocation)
-                    < b.distance(from: userLocation)
+                < b.distance(from: userLocation)
             }
-
-            completion(sorted.first)
+            
+            let closest = sorted.first
+            DispatchQueue.main.async {
+                completion(closest)
+            }
         }
     }
-
+    
     // MARK: - Camera Positioning
     func updateCameraPosition(_ selectedResult: MKMapItem? = nil)
-        -> MapCameraPosition
+    -> MapCameraPosition
     {
         var cameraPosition: MapCameraPosition = .automatic
-
+        
         if let selected = selectedResult {
             let original = selected.placemark.coordinate
             let adjustedCoordinate = CLLocationCoordinate2D(
@@ -246,7 +259,7 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
                 )
             )
         }
-
+        
         return cameraPosition
     }
 
@@ -309,14 +322,19 @@ class LocationHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func setClosestValue() {
         guard selectedItem == nil, let userLoc = userLocation else { return }
+
         let region = MKCoordinateRegion(
             center: userLoc,
             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
         )
+
         performSearch(in: region) { _ in
-            self.setSelectedItem(self.mapItems.first)
+            DispatchQueue.main.async {
+                self.setSelectedItem(self.mapItems.first)
+            }
         }
     }
+
 
     func makeRegion(
         centeredOn coord: CLLocationCoordinate2D,

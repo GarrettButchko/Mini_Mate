@@ -5,6 +5,7 @@ import MapKit
 
 struct MainView: View {
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var locationHandler: LocationHandler
     
     @Query var allGames: [Game]
     
@@ -20,7 +21,6 @@ struct MainView: View {
 
     @ObservedObject var viewManager: ViewManager
     @ObservedObject var authModel: AuthViewModel
-    @ObservedObject var locationHandler: LocationHandler
     @ObservedObject var gameModel: GameViewModel
 
     @State private var nameIsPresented = false
@@ -230,7 +230,7 @@ struct MainView: View {
                                             
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler)
+                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager)
                                                 .presentationDetents([.large])
                                         }
                                         
@@ -265,7 +265,7 @@ struct MainView: View {
                                             }
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, locationHandler: locationHandler)
+                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager)
                                                 .presentationDetents([.large])
                                         }
                                         

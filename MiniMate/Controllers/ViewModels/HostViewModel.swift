@@ -14,15 +14,13 @@ final class HostViewModel: ObservableObject {
     @Published var playerToDelete: String?
     
     let courseRepo = CourseRepository()
-    let handler: LocationHandler
     
     private let ttl: TimeInterval = 5 * 60
     private var lastUpdated = Date()
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
-    init(handler: LocationHandler) {
-        self.handler = handler
+    init() {
         self.timeRemaining = ttl
     }
     
@@ -79,15 +77,15 @@ final class HostViewModel: ObservableObject {
         resetTimer(gameModel)
     }
     
-    func searchNearby(showTxtButtons: Binding<Bool>, gameModel: GameViewModel) {
+    func searchNearby(showTxtButtons: Binding<Bool>, gameModel: GameViewModel, handler: LocationHandler) {
         gameModel.setHasLoaded(false)
         gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
         resetTimer(gameModel)
     }
     
-    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>, gameModel: GameViewModel) {
+    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>, gameModel: GameViewModel, handler: LocationHandler) {
         isRotating.wrappedValue = true
-        searchNearby(showTxtButtons: showTxtButtons, gameModel: gameModel)
+        searchNearby(showTxtButtons: showTxtButtons, gameModel: gameModel, handler: handler)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             isRotating.wrappedValue = false
@@ -95,7 +93,7 @@ final class HostViewModel: ObservableObject {
         resetTimer(gameModel)
     }
     
-    func exit(showTxtButtons: Binding<Bool>, email: Binding<String>, gameModel: GameViewModel){
+    func exit(showTxtButtons: Binding<Bool>, email: Binding<String>, gameModel: GameViewModel, handler: LocationHandler){
         email.wrappedValue = ""
         handler.selectedItem = nil
         gameModel.setLocation(nil)
@@ -103,7 +101,7 @@ final class HostViewModel: ObservableObject {
         showTxtButtons.wrappedValue = false
     }
     
-    func setUp(showTxtButtons: Binding<Bool>, gameModel: GameViewModel) {
+    func setUp(showTxtButtons: Binding<Bool>, gameModel: GameViewModel, handler: LocationHandler) {
         if gameModel.getCourse() == nil && !gameModel.getHasLoaded() {
             gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
             gameModel.setHasLoaded(true)
