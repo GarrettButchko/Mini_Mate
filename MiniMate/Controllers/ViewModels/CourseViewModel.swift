@@ -81,7 +81,7 @@ final class CourseViewModel: ObservableObject {
         withAnimation {
             isUpperHalf = false
             locationHandler.mapItems = []
-            position = locationHandler.updateCameraPosition()
+            self.position = locationHandler.updateCameraPosition()
         }
     }
     

@@ -197,7 +197,7 @@ struct CourseView: View {
                 VStack(alignment: .leading) {
                     if let userCoord = locationHandler.userLocation {
                         ForEach(locationHandler.mapItems, id: \.self) { mapItem in
-                            if mapItem != locationHandler.mapItems[0]{
+                            if locationHandler.mapItems.count > 0 && mapItem != locationHandler.mapItems[0]{
                                 Divider()
                             }
                             SearchResultRow(item: mapItem, userLocation: userCoord)

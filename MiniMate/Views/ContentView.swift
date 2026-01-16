@@ -147,13 +147,11 @@ struct MainTabView: View {
             }
         }
         .onAppear {
-            guard authModel.userModel == nil else { return }   // already loaded
-            guard let id = authModel.currentUserIdentifier else { return }
-
-            userRepo.loadOrCreateUser(id: id, authModel: authModel) { _ in
-                Task { await iapManager.isPurchasedPro(authModel: authModel) }
+            if let id = authModel.currentUserIdentifier{
+                userRepo.loadOrCreateUser(id: id, authModel: authModel) { _ in
+                    Task { await iapManager.isPurchasedPro(authModel: authModel) }
+                }
             }
         }
-        
     }
 }
