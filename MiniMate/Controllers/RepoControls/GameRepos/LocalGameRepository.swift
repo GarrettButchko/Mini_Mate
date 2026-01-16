@@ -26,6 +26,19 @@ class LocalGameRepository {
         }
     }
     
+    func save(_ games: [Game], completion: @escaping (Bool) -> Void) {
+        games.forEach { context.insert($0) }
+        
+        do {
+            try context.save()
+            completion(true)
+        } catch {
+            print("❌ Failed to save games locally:", error)
+            completion(false)
+        }
+    }
+
+    
     func fetch(id: String, completion: @escaping (Game?) -> Void) {
         do {
             let descriptor = FetchDescriptor<Game>(predicate: #Predicate { $0.id == id })

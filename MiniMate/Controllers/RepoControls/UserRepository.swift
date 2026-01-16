@@ -71,69 +71,92 @@ final class UserRepository {
         guestGame: Game? = nil,
         creation: @escaping(Bool) -> Void
     ) {
+        
+        guard let context = self.context else {
+            print("❌ No model context")
+            creation(false)
+            return
+        }
+        
         switch (local, remote) {
             
         case let (local?, remote?):
             
             let delta = abs(local.lastUpdated.timeIntervalSince(remote.lastUpdated))
             
-            
             if delta < 0.5 {
-                if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
-                    local.accountType.append(signInMethod)
-                }
-                saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
-                    creation(false)
-                }
                 print("🔄 Already in sync")
-                creation(false)
+
+                if let signInMethod = signInMethod?.rawValue,
+                   !local.accountType.contains(signInMethod) {
+
+                    local.accountType.append(signInMethod)
+                    saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
+                        creation(false)
+                    }
+                } else {
+                    creation(false)
+                }
             } else if local.lastUpdated > remote.lastUpdated {
+                print("🔄 Local → Remote")
                 
                 if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
                     local.accountType.append(signInMethod)
                 }
-                
                 saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
-                    print("🔄 Local → Remote")
-                    creation(false)
+                    if Set(remote.gameIDs) != Set(local.gameIDs) {
+                        self.saveLocalGamesToCloud(user: local) { complete in
+                            creation(false)
+                        }
+                    } else {
+                        creation(false)
+                    }
                 }
             } else {
+                print("🔄 Remote → Local")
                 
                 if let signInMethod = signInMethod?.rawValue, !remote.accountType.contains(signInMethod) {
                     remote.accountType.append(signInMethod)
                 }
-                
-                saveLocal(context: context!, model: remote, updatedLastUpdated: false) { _ in
-                    print("🔄 Remote → Local")
-                    DispatchQueue.main.async {
+                DispatchQueue.main.async {
+                    self.saveLocal(context: context, model: remote, updatedLastUpdated: false) { _ in
                         authModel.setUserModel(remote)
-                        creation(false)
+                        if Set(remote.gameIDs) != Set(local.gameIDs) {
+                            self.saveCloudGamesToLocal(user: remote){ complete in
+                                creation(false)
+                            }
+                        } else {
+                            creation(false)
+                        }
                     }
                 }
             }
             
         case let (local?, nil):
+            print("🔄 Local → Remote (no remote)")
             
             if let signInMethod = signInMethod?.rawValue, !local.accountType.contains(signInMethod) {
                 local.accountType.append(signInMethod)
             }
             
             saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
-                print("🔄 Local → Remote (no remote)")
-                creation(false)
+                self.saveLocalGamesToCloud(user: local){ complete in
+                    creation(false)
+                }
             }
             
         case let (nil, remote?):
+            print("🔄 Remote → Local (no local)")
             
             if let signInMethod = signInMethod?.rawValue, !remote.accountType.contains(signInMethod) {
                 remote.accountType.append(signInMethod)
             }
-            
-            saveLocal(context: context!, model: remote, updatedLastUpdated: false) { _ in
-                print("🔄 Remote → Local (no local)")
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                self.saveLocal(context: context, model: remote, updatedLastUpdated: false) { _ in
                     authModel.setUserModel(remote)
-                    creation(false)
+                    self.saveCloudGamesToLocal(user: remote){ complete in
+                        creation(false)
+                    }
                 }
             }
             
@@ -143,6 +166,58 @@ final class UserRepository {
             }
         }
     }
+    
+    func saveLocalGamesToCloud(user: UserModel, completion: @escaping(Bool) -> Void) {
+        guard let context = self.context else {
+            print("❌ No model context")
+            completion(false)
+            return
+        }
+        
+        guard !user.gameIDs.isEmpty else {
+            print("ℹ️ No gameIDs to upload")
+            completion(true)
+            return
+        }
+
+        LocalGameRepository(context: context).fetchAll(ids: user.gameIDs) { games in
+            FirestoreGameRepository().save(games) { done in
+                if done {
+                    print("✅ Saved user's games to Firestore")
+                    completion(true)
+                } else {
+                    print("❌ Error saving user's games to Firestore")
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    
+    func saveCloudGamesToLocal(user: UserModel, completion: @escaping(Bool) -> Void) {
+        guard let context = self.context else {
+            print("❌ No model context")
+            completion(false)
+            return
+        }
+        
+        guard !user.gameIDs.isEmpty else { return }
+
+        FirestoreGameRepository().fetchAll(withIDs: user.gameIDs) { games in
+            DispatchQueue.main.async {
+                LocalGameRepository(context: context).save(games.map{Game.fromDTO($0)}) { done in
+                    if done {
+                        print("✅ Saved user's games to local")
+                        completion(true)
+                    } else {
+                        print("❌ Error saving user's games to local")
+                        completion(false)
+                    }
+                }
+            }
+        }
+    }
+
     
     func createUser(id: String, firebaseUser: User?, name: String?, authModel: AuthViewModel, signInMethod: SignInMethod? = nil, appleId: String? = nil, guestGame: Game?, completion: @escaping () -> Void){
         

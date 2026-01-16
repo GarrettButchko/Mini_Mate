@@ -28,6 +28,40 @@ class FirestoreGameRepository {
         }
     }
     
+    func save(_ games: [Game], completion: @escaping (Bool) -> Void) {
+        guard !games.isEmpty else {
+            completion(true)
+            return
+        }
+        
+        let group = DispatchGroup()
+        var didFail = false
+        
+        for game in games {
+            group.enter()
+            do {
+                try db.collection("games")
+                    .document(game.id)
+                    .setData(from: game.toDTO(), merge: true) { error in
+                        if let error = error {
+                            print("❌ Firestore save error for \(game.id): \(error.localizedDescription)")
+                            didFail = true
+                        }
+                        group.leave()
+                    }
+            } catch {
+                print("❌ Firestore encoding error for \(game.id): \(error)")
+                didFail = true
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            completion(!didFail)
+        }
+    }
+
+    
     // Fetch a single game by ID
     func fetch(id: String, completion: @escaping (GameDTO?) -> Void) {
         let ref = db.collection("games").document(id)
