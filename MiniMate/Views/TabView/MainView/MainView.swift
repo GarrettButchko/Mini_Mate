@@ -32,6 +32,7 @@ struct MainView: View {
     @State var alreadyShown: Bool = false
     @State var editOn: Bool = false
     @State var showDonation: Bool = false
+    @State var showInfo: Bool = false
     
     private var uniGameRepo: UnifiedGameRepository { UnifiedGameRepository(context: context) }
     
@@ -215,9 +216,25 @@ struct MainView: View {
                                 Spacer()
                                 
                                 // Mirror the left spacer for symmetry
-                                Circle()
-                                    .fill(Color.clear)
-                                    .frame(width: 30, height: 30)
+                                
+                                Button {
+                                    showInfo = true
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 25, height: 25)
+                                        .foregroundStyle(.blue)
+
+                                }
+                                .confirmationDialog("Info", isPresented: $showInfo, titleVisibility: .visible) {
+                                    Button("OK", role: .cancel) {}
+                                } message: {
+                                    Text(isOnlineMode
+                                         ? "Host starts a server game. Join connects to an existing one. Multiple devices sync in real time."
+                                         : "Quick starts a local game. Online lets you host or join a networked game."
+                                    )
+                                }
                             }
                             
                             ZStack {

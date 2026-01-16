@@ -132,7 +132,9 @@ class LocationHandler: NSObject, ObservableObject, Observable, CLLocationManager
             }
 
             DispatchQueue.main.async {
-                self.mapItems = sorted
+                withAnimation(){
+                    self.mapItems = sorted
+                }
                 completion(true)
             }
         }
@@ -267,7 +269,6 @@ class LocationHandler: NSObject, ObservableObject, Observable, CLLocationManager
         let lonRange = maxLon - minLon
         let topPaddingFactor: Double = 0.15 // 20% extra padding on top
         let bottomPaddingFactor: Double = 0.1 // 10% padding on bottom
-        let lonPaddingFactor: Double = 0.0 // same as before
 
         // The points should fit in the top 2/5 (40%) of the region,
         // so expand the total vertical span by dividing by 0.4
@@ -275,7 +276,17 @@ class LocationHandler: NSObject, ObservableObject, Observable, CLLocationManager
         let topPadding = paddedLatDelta * topPaddingFactor
         let bottomPadding = paddedLatDelta * bottomPaddingFactor
         let latitudeDelta = paddedLatDelta + topPadding + bottomPadding
-        let longitudeDelta = lonRange + (lonRange * lonPaddingFactor)
+        
+        let horizontalPaddingPoints: Double = 10
+
+        // Approximate screen width in points (iPhone portrait ≈ 390, iPad bigger)
+        let screenWidthPoints = UIScreen.main.bounds.width
+
+        // Convert points → fraction of screen width
+        let horizontalPaddingFraction = horizontalPaddingPoints / screenWidthPoints
+
+        // Apply that fraction to longitude span
+        let longitudeDelta = lonRange * (1 + horizontalPaddingFraction * 2)
 
         // Shift center UPWARD so region places points at top
         let regionTop = maxLat + topPadding
