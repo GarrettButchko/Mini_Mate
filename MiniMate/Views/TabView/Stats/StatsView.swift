@@ -110,7 +110,7 @@ struct StatsView: View {
                 }
                 .animation(.easeInOut(duration: 0.3), value: viewModel.pickedSection)
             }
-            .padding([.top, .horizontal])
+            .safeAreaPadding([.top, .horizontal])
             .sheet(isPresented: $viewModel.isSharePresented) {
                 ActivityView(activityItems: [viewModel.shareContent])
             }
@@ -199,29 +199,6 @@ struct StatsView: View {
                             }
                         }
                     }
-                    Button(action: {
-                        withAnimation(){
-                            
-                            isRotating = true
-                            
-                            viewModel.refreshFromCloudIfNeeded(user: authModel.userModel!, authModel: authModel, context: context) {
-                                isRotating = false
-                            }
-                        }
-                    }) {
-                        Image(systemName: "arrow.trianglehead.2.clockwise")
-                            .rotationEffect(.degrees(isRotating ? 360 : 0))
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                            .background(){
-                                Circle()
-                                    .ifAvailableGlassEffect()
-                                    .frame(width: 50, height: 50)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-                    .padding(.horizontal, 10)
                 }
                 Spacer()
             }

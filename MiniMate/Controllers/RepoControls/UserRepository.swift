@@ -28,7 +28,7 @@ final class UserRepository {
         signInMethod: SignInMethod? = nil,
         appleId: String? = nil,
         guestGame: Game? = nil,
-        creation: @escaping (Bool) -> Void
+        completion: @escaping (_ done1: Bool,_ done2: Bool,_ creation: Bool) -> Void
     ) {
         let local = fetchLocal(id: id)
 
@@ -37,6 +37,7 @@ final class UserRepository {
             DispatchQueue.main.async {
                 print("✅ Found local user immediately")
                 authModel.setUserModel(local)
+                completion(true, false, false)
             }
         }
 
@@ -53,7 +54,7 @@ final class UserRepository {
                 appleId: appleId,
                 guestGame: guestGame
             ) { result in
-                creation(result) // ✅ reconcile finished
+                completion(false, true, result) // ✅ reconcile finished
             }
         }
     }

@@ -63,7 +63,6 @@ final class StatsViewModel: ObservableObject {
     // MARK: - Optional: add a refresh hook if you later trigger cloud sync from here
     func refreshFromCloudIfNeeded(
         user: UserModel,
-        authModel: AuthViewModel? = nil,
         context: ModelContext,
         completion: @escaping () -> Void
     ) {
@@ -124,12 +123,6 @@ final class StatsViewModel: ObservableObject {
             }
         }
         
-        if let authModel {
-            UserRepository(context: context).loadOrCreateUser(id: user.googleId, authModel: authModel) { _ in
-                findGamesToLoadAndLoad()
-            }
-        } else {
-            findGamesToLoadAndLoad()
-        }
+        findGamesToLoadAndLoad()
     }
 }

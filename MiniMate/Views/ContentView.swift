@@ -148,10 +148,12 @@ struct MainTabView: View {
         }
         .onAppear {
             if let id = authModel.currentUserIdentifier{
-                userRepo.loadOrCreateUser(id: id, authModel: authModel) { _ in
+                userRepo.loadOrCreateUser(id: id, authModel: authModel) { done1, done2, creation in
                     Task { await iapManager.isPurchasedPro(authModel: authModel)
-                        LocalGameRepository(context: context).deleteAllUnusedGames { _ in }
-                        StatsViewModel().refreshFromCloudIfNeeded(user: authModel.userModel!, context: context) {}
+                        if done2{
+                            LocalGameRepository(context: context).deleteAllUnusedGames { _ in }
+                            StatsViewModel().refreshFromCloudIfNeeded(user: authModel.userModel!, context: context) {}
+                        }
                     }
                 }
             }

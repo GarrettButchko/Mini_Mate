@@ -272,8 +272,8 @@ class AuthViewModel: ObservableObject {
     func createOrSignInUserAndNavigateToHome(context: ModelContext, authModel: AuthViewModel, viewManager: AppNavigationManaging, user: User, name: String? = nil, errorMessage: Binding<(message: String?, type: Bool)>, signInMethod: SignInMethod? = nil, appleId: String? = nil, navToHome: Bool = true, guestGame: Binding<Game?>, completion: @escaping(() -> Void)) {
         errorMessage.wrappedValue = (message: nil, type: false)
         let repo = UserRepository(context: context)
-        repo.loadOrCreateUser(id: user.uid, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod, guestGame: guestGame.wrappedValue) { creation in
-            if navToHome {
+        repo.loadOrCreateUser(id: user.uid, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod, guestGame: guestGame.wrappedValue) { done1, done2, creation  in
+            if navToHome && done1{
                 Task { @MainActor in
                     completion()
                     viewManager.navigateAfterSignIn()
