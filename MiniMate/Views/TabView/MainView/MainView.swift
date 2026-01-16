@@ -102,7 +102,7 @@ struct MainView: View {
                                         .fill(Color.clear)
                                         .frame(height: 110)
                                     
-                                    if !authModel.userModel!.isPro && games.count >= 2 {
+                                    if !authModel.userModel!.isPro && authModel.userModel!.gameIDs.count >= 2 {
                                         Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
                                             .padding()
                                             .frame(maxWidth: .infinity, alignment: .leading)

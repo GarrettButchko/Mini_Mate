@@ -37,7 +37,6 @@ final class UserRepository {
             DispatchQueue.main.async {
                 print("✅ Found local user immediately")
                 authModel.setUserModel(local)
-                creation(false)   // ✅ local done, reconcile not done
             }
         }
 
@@ -104,13 +103,7 @@ final class UserRepository {
                     local.accountType.append(signInMethod)
                 }
                 saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
-                    if Set(remote.gameIDs) != Set(local.gameIDs) {
-                        self.saveLocalGamesToCloud(user: local) { complete in
-                            creation(false)
-                        }
-                    } else {
-                        creation(false)
-                    }
+                    creation(false)
                 }
             } else {
                 print("🔄 Remote → Local")
@@ -121,13 +114,7 @@ final class UserRepository {
                 DispatchQueue.main.async {
                     self.saveLocal(context: context, model: remote, updatedLastUpdated: false) { _ in
                         authModel.setUserModel(remote)
-                        if Set(remote.gameIDs) != Set(local.gameIDs) {
-                            self.saveCloudGamesToLocal(user: remote){ complete in
-                                creation(false)
-                            }
-                        } else {
-                            creation(false)
-                        }
+                        creation(false)
                     }
                 }
             }
@@ -140,9 +127,7 @@ final class UserRepository {
             }
             
             saveRemote(id: id, userModel: local, updateLastUpdated: false) { _ in
-                self.saveLocalGamesToCloud(user: local){ complete in
-                    creation(false)
-                }
+                creation(false)
             }
             
         case let (nil, remote?):
@@ -154,66 +139,13 @@ final class UserRepository {
             DispatchQueue.main.async {
                 self.saveLocal(context: context, model: remote, updatedLastUpdated: false) { _ in
                     authModel.setUserModel(remote)
-                    self.saveCloudGamesToLocal(user: remote){ complete in
-                        creation(false)
-                    }
+                    creation(false)
                 }
             }
             
         case (nil, nil):
             createUser(id: id, firebaseUser: firebaseUser, name: name, authModel: authModel, signInMethod: signInMethod, guestGame: guestGame) {
                 creation(true)
-            }
-        }
-    }
-    
-    func saveLocalGamesToCloud(user: UserModel, completion: @escaping(Bool) -> Void) {
-        guard let context = self.context else {
-            print("❌ No model context")
-            completion(false)
-            return
-        }
-        
-        guard !user.gameIDs.isEmpty else {
-            print("ℹ️ No gameIDs to upload")
-            completion(true)
-            return
-        }
-
-        LocalGameRepository(context: context).fetchAll(ids: user.gameIDs) { games in
-            FirestoreGameRepository().save(games) { done in
-                if done {
-                    print("✅ Saved user's games to Firestore")
-                    completion(true)
-                } else {
-                    print("❌ Error saving user's games to Firestore")
-                    completion(false)
-                }
-            }
-        }
-    }
-
-    
-    func saveCloudGamesToLocal(user: UserModel, completion: @escaping(Bool) -> Void) {
-        guard let context = self.context else {
-            print("❌ No model context")
-            completion(false)
-            return
-        }
-        
-        guard !user.gameIDs.isEmpty else { return }
-
-        FirestoreGameRepository().fetchAll(withIDs: user.gameIDs) { games in
-            DispatchQueue.main.async {
-                LocalGameRepository(context: context).save(games.map{Game.fromDTO($0)}) { done in
-                    if done {
-                        print("✅ Saved user's games to local")
-                        completion(true)
-                    } else {
-                        print("❌ Error saving user's games to local")
-                        completion(false)
-                    }
-                }
             }
         }
     }

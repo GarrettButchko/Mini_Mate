@@ -37,7 +37,14 @@ class LocalGameRepository {
             completion(false)
         }
     }
-
+    
+    func missingLocalGameIDs(from ids: [String], completion: @escaping ([String]) -> Void) {
+        fetchAll(ids: ids) { games in
+            let localIDs = Set(games.map { $0.id })
+            let missing = ids.filter { !localIDs.contains($0) }
+            completion(missing)
+        }
+    }
     
     func fetch(id: String, completion: @escaping (Game?) -> Void) {
         do {
@@ -143,4 +150,37 @@ class LocalGameRepository {
             completion(success)
         }
     }
+    
+    func deleteAllUnusedGames(completion: @escaping (Int) -> Void) {
+        do {
+            // 1️⃣ Fetch all users
+            let userDescriptor = FetchDescriptor<UserModel>()
+            let users = try context.fetch(userDescriptor)
+
+            // 2️⃣ Collect every referenced gameID
+            let usedGameIDs = Set(users.flatMap { $0.gameIDs })
+
+            // 3️⃣ Fetch all games
+            let gameDescriptor = FetchDescriptor<Game>()
+            let games = try context.fetch(gameDescriptor)
+
+            // 4️⃣ Find unused games
+            let unusedGames = games.filter { !usedGameIDs.contains($0.id) }
+
+            // 5️⃣ Delete them
+            for game in unusedGames {
+                context.delete(game)
+            }
+
+            try context.save()
+
+            print("✅ Deleted \(unusedGames.count) unused games")
+            completion(unusedGames.count)
+
+        } catch {
+            print("❌ Failed to clean unused games:", error)
+            completion(0)
+        }
+    }
+
 }

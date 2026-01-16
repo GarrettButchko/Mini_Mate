@@ -96,7 +96,6 @@ class FirestoreGameRepository {
             return
         }
 
-        // Firestore 'in' queries max 10 items → chunk them
         let chunks = stride(from: 0, to: ids.count, by: 10).map {
             Array(ids[$0..<min($0 + 10, ids.count)])
         }
@@ -108,6 +107,7 @@ class FirestoreGameRepository {
 
         for chunk in chunks {
             group.enter()
+
             db.collection("games")
                 .whereField(FieldPath.documentID(), in: chunk)
                 .getDocuments { snapshot, error in
@@ -117,16 +117,14 @@ class FirestoreGameRepository {
 
                     if let docs = snapshot?.documents {
                         for doc in docs {
-                            Task{ @MainActor in
-                                do {
-                                    let dto = try doc.data(as: GameDTO.self)
-                                    // Protect shared dictionary with a serial queue
-                                    syncQueue.async {
-                                        allGames[dto.id] = dto
-                                    }
-                                } catch {
-                                    print("❌ Firestore decoding error for id \(doc.documentID): \(error)")
+                            do {
+                                let dto = try doc.data(as: GameDTO.self)
+                                // write synchronously so it’s definitely in the dict before we leave the group
+                                syncQueue.sync {
+                                    allGames[dto.id] = dto
                                 }
+                            } catch {
+                                print("❌ Firestore decoding error for id \(doc.documentID): \(error)")
                             }
                         }
                     }
@@ -136,7 +134,7 @@ class FirestoreGameRepository {
         }
 
         group.notify(queue: .main) {
-            // Ensure we read the final dictionary on the serial queue to avoid races
+            // read on sync queue to avoid race
             syncQueue.async {
                 let ordered = ids.compactMap { allGames[$0] }
                 DispatchQueue.main.async {
@@ -145,6 +143,7 @@ class FirestoreGameRepository {
             }
         }
     }
+
 
 
 

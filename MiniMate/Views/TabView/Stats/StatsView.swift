@@ -13,6 +13,7 @@ import _SwiftData_SwiftUI
 struct StatsView: View {
     
     @Environment(\.modelContext) private var context
+    @StateObject private var viewModel = StatsViewModel()
     
     @Query var allGames: [Game]
     
@@ -20,41 +21,39 @@ struct StatsView: View {
         allGames.filter { authModel.userModel?.gameIDs.contains($0.id) == true }
     }
     
+    var games: [Game] {
+        let filteredGames: [Game]
+        if viewModel.searchText.isEmpty {
+            filteredGames = usersGames
+        } else {
+            filteredGames = usersGames.filter { $0.date.formatted(date: .abbreviated, time: .shortened).lowercased().contains(viewModel.searchText.lowercased()) }
+        }
+        
+        let sortedGames: [Game]
+        if viewModel.latest {
+            sortedGames = filteredGames.sorted { $0.date > $1.date }
+        } else {
+            sortedGames = filteredGames.sorted { $0.date < $1.date }
+        }
+        
+        return sortedGames
+    }
+    
     @StateObject var viewManager: ViewManager
     @StateObject var authModel: AuthViewModel
     
-    var pickerSections = ["Games", "Overview"]
-    
-    @State var pickedSection = "Games"
-    @State var searchText: String = ""
-    
-    @State var latest = true
-    @State var editOn = false
-    @State private var editingGameID: String? = nil
-    
     @State private var isDismissed = false
-    
-    @State private var shareContent: String = ""
-    @State private var isSharePresented: Bool = false
-    @State private var isCooldown = false
     
     private var uniGameRepo: UnifiedGameRepository { UnifiedGameRepository(context: context) }
     
-    @State private var analyzer: UserStatsAnalyzer? = nil
-    
-    /// Presents the share sheet with the given text content.
-    /// This method sets the content to be shared and triggers the presentation of the share sheet.
-    private func presentShareSheet(with text: String) {
-        shareContent = text
-        isSharePresented = true
-    }
+    @State var isRotating: Bool = false
     
     var body: some View {
         if (authModel.userModel != nil) {
             VStack{
                 HStack {
                     ZStack {
-                        if pickedSection == "Games" {
+                        if viewModel.pickedSection == "Games" {
                             Text("Game Stats")
                                 .font(.title).fontWeight(.bold)
                                 .transition(.opacity.combined(with: .scale))
@@ -64,13 +63,13 @@ struct StatsView: View {
                                 .transition(.opacity.combined(with: .scale))
                         }
                     }
-                    .animation(.easeInOut(duration: 0.35), value: pickedSection)
+                    .animation(.easeInOut(duration: 0.35), value: viewModel.pickedSection)
                     
                     Spacer()
                 }
                 
-                Picker("Section", selection: $pickedSection) {
-                    ForEach(pickerSections, id: \.self) {
+                Picker("Section", selection: $viewModel.pickedSection) {
+                    ForEach(viewModel.pickerSections, id: \.self) {
                         Text($0)
                     }
                 }
@@ -78,7 +77,7 @@ struct StatsView: View {
                 
                 
                 ZStack {
-                    if pickedSection == "Games" {
+                    if viewModel.pickedSection == "Games" {
                         gamesSection
                             .transition(.asymmetric(
                                 insertion: .move(edge: .leading).combined(with: .opacity),
@@ -86,14 +85,14 @@ struct StatsView: View {
                             ))
                     } else {
                         
-                        if analyzer?.hasGames == true {
+                        if viewModel.analyzer?.hasGames == true {
                             overViewSection
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .trailing).combined(with: .opacity)
                                 ))
                                 .onAppear {
-                                    editOn = false
+                                    viewModel.editOn = false
                                 }
                         } else {
                             ScrollView{
@@ -103,44 +102,25 @@ struct StatsView: View {
                                     .padding()
                             }
                             .onAppear {
-                                editOn = false
+                                viewModel.editOn = false
                             }
                         }
                         
                     }
                 }
-                .animation(.easeInOut(duration: 0.3), value: pickedSection)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.pickedSection)
             }
             .padding([.top, .horizontal])
-            .sheet(isPresented: $isSharePresented) {
-                ActivityView(activityItems: [shareContent])
+            .sheet(isPresented: $viewModel.isSharePresented) {
+                ActivityView(activityItems: [viewModel.shareContent])
             }
             .onAppear{
-                if let user = authModel.userModel {
-                    let newAnalyzer = UserStatsAnalyzer(user: user, games: games, context: context)
-                    self.analyzer = newAnalyzer
-                }
+                viewModel.onAppear(user: authModel.userModel!, games: games, context: context)
             }
         }
     }
     
-    var games: [Game] {
-        let filteredGames: [Game]
-        if searchText.isEmpty {
-            filteredGames = usersGames
-        } else {
-            filteredGames = usersGames.filter { $0.date.formatted(date: .abbreviated, time: .shortened).lowercased().contains(searchText.lowercased()) }
-        }
-        
-        let sortedGames: [Game]
-        if latest {
-            sortedGames = filteredGames.sorted { $0.date > $1.date }
-        } else {
-            sortedGames = filteredGames.sorted { $0.date < $1.date }
-        }
-        
-        return sortedGames
-    }
+    
     
     private var gamesSection: some View {
         ZStack{
@@ -161,7 +141,7 @@ struct StatsView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 25))
                     }
                     
-                    if !authModel.userModel!.isPro && games.count >= 2 {
+                    if !authModel.userModel!.isPro && authModel.userModel!.gameIDs.count >= 2 {
                         Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,10 +149,14 @@ struct StatsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 25))
                     }
                     
-                    if !games.isEmpty {
-                        ForEach(games) { game in
-                            GameRow(context: _context, editOn: $editOn, editingGameID: $editingGameID, authModel: authModel, game: game, viewManager: viewManager, presentShareSheet: presentShareSheet)
-                                .transition(.opacity)
+                    if !authModel.userModel!.gameIDs.isEmpty {
+                        if !viewModel.isRefreshing {
+                            ForEach(games) { game in
+                                GameRow(context: _context, editOn: $viewModel.editOn, editingGameID: $viewModel.editingGameID, authModel: authModel, game: game, viewManager: viewManager, presentShareSheet: viewModel.presentShareSheet)
+                                    .transition(.opacity)
+                            }
+                        } else {
+                            ProgressView()
                         }
                     } else {
                         Image("logoOpp")
@@ -190,21 +174,11 @@ struct StatsView: View {
             
             VStack{
                 HStack{
-                    SearchBarView(searchText: $searchText)
+                    SearchBarView(searchText: $viewModel.searchText)
                     .padding(.vertical)
                     
                     Button {
-                        guard !isCooldown else { return }
-                        
-                        withAnimation {
-                            latest.toggle()
-                        }
-                        
-                        // Start cooldown
-                        isCooldown = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                            isCooldown = false
-                        }
+                        viewModel.toggleSortWithCooldown()
                     } label: {
                         
                         ZStack{
@@ -214,7 +188,7 @@ struct StatsView: View {
                                 .frame(width: 50, height: 50)
                             
                             
-                            if latest{
+                            if viewModel.latest{
                                 Image(systemName: "arrow.up")
                                     .transition(.scale)
                                     .frame(width: 60, height: 60)
@@ -225,6 +199,29 @@ struct StatsView: View {
                             }
                         }
                     }
+                    Button(action: {
+                        withAnimation(){
+                            
+                            isRotating = true
+                            
+                            viewModel.refreshFromCloudIfNeeded(user: authModel.userModel!, authModel: authModel, context: context) {
+                                isRotating = false
+                            }
+                        }
+                    }) {
+                        Image(systemName: "arrow.trianglehead.2.clockwise")
+                            .rotationEffect(.degrees(isRotating ? 360 : 0))
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                            .background(){
+                                Circle()
+                                    .ifAvailableGlassEffect()
+                                    .frame(width: 50, height: 50)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .padding(.horizontal, 10)
                 }
                 Spacer()
             }
@@ -233,7 +230,7 @@ struct StatsView: View {
     
     private var overViewSection: some View {
         ScrollView {
-            if let analyzer {
+            if let analyzer = viewModel.analyzer {
                 SectionStatsView(title: "Basic Stats") {
                     HStack{
                         StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", color: .blue)
@@ -282,28 +279,6 @@ struct StatsView: View {
                     .padding()
             }
         }
-    }
-    
-    /// Build a plain-text summary (you could also return a URL to a generated PDF/image)
-    func makeShareableSummary(for game: Game) -> String {
-        var lines = ["MiniMate Scorecard",
-                     "Date: \(game.date.formatted(.dateTime))",
-                     ""]
-        
-        for player in game.players {
-            var holeLine = ""
-            
-            for hole in player.holes {
-                holeLine += "|\(hole.strokes)"
-            }
-            
-            lines.append("\(player.name): \(player.totalStrokes) strokes (\(player.totalStrokes))")
-            lines.append("Holes " + holeLine)
-            
-        }
-        lines.append("")
-        lines.append("Download MiniMate: https://apps.apple.com/app/id6745438125")
-        return lines.joined(separator: "\n")
     }
 }
 
