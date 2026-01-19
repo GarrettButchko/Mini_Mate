@@ -16,7 +16,6 @@ struct SignInView: View {
     
     @State var showEmailSignIn: Bool = false
     @State var errorMessage: (message: String?, type: Bool) = (nil, false)
-    @State var height: CGFloat = 0
     
     @State var email = ""
     @State var password = ""
@@ -38,99 +37,109 @@ struct SignInView: View {
     private let characterLimit = 15
     
     var body: some View {
-        GeometryReader{ geometry in
             ZStack {
                 Rectangle()
                     .foregroundStyle(Gradient(colors: gradientColors))
                     .ignoresSafeArea()
                 VStack(spacing: 10){
-                    HStack(alignment: .top){
-                        VStack(alignment: .leading){
-                            Text("Welcome to,")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .colorScheme(.dark)
-                                
-                            Text("Mini Mate")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                                .colorScheme(.dark)
-                            
-                            #if MANAGER
-                            Text("Manager")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                                .colorScheme(.dark)
-                            #endif
-                        }
-                        
-                        Spacer()
-                        
-                        Image("logoOpp")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 75, height: 75)
-                            .colorScheme(.dark)
-                    }
-                    .padding(.horizontal)
+                    
+                    header
                     
                     Spacer()
-                    
-                    
-                    
-                    ZStack{
-                        RoundedRectangle(cornerRadius: 35)
-                            .foregroundStyle(.ultraThinMaterial)
-                            
-                        
-                        if !showEmailSignIn {
-                            
-                            VStack{
-                                
-                                
-                                StartButtons(
-                                    showEmailSignIn: $showEmailSignIn,
-                                    height: $height,
-                                    errorMessage: $errorMessage,
-                                    guestGame: $guestGame, authModel: authModel,
-                                    viewManager: viewManager,
-                                    geometry: geometry
-                                )
-                            }
-                            .padding()
-                            
-                        } else {
-                            EmailPasswordView(viewManager: viewManager, authModel: authModel, showEmail: $showEmailSignIn, height: $height, geometry: geometry, email: $email, password: $password, confirmPassword: $confirmPassword, guestGame: $guestGame, keyboardHeight: keyboard.height, isTextFieldFocused: $isTextFieldFocused)
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 35))
-                    .frame(height: height)
-                    .frame(maxWidth: 430)
-                    .animation(.bouncy.speed(1.5), value: height)
-                    .padding()
-                    .padding(.bottom)
                 }
+                
+                VStack {
+                    Spacer()
+                    card
+                        .padding(.bottom, 16)
+                }
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
             .onAppear {
-                
                 authModel.firebaseUser = nil
+            }
+            .ignoresSafeArea(.container, edges: .bottom)
+        }
+    
+    var header: some View {
+        HStack(alignment: .top){
+            VStack(alignment: .leading){
+                Text("Welcome to,")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .colorScheme(.dark)
+                    
+                Text("Mini Mate")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .colorScheme(.dark)
                 
-                
+                #if MANAGER
+                Text("Manager")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .colorScheme(.dark)
+                #endif
+            }
+            
+            Spacer()
+            
+            Image("logoOpp")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 75, height: 75)
+                .colorScheme(.dark)
+        }
+        .padding(.horizontal)
+    }
+    
+    var card: some View {
+        Group {
+            if !showEmailSignIn {
+                StartButtons(
+                    showEmailSignIn: $showEmailSignIn,
+                    errorMessage: $errorMessage,
+                    guestGame: $guestGame,
+                    authModel: authModel,
+                    viewManager: viewManager
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                EmailPasswordView(
+                    viewManager: viewManager,
+                    authModel: authModel,
+                    showEmail: $showEmailSignIn,
+                    email: $email,
+                    password: $password,
+                    confirmPassword: $confirmPassword,
+                    guestGame: $guestGame,
+                    keyboardHeight: keyboard.height,
+                    isTextFieldFocused: $isTextFieldFocused
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .frame(maxHeight: 600)
             }
         }
+        .background(
+            RoundedRectangle(cornerRadius: 35)
+                .foregroundStyle(.ultraThinMaterial)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 35))
+        .frame(maxWidth: 430)
+        .animation(.bouncy.speed(1.5), value: showEmailSignIn)
+        .padding()
     }
 }
+
 
 struct StartButtons: View {
     @Environment(\.modelContext) var context
     @Environment(\.colorScheme) var colorScheme
-    #if MINIMATE
+#if MINIMATE
     @EnvironmentObject var gameModel: GameViewModel
-    #endif
+#endif
     
     @Binding var showEmailSignIn: Bool
-    @Binding var height: CGFloat
     @Binding var errorMessage: (message: String?, type: Bool)
     
     @State var showGuestAlert: Bool = false
@@ -142,15 +151,11 @@ struct StartButtons: View {
     var authModel: AuthViewModel
     var viewManager: ViewManager
     
-    var geometry: GeometryProxy
-    
     var body: some View {
-        VStack(){
+        VStack(spacing: 16){
             // Email / Password Button
-            #if MINIMATE
-            
+#if MINIMATE
             if let guestGame = guestGame {
-                
                 HStack{
                     VStack(alignment: .leading, spacing: 6) {
                         
@@ -177,27 +182,25 @@ struct StartButtons: View {
                 }
             }
             
-            
             Button {
                 withAnimation {
                     showGuestAlert = true
                 }
             } label: {
-                HStack{
-                    Image(systemName: "play.fill")
-                    Text("Guest Play")
-                }
-                .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(
+                ZStack {
                     RoundedRectangle(cornerRadius: 25)
-                        .fill(.ultraThinMaterial)
-                )
-            
+                        .foregroundStyle(.ultraThinMaterial)
+                    
+                    HStack{
+                        Image(systemName: "play.fill")
+                        Text("Guest Play")
+                    }
+                    .font(.system(size: 18))
+                    .foregroundStyle(.mainOpp)
+                    .fontWeight(.semibold)
+                }
+                .frame(height: 50)
             }
-            .buttonStyle(.plain)
             .alert("Welcome To MiniMate!", isPresented: $showGuestAlert) {
                 
                 TextField("Name", text: $guestName)
@@ -208,7 +211,7 @@ struct StartButtons: View {
                     .autocapitalization(.none)   // starts lowercase / no auto-cap
                     .keyboardType(.emailAddress)
                 
-                    
+                
                 Button("Play") {
                     gameModel.createGame(guestData: GuestData(id: "guest-\(UUID().uuidString.prefix(6))", email: guestEmail == "" ? nil : guestEmail, name: guestName))
                     viewManager.navigateToHost()
@@ -230,15 +233,16 @@ struct StartButtons: View {
             } message: {
                 Text("Name is required. Email is optional — used only for course analytics.")
             }
-            .onAppear{
-                
+            .onAppear {
+                LocalGameRepository(context: context).fetchGuestGame { game in
+                    guestGame = game
+                }
             }
-            #endif
+#endif
             
             Button {
                 withAnimation {
                     showEmailSignIn = true
-                    height = geometry.size.height * 0.8
                 }
             } label: {
                 ZStack {
@@ -256,7 +260,6 @@ struct StartButtons: View {
             }
             .frame(height: 50)
 
-            Spacer()
             Button {
                 authModel.signInWithGoogle(context: context) { result in
                     switch result {
@@ -283,7 +286,6 @@ struct StartButtons: View {
                     }
                 }
             }
-            Spacer()
             SignInWithAppleButton { request in
                 authModel.handleSignInWithAppleRequest(request)
             } onCompletion: { result in
@@ -305,24 +307,7 @@ struct StartButtons: View {
             .frame(height: 50)
             .cornerRadius(25)
         }
-        .onAppear(){
-            withAnimation{
-                #if MANAGER
-                height = 210
-                #endif
-                
-                #if MINIMATE
-                LocalGameRepository(context: context).fetchGuestGame { game in
-                    guestGame = game
-                    if guestGame != nil {
-                        height = 360
-                    } else {
-                        height = 255
-                    }
-                }
-                #endif
-            }
-        }
+        .padding()
     }
 }
 
