@@ -273,7 +273,7 @@ class AuthViewModel: ObservableObject {
         errorMessage.wrappedValue = (message: nil, type: false)
         let repo = UserRepository(context: context)
         repo.loadOrCreateUser(id: user.uid, firebaseUser: user, name: name, authModel: authModel, signInMethod: signInMethod, guestGame: guestGame.wrappedValue) { done1, done2, creation  in
-            if navToHome && done1{
+            if navToHome && done2{
                 Task { @MainActor in
                     completion()
                     viewManager.navigateAfterSignIn()

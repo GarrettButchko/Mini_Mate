@@ -159,16 +159,18 @@ struct CourseListView: View {
         }
         .onAppear {
             viewModel.bind(authModel: authModel)
-            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) { _ in
-                if viewModel.userCourses.isEmpty {
-                    if authModel.userModel?.adminCourses.count ?? 0 > 1 {
-                        viewModel.getCourses()
-                    } else if authModel.userModel?.adminCourses.count == 1{
-                        viewModel.getCourse {
-                            viewManager.navigateToCourseTab(1)
+            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) { _, done2,_  in
+                if done2 {
+                    if viewModel.userCourses.isEmpty {
+                        if authModel.userModel?.adminCourses.count ?? 0 > 1 {
+                            viewModel.getCourses()
+                        } else if authModel.userModel?.adminCourses.count == 1{
+                            viewModel.getCourse {
+                                viewManager.navigateToCourseTab(1)
+                            }
+                        } else {
+                            viewModel.loadingCourse = false
                         }
-                    } else {
-                        viewModel.loadingCourse = false
                     }
                 }
             }
