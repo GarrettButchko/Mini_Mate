@@ -208,9 +208,9 @@ struct HostView: View {
                             Spacer()
                         }
                         if showTextAndButtons {
-                            if let item = locationHandler.selectedItem {
+                            if let item = gameModel.getCourse()?.name {
                                 HStack{
-                                    Text(item.name ?? "Unnamed")
+                                    Text(item)
                                         .foregroundStyle(.secondary)
                                         .truncationMode(.tail)
                                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -281,9 +281,9 @@ struct HostView: View {
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                         }
                     } else {
-                        if let item = locationHandler.selectedItem {
+                        if let item = gameModel.getCourse()?.name {
                             HStack{
-                                Text(item.name ?? "Unnamed")
+                                Text(item)
                                     .foregroundStyle(.secondary)
                                     .truncationMode(.tail)
                                     .transition(.move(edge: .top).combined(with: .opacity))

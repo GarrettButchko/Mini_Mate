@@ -598,7 +598,6 @@ final class GameViewModel: ObservableObject, Observable {
             
             DispatchQueue.main.async {
                 withAnimation {
-                    locationHandler.selectedItem = closestPlace
                     showTextAndButtons.wrappedValue = true
                 }
                 
@@ -637,7 +636,6 @@ final class GameViewModel: ObservableObject, Observable {
     }
     
     func exit(showTxtButtons: Binding<Bool>, handler: LocationHandler){
-        handler.selectedItem = nil
         setLocation(nil)
         resetCourse()
         showTxtButtons.wrappedValue = false

@@ -318,17 +318,6 @@ class LocationHandler: NSObject, ObservableObject, Observable, CLLocationManager
         return components.joined(separator: ", ")
     }
 
-    func setClosestValue() {
-        guard selectedItem == nil, let userLoc = userLocation else { return }
-        let region = MKCoordinateRegion(
-            center: userLoc,
-            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-        )
-        performSearch(in: region) { _ in
-            self.setSelectedItem(self.mapItems.first)
-        }
-    }
-
     func makeRegion(
         centeredOn coord: CLLocationCoordinate2D,
         radiusInMeters: CLLocationDistance = 5000
