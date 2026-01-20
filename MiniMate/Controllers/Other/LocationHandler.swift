@@ -277,7 +277,7 @@ class LocationHandler: NSObject, ObservableObject, Observable, CLLocationManager
         let bottomPadding = paddedLatDelta * bottomPaddingFactor
         let latitudeDelta = paddedLatDelta + topPadding + bottomPadding
         
-        let horizontalPaddingPoints: Double = 10
+        let horizontalPaddingPoints: Double = 16
 
         // Approximate screen width in points (iPhone portrait ≈ 390, iPad bigger)
         let screenWidthPoints = UIScreen.main.bounds.width
