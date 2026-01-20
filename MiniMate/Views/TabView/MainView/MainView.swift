@@ -18,11 +18,11 @@ struct MainView: View {
     }
     
     @Environment(\.colorScheme) private var colorScheme
-
+    
     @ObservedObject var viewManager: ViewManager
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var gameModel: GameViewModel
-
+    
     @State private var nameIsPresented = false
     @State private var isSheetPresented = false
     @State var isOnlineMode = false
@@ -33,6 +33,8 @@ struct MainView: View {
     @State var editOn: Bool = false
     @State var showDonation: Bool = false
     @State var showInfo: Bool = false
+    @State var showTextAndButtons: Bool = false
+    @State var isRotating: Bool = false
     
     private var uniGameRepo: UnifiedGameRepository { UnifiedGameRepository(context: context) }
     
@@ -87,11 +89,9 @@ struct MainView: View {
                     }
                 }
                 
-                // MARK: - Game Action Buttons
-                
                 ZStack{
+                    // MARK: - Under Buttons
                     if authModel.userModel != nil{
-                        
                         VStack{
                             Rectangle()
                                 .fill(Color.clear)
@@ -103,62 +103,13 @@ struct MainView: View {
                                         .fill(Color.clear)
                                         .frame(height: 110)
                                     
-                                    if !authModel.userModel!.isPro && authModel.userModel!.gameIDs.count >= 2 {
-                                        Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
-                                            .padding()
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(.ultraThinMaterial)
-                                            .clipShape(RoundedRectangle(cornerRadius: 25))
-                                    }
+                                    locationButtons
                                     
-                                    if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
-                                        VStack{
-                                            BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6344452429") // Replace with real one later
-                                                .frame(height: 50)
-                                                .padding()
-                                        }
-                                        .background(.ultraThinMaterial)
-                                        .clipShape(RoundedRectangle(cornerRadius: 25))
-                                    }
+                                    proStopper
                                     
-                                    if games.count != 0{
-                                        Button {
-                                            viewManager.navigateToGameReview(games.sorted(by: { $0.date > $1.date }).first!)
-                                        } label: {
-                                            SectionStatsView(title: "Last Game") {
-                                                HStack{
-                                                    HStack{
-                                                        VStack(alignment: .leading, spacing: 8) {
-                                                            Text("Winner")
-                                                                .font(.caption)
-                                                                .foregroundStyle(.secondary)
-                                                                .foregroundStyle(.mainOpp)
-                                                            PhotoIconView(photoURL: analyzer?.winnerOfLatestGame?.photoURL, name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇", imageSize: 30, background: Color.yellow)
-                                                            Spacer()
-                                                        }
-                                                        Spacer()
-                                                    }
-                                                    .padding()
-                                                    .frame(height: 120)
-                                                    .background(colorScheme == .light
-                                                                ? AnyShapeStyle(Color.white)
-                                                                : AnyShapeStyle(.ultraThinMaterial))
-                                                    .clipShape(RoundedRectangle(cornerRadius: 25))
-                                                    StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", color: .green)
-                                                }
-                                                
-                                                BarChartView(data: analyzer?.usersHolesOfLatestGame ?? [], title: "Recap of Game")
-                                                
-                                            }
-                                            .padding(.bottom)
-                                        }
-                                        
-                                    } else {
-                                        Image("logoOpp")
-                                            .resizable()
-                                            .frame(width: 50, height: 50)
-                                        Spacer()
-                                    }
+                                    ad
+                                    
+                                    lastGameStats
                                 }
                             }
                             .scrollIndicators(.hidden)
@@ -166,10 +117,10 @@ struct MainView: View {
                     }
                     
                     VStack(){
-                        
-                        TitleView()
+                        TitleView(colors: gameModel.getCourse()?.courseColors)
                             .frame(height: 150)
                         
+                        // MARK: - Game Action Buttons
                         VStack {
                             HStack {
                                 ZStack {
@@ -225,7 +176,7 @@ struct MainView: View {
                                         .scaledToFit()
                                         .frame(width: 25, height: 25)
                                         .foregroundStyle(.blue)
-
+                                    
                                 }
                                 .confirmationDialog("Info", isPresented: $showInfo, titleVisibility: .visible) {
                                     Button("OK", role: .cancel) {}
@@ -242,9 +193,8 @@ struct MainView: View {
                                     HStack(spacing: 16) {
                                         gameModeButton(title: "Host", icon: "antenna.radiowaves.left.and.right", color: .purple) {
                                             
-                                                gameModel.createGame(online: true)
-                                                showHost = true
-                                            
+                                            gameModel.createGame(online: true)
+                                            showHost = true
                                         }
                                         .sheet(isPresented: $showHost) {
                                             HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager)
@@ -252,9 +202,9 @@ struct MainView: View {
                                         }
                                         
                                         gameModeButton(title: "Join", icon: "person.2.fill", color: .orange) {
-                                           
-                                                gameModel.resetGame()
-                                                showJoin = true
+                                            
+                                            gameModel.resetGame()
+                                            showJoin = true
                                             
                                         }
                                         .sheet(isPresented: $showJoin) {
@@ -269,6 +219,7 @@ struct MainView: View {
                                     .clipped()
                                     
                                 } else {
+                                    
                                     HStack(spacing: 16) {
                                         gameModeButton(title: "Quick", icon: "person.fill", color: .blue) {
                                             if !disablePlaying {
@@ -308,7 +259,6 @@ struct MainView: View {
                                                 }
                                             }
                                         }
-                                        
                                     }
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .leading).combined(with: .opacity),
@@ -322,13 +272,13 @@ struct MainView: View {
                         .padding()
                         .background(content: {
                             RoundedRectangle(cornerRadius: 25)
-                                .ifAvailableGlassEffect()
+                                .ifAvailableGlassEffect(makeColor: gameModel.getCourse()?.scoreCardColor)
                         })
                         
                         
                         Spacer()
                         
-                        // Donation Button
+                        // Pro Mode Button
                         if let userModel = authModel.userModel, !userModel.isPro && NetworkChecker.shared.isConnected {
                             HStack {
                                 Spacer()
@@ -369,10 +319,8 @@ struct MainView: View {
                                 .padding()
                             }
                         }
-                        
                     }
                 }
-                
             }
             .padding([.top, .horizontal])
         }
@@ -385,6 +333,168 @@ struct MainView: View {
         .onChange(of: games) { old, newGames in
             if let user = authModel.userModel {
                 self.analyzer = UserStatsAnalyzer(user: user, games: newGames, context: context)
+            }
+        }
+    }
+    
+    var locationButtons: some View {
+        Group {
+            if NetworkChecker.shared.isConnected {
+                HStack{
+                    VStack{
+                        HStack{
+                            Text("Location:")
+                            Spacer()
+                        }
+                        if showTextAndButtons {
+                            if let item = locationHandler.selectedItem {
+                                HStack{
+                                    Text(item.name ?? "Unnamed")
+                                        .foregroundStyle(.secondary)
+                                        .truncationMode(.tail)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                    Spacer()
+                                }
+                            } else {
+                                HStack{
+                                    Text("No location found")
+                                        .foregroundStyle(.secondary)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    
+                    if !showTextAndButtons {
+                        Button {
+                            gameModel.searchNearby(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "magnifyingglass")
+                                Text("Search Nearby")
+                            }
+                            .frame(width: 180, height: 50)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } else {
+                        // Retry Button
+                        Button(action: {
+                            withAnimation(){
+                                gameModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, handler: locationHandler)
+                            }
+                        }) {
+                            Image(systemName: "arrow.trianglehead.2.clockwise")
+                                .rotationEffect(.degrees(isRotating ? 360 : 0))
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 50, height: 50)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                        
+                        
+                        // Exit Button
+                        Button(action: {
+                            withAnimation {
+                                gameModel.exit(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 50, height: 50)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .padding()
+                .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                .clipShape(RoundedRectangle(cornerRadius: 25))
+            }
+        }
+        .onAppear {
+            gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+        }
+    }
+    
+    var proStopper: some View {
+        Group{
+            if !authModel.userModel!.isPro && authModel.userModel!.gameIDs.count >= 2 {
+                Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 25))
+            }
+        }
+    }
+    
+    var ad: some View {
+        Group{
+            if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
+                VStack{
+                    BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6344452429") // Replace with real one later
+                        .frame(height: 50)
+                        .padding()
+                }
+                .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                .clipShape(RoundedRectangle(cornerRadius: 25))
+            }
+        }
+    }
+    
+    var lastGameStats: some View {
+        Group{
+            if games.count != 0{
+                Button {
+                    viewManager.navigateToGameReview(games.sorted(by: { $0.date > $1.date }).first!)
+                } label: {
+                    SectionStatsView(title: "Last Game", makeColor: gameModel.getCourse()?.scoreCardColor){
+                        HStack{
+                            HStack{
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Winner")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.mainOpp)
+                                    PhotoIconView(photoURL: analyzer?.winnerOfLatestGame?.photoURL, name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇", imageSize: 30, background: Color.yellow)
+                                    Spacer()
+                                }
+                                Spacer()
+                            }
+                            .padding()
+                            .frame(height: 120)
+                            .background(colorScheme == .light
+                                        ? AnyShapeStyle(Color.white)
+                                        : AnyShapeStyle(.ultraThinMaterial))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", color: .green, cornerRadius: 12)
+                        }
+                        
+                        BarChartView(data: analyzer?.usersHolesOfLatestGame ?? [], title: "Recap of Game")
+                        
+                    }
+                    .padding(.bottom)
+                }
+                
+            } else {
+                Image("logoOpp")
+                    .resizable()
+                    .frame(width: 50, height: 50)
+                Spacer()
             }
         }
     }

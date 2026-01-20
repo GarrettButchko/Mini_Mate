@@ -63,7 +63,7 @@ struct ContentView: View {
                 case .signIn:
                     SignInView(authModel: authModel, viewManager: viewManager)
                 case .host:
-                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, isGuest: true)
+                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, isGuest: true, showLocationButton: true)
                 }
             
                 

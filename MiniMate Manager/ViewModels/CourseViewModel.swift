@@ -73,17 +73,23 @@ final class CourseViewModel: ObservableObject {
         self.selectedCourse = course
     }
     
-    func getCourses(){
+    func getCourses() {
         loadingCourse = true
-        if hasCourse{
-            courseRepo.fetchCourses(ids: (authModel?.userModel?.adminCourses)!) { courses in
-                withAnimation(){
+        guard hasCourse, let ids = authModel?.userModel?.adminCourses else {
+            loadingCourse = false
+            return
+        }
+
+        courseRepo.fetchCourses(ids: ids) { courses in
+            Task { @MainActor in
+                withAnimation {
                     self.userCourses = courses
                     self.loadingCourse = false
                 }
             }
         }
     }
+
     func getCourse(completion: @escaping () -> Void){
         loadingCourse = true
         if hasCourse{

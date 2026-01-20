@@ -10,7 +10,10 @@ import SwiftData
 struct SectionStatsView<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     var title: String
+    var makeColor: Color? = nil
     @ViewBuilder var content: () -> Content
+    
+    
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -23,7 +26,7 @@ struct SectionStatsView<Content: View>: View {
             content()
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .ultraThinMaterialVsColor(makeColor: makeColor)
         .clipShape(RoundedRectangle(cornerRadius: 25))
     }
 }

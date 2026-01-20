@@ -30,15 +30,12 @@ struct MainView: View {
                     }
                 } label: {
                     Image(systemName: "chevron.left")
-                        .foregroundStyle(.white)
-                        .background{
-                            Circle()
-                                .fill(Color(.blue))
-                                .frame(width: 35, height: 35)
-                        }
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(.blue)
+                        .frame(width: 20, height: 20)
                 }
-                .padding(.leading, 8)
-                .padding(.trailing, 14)
+                .padding(.horizontal, 8)
                     
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Course Dashboard For,")
@@ -84,7 +81,7 @@ struct MainView: View {
             }
             .padding([.top, .horizontal])
             
-            TitleView()
+            TitleView(colors: viewModel.selectedCourse?.courseColors)
                 .frame(height: 150)
                 .padding(.bottom)
             

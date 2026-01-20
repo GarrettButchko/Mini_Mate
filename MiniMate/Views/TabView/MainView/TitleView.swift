@@ -2,7 +2,11 @@ import SwiftUI
 
 struct TitleView: View {
     
-    var colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .indigo, .pink]
+    var colors: [Color]
+    
+    init(colors: [Color]?) {
+        self.colors = colors ?? [.red, .orange, .yellow, .green, .blue, .purple, .indigo, .pink]
+    }
     
     var body: some View {
         ZStack {

@@ -38,13 +38,13 @@ struct SignInView: View {
     
     var body: some View {
             ZStack {
+                
                 Rectangle()
                     .foregroundStyle(Gradient(colors: gradientColors))
                     .ignoresSafeArea()
+                
                 VStack(spacing: 10){
-                    
                     header
-                    
                     Spacer()
                 }
                 
@@ -135,9 +135,9 @@ struct SignInView: View {
 struct StartButtons: View {
     @Environment(\.modelContext) var context
     @Environment(\.colorScheme) var colorScheme
-#if MINIMATE
+    #if MINIMATE
     @EnvironmentObject var gameModel: GameViewModel
-#endif
+    #endif
     
     @Binding var showEmailSignIn: Bool
     @Binding var errorMessage: (message: String?, type: Bool)
@@ -154,7 +154,7 @@ struct StartButtons: View {
     var body: some View {
         VStack(spacing: 16){
             // Email / Password Button
-#if MINIMATE
+            #if MINIMATE
             if let guestGame = guestGame {
                 HStack{
                     VStack(alignment: .leading, spacing: 6) {
@@ -238,7 +238,7 @@ struct StartButtons: View {
                     guestGame = game
                 }
             }
-#endif
+            #endif
             
             Button {
                 withAnimation {

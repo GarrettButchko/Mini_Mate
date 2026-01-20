@@ -21,6 +21,61 @@ struct CourseListView: View {
     @State private var isRotating: Bool = false
     
     var body: some View {
+        
+        
+        Group{
+            if viewModel.hasCourse {
+                multiCourse
+                    .transition(.opacity)
+            } else {
+                firstCourse
+                    .transition(.opacity)
+            }
+        }
+        .animation(.bouncy, value: viewModel.hasCourse)
+        .padding()
+        .onReceive(viewModel.timer) { _ in
+            viewModel.tick()
+        }
+        .alert("Add Course", isPresented: $viewModel.showAddCourseAlert) {
+            TextField("Password", text: $viewModel.password)
+            
+            Button("Add", role: .none) {
+                viewModel.tryPassword { _ in
+                    viewModel.password = ""
+                    viewModel.showAddCourseAlert = false
+                }
+            }
+            .disabled(viewModel.password.isEmpty)
+            
+            Button("Cancel", role: .cancel) {
+                viewModel.password = ""
+                viewModel.showAddCourseAlert = false
+            }
+        } message: {
+            Text("Enter course password to begin.")
+        }
+        .onAppear {
+            viewModel.bind(authModel: authModel)
+            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) { _, done2,_  in
+                if done2 {
+                    if viewModel.userCourses.isEmpty {
+                        if authModel.userModel?.adminCourses.count ?? 0 > 1 {
+                            viewModel.getCourses()
+                        } else if authModel.userModel?.adminCourses.count == 1{
+                            viewModel.getCourse {
+                                viewManager.navigateToCourseTab(1)
+                            }
+                        } else {
+                            viewModel.loadingCourse = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    var multiCourse: some View{
         VStack{
             HStack{
                 Text("Courses")
@@ -121,7 +176,7 @@ struct CourseListView: View {
                                 HStack(alignment: .center){
                                     Image(systemName: "plus")
                                         .foregroundStyle(.white)
-                                    Text(viewModel.hasCourse ? "Add a new course" : "Add your first course")
+                                    Text("Add a new course")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundStyle(.white)
@@ -135,45 +190,134 @@ struct CourseListView: View {
                 }
             }
         }
-        .padding()
-        .onReceive(viewModel.timer) { _ in
-            viewModel.tick()
-        }
-        .alert("Add Course", isPresented: $viewModel.showAddCourseAlert) {
-            TextField("Password", text: $viewModel.password)
-
-            Button("Add", role: .none) {
-                viewModel.tryPassword { _ in
-                    viewModel.password = ""
-                    viewModel.showAddCourseAlert = false
+    }
+    
+    var firstCourse: some View {
+        
+        VStack{
+            HStack{
+                Spacer()
+                
+                Button(action: {
+                    isSheetPresented = true
+                }) {
+                    if let photoURL = authModel.firebaseUser?.photoURL {
+                        AsyncImage(url: photoURL) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            Image("logoOpp")
+                                .resizable()
+                                .scaledToFill()
+                        }
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                    } else {
+                        Image("logoOpp")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 40, height: 40)
+                    }
+                }
+                .sheet(isPresented: $isSheetPresented) {
+                    ProfileView(
+                        viewManager: viewManager,
+                        authModel: authModel,
+                        isSheetPresent: $isSheetPresented, context: context
+                    )
                 }
             }
-            .disabled(viewModel.password.isEmpty)
-
-            Button("Cancel", role: .cancel) {
-                viewModel.password = ""
-                viewModel.showAddCourseAlert = false
-            }
-        } message: {
-            Text("Enter course password to begin.")
-        }
-        .onAppear {
-            viewModel.bind(authModel: authModel)
-            userRepo.loadOrCreateUser(id: authModel.currentUserIdentifier!, authModel: authModel) { _, done2,_  in
-                if done2 {
-                    if viewModel.userCourses.isEmpty {
-                        if authModel.userModel?.adminCourses.count ?? 0 > 1 {
-                            viewModel.getCourses()
-                        } else if authModel.userModel?.adminCourses.count == 1{
-                            viewModel.getCourse {
-                                viewManager.navigateToCourseTab(1)
-                            }
-                        } else {
-                            viewModel.loadingCourse = false
+            
+            
+            VStack(spacing: 18) {
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Add your first course")
+                        .font(.largeTitle.bold())
+                    
+                    Text("Mini Mate Manager lets you customize your scorecard, run leaderboards/tournaments, and view course analytics.")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer()
+                
+                VStack(alignment: .leading, spacing: 30) {
+                    Label("Customize your scorecard look", systemImage: "paintpalette.fill")
+                    Label("Collect emails + see analytics", systemImage: "chart.bar.fill")
+                    Label("Leaderboards and tournaments", systemImage: "trophy.fill")
+                    Label("Run promos with your own in-app ad", systemImage: "megaphone.fill")
+                    Label("And More!", systemImage: "plus")
+                }
+                .font(.headline)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 25).fill(.ultraThinMaterial))
+                
+                Spacer()
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Need your course password?")
+                        .font(.headline)
+                    
+                    Text("Visit our website to request it and we’ll email your course password to the address on file.")
+                        .foregroundStyle(.secondary)
+                    
+                    // Placeholder until you have the site
+                    Button {
+                        // later: open URL
+                    } label: {
+                        HStack {
+                            Image(systemName: "safari.fill")
+                            Text("Get my course password (coming soon)")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(RoundedRectangle(cornerRadius: 18).fill(.ultraThinMaterial))
+                    }
+                    .disabled(true)
+                    .opacity(0.6)
+                }
+                .padding(.top, 6)
+                
+                Button {
+                    viewModel.showAddCourseAlert = true // ✅ same alert as the list button
+                } label: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 25)
+                            .foregroundStyle(.blue)
+                            .frame(height: 60)
+                        HStack {
+                            Image(systemName: "plus")
+                                .foregroundStyle(.white)
+                            Text("Add a course")
+                                .font(.headline)
+                                .foregroundStyle(.white)
                         }
                     }
+                }
+                .opacity(viewModel.timeRemaining > 0 ? 0.5 : 1)
+                .disabled(viewModel.timeRemaining > 0)
+                
+                if let message = viewModel.message {
+                    VStack(spacing: 6) {
+                        Text(message).font(.headline)
+                        if viewModel.timeRemaining > 0 {
+                            Text("Try again in \(max(0, Int(ceil(viewModel.timeRemaining)))) seconds")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 25).fill(.ultraThinMaterial))
                 }
             }
         }
     }
 }
+

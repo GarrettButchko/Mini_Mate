@@ -624,6 +624,34 @@ final class GameViewModel: ObservableObject, Observable {
         }
     }
     
+    func setUp(showTxtButtons: Binding<Bool>, handler: LocationHandler) {
+        if getCourse() == nil && !getHasLoaded() {
+            findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+            setHasLoaded(true)
+        }
+    }
+    
+    func searchNearby(showTxtButtons: Binding<Bool>, handler: LocationHandler) {
+        setHasLoaded(false)
+        findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+    }
+    
+    func exit(showTxtButtons: Binding<Bool>, handler: LocationHandler){
+        handler.selectedItem = nil
+        setLocation(nil)
+        resetCourse()
+        showTxtButtons.wrappedValue = false
+    }
+    
+    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>, handler: LocationHandler) {
+        isRotating.wrappedValue = true
+        searchNearby(showTxtButtons: showTxtButtons, handler: handler)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            isRotating.wrappedValue = false
+        }
+    }
+    
     func getHasLoaded() -> Bool { hasLoaded }
     func setHasLoaded(_ hasLoaded: Bool) { self.hasLoaded = hasLoaded}
     

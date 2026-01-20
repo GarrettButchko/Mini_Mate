@@ -19,6 +19,7 @@ struct HostView: View {
     @State var newPlayerName = ""
     @State var newPlayerEmail = ""
     @State var isRotating = false
+    @State var showLocationButton: Bool = false
     
     @ObservedObject var authModel: AuthViewModel
     @ObservedObject var viewManager: ViewManager
@@ -31,12 +32,14 @@ struct HostView: View {
             showHost: Binding<Bool>,
             authModel: AuthViewModel,
             viewManager: ViewManager,
-            isGuest: Bool = false
+            isGuest: Bool = false,
+            showLocationButton: Bool = false
         ) {
             self._showHost = showHost
             self.authModel = authModel
             self.viewManager = viewManager
             self.isGuest = isGuest
+            self.showLocationButton = showLocationButton
             
             // Correct way to initialize a StateObject with dependencies
             _viewModel = StateObject(wrappedValue: HostViewModel())
@@ -62,14 +65,13 @@ struct HostView: View {
                         viewManager.navigateToSignIn()
                         gameModel.dismissGame()
                     } label: {
-                        ZStack{
-                            Circle()
-                                .fill(.blue)
-                            Image(systemName: "chevron.left")
-                                .foregroundStyle(.white)
-                        }
-                        .frame(width: 35, height: 35)
+                        Image(systemName: "chevron.left")
+                            .resizable()
+                            .scaledToFit()
+                            .foregroundStyle(.blue)
+                            .frame(width: 20, height: 20)
                     }
+                    .padding(.horizontal, 8)
                 }
                 
                 Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
@@ -221,73 +223,88 @@ struct HostView: View {
                                         .transition(.move(edge: .top).combined(with: .opacity))
                                     Spacer()
                                 }
-                                .onAppear {
-                                    print("HostView handler:", ObjectIdentifier(locationHandler))
-                                }
                             }
                         }
                     }
                     
                     Spacer()
                     
-                    if !showTextAndButtons {
-                        Button {
-                            viewModel.searchNearby(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "magnifyingglass")
-                                Text("Search Nearby")
-                            }
-                            .frame(width: 180, height: 50)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                        }
-                        .buttonStyle(.plain)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                    } else {
-                        
-                        
-                        // Retry Button
-                        Button(action: {
-                            withAnimation(){
-                                viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, gameModel: gameModel, handler: locationHandler)
-                            }
-                        }) {
-                            Image(systemName: "arrow.trianglehead.2.clockwise")
-                                .rotationEffect(.degrees(isRotating ? 360 : 0))
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .frame(width: 50, height: 50)
+                    if showLocationButton {
+                        if !showTextAndButtons {
+                            Button {
+                                viewModel.searchNearby(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "magnifyingglass")
+                                    Text("Search Nearby")
+                                }
+                                .frame(width: 180, height: 50)
                                 .background(Color.blue)
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                        
-                        
-                        // Exit Button
-                        Button(action: {
-                            withAnimation {
-                                viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail, gameModel: gameModel, handler: locationHandler)
-                            }
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.title2)
                                 .foregroundColor(.white)
-                                .frame(width: 50, height: 50)
-                                .background(Color.red)
-                                .clipShape(Circle())
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                        } else {
+                            // Retry Button
+                            Button(action: {
+                                withAnimation(){
+                                    viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, gameModel: gameModel, handler: locationHandler)
+                                }
+                            }) {
+                                Image(systemName: "arrow.trianglehead.2.clockwise")
+                                    .rotationEffect(.degrees(isRotating ? 360 : 0))
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.blue)
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                            
+                            
+                            // Exit Button
+                            Button(action: {
+                                withAnimation {
+                                    viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail, gameModel: gameModel, handler: locationHandler)
+                                }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.red)
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
                         }
-                        .buttonStyle(.plain)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } else {
+                        if let item = locationHandler.selectedItem {
+                            HStack{
+                                Text(item.name ?? "Unnamed")
+                                    .foregroundStyle(.secondary)
+                                    .truncationMode(.tail)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                Spacer()
+                            }
+                        } else {
+                            HStack{
+                                Text("No location found")
+                                    .foregroundStyle(.secondary)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                Spacer()
+                            }
+                        }
                     }
                 }
-                
             }
         }
         .onAppear {
-            viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
+            if !showLocationButton {
+                viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
+            }
         }
     }
     

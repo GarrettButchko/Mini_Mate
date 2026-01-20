@@ -8,7 +8,6 @@
 import SwiftUI
 
 enum AnalyticsSection: String, CaseIterable, Identifiable {
-    case overview = "Overview"
     case growth = "Growth"
     case retention = "Retention"
     case operations = "Operations"
@@ -24,12 +23,6 @@ struct AnalyticsObject{
 }
 
 let analyticsObjects: [String: AnalyticsObject] = [
-    AnalyticsSection.overview.rawValue: AnalyticsObject(
-        type: .overview,
-        icon: "square.grid.2x2",
-        color: .blue
-    ),
-
     AnalyticsSection.growth.rawValue: AnalyticsObject(
         type: .growth,
         icon: "chart.line.uptrend.xyaxis",
@@ -75,7 +68,7 @@ struct AnalyticsView: View {
 
     @EnvironmentObject var viewModel: CourseViewModel
 
-    @State private var selectedSection: AnalyticsSection = .overview
+    @State private var selectedSection: AnalyticsSection = .growth
 
     var body: some View {
         VStack {
@@ -124,12 +117,6 @@ struct AnalyticsView: View {
                     }
                 }
                 .contentMargins(.horizontal, 16, for: .scrollContent)
-                .onAppear {
-                    DispatchQueue.main.async {
-                        selectedSection = .overview
-                        proxy.scrollTo(AnalyticsSection.overview, anchor: .leading)
-                    }
-                }
             }
 
             ScrollView(.vertical) {

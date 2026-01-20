@@ -11,6 +11,7 @@ struct StatCard: View {
     var title: String
     var value: String
     var color: Color
+    var cornerRadius: CGFloat = 25
 
     var body: some View {
         HStack{
@@ -32,6 +33,6 @@ struct StatCard: View {
         .background(colorScheme == .light
                     ? AnyShapeStyle(Color.white)
                     : AnyShapeStyle(.ultraThinMaterial))
-        .clipShape(RoundedRectangle(cornerRadius: 25))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
     }
 }
