@@ -283,18 +283,18 @@ struct HostView: View {
                     } else {
                         if let item = gameModel.getCourse()?.name {
                             HStack{
+                                Spacer()
                                 Text(item)
                                     .foregroundStyle(.secondary)
                                     .truncationMode(.tail)
                                     .transition(.move(edge: .top).combined(with: .opacity))
-                                Spacer()
                             }
                         } else {
                             HStack{
+                                Spacer()
                                 Text("No location found")
                                     .foregroundStyle(.secondary)
                                     .transition(.move(edge: .top).combined(with: .opacity))
-                                Spacer()
                             }
                         }
                     }

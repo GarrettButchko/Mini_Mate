@@ -54,6 +54,20 @@ struct MainView: View {
                         Text(authModel.userModel?.name ?? "User")
                             .font(.title2)
                             .fontWeight(.semibold)
+                        
+                        if let courseLogo = gameModel.getCourse()?.logo{
+                            Divider()
+                            
+                            AsyncImage(url: URL(string: courseLogo)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            } placeholder: {
+                                Text("Error")
+                            }
+                            .frame(width: 40, height: 40)
+                            .clipShape(Circle())
+                        }
                     }
                     
                     Spacer()
@@ -103,7 +117,9 @@ struct MainView: View {
                                         .fill(Color.clear)
                                         .frame(height: 110)
                                     
-                                    locationButtons
+                                    if NetworkChecker.shared.isConnected {
+                                        locationButtons
+                                    }
                                     
                                     proStopper
                                     
@@ -426,7 +442,9 @@ struct MainView: View {
             }
         }
         .onAppear {
-            gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+            if NetworkChecker.shared.isConnected {
+                gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+            }
         }
     }
     
