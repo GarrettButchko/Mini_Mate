@@ -107,7 +107,23 @@ final class GameViewModel: ObservableObject, Observable {
         game.dismissed     = newGame.dismissed
         game.live          = newGame.live
         game.lastUpdated   = newGame.lastUpdated
+        game.courseID      = newGame.courseID
         lastUpdated        = newGame.lastUpdated
+        
+        if let courseID = newGame.courseID {
+            self.courseRepo.fetchCourse(id: courseID) { course in
+                if let course = course {
+                    self.course = course
+                    print("✅ Course loaded: \(course.name)")
+                    self.hasLoaded = true
+                } else {
+                    print("⚠️ Course not found for ID: \(courseID) creating new course")
+                    if let location = self.game.location {
+                        self.courseRepo.createCourseWithMapItem(location: location) { complete in }
+                    }
+                }
+            }
+        }
         
         // 2) Rebuild players and their holes from remote data
         for remotePlayer in newGame.players {
@@ -337,6 +353,7 @@ final class GameViewModel: ObservableObject, Observable {
     func joinGame(id: String, userId: String, completion: @escaping (Bool) -> Void) {
         guard onlineGame else { return }
         resetGame()
+        resetCourse()
         liveGameRepo.fetchGame(id: id) { game in
             if let game = game, !game.dismissed && !game.started && !game.completed && !game.players.contains(where: { $0.userId == userId }) {
                 self.setGame(game)
@@ -419,7 +436,6 @@ final class GameViewModel: ObservableObject, Observable {
         deleteFromFirebaseGamesArr()
         
         hasLoaded = false
-        resetCourse()
         resetGame()             // now creates a new Game with id == ""
     }
     
