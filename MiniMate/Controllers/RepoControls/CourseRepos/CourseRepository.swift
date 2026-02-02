@@ -367,7 +367,7 @@ final class CourseRepository {
     }
 
     
-    // MARK: - Check if email exists in course
+    // MARK: - Check if email exists in course - Good for new DailyDoc
     func processPlayerEmailsForGame(
         emails: [String],
         courseID: String,
@@ -488,7 +488,7 @@ final class CourseRepository {
     
     
     
-    func updateWeeklyAnalytics(
+    func updateDayAnalytics(
         courseID: String,
         game: Game,
         startTime: Date,
@@ -499,15 +499,12 @@ final class CourseRepository {
 
         // Use YOUR current convention for dailyCounts: Sunday=0..Saturday=6
         let hour = Calendar.current.component(.hour, from: startTime)
-        let weekday = Calendar.current.component(.weekday, from: startTime) - 1 // Sunday=0
-
-        let weekKey = makeWeekID()
 
         // Weekly doc reference (subcollection under the course)
         let weekRef = db.collection(collectionName)
             .document(courseID)
-            .collection("weeklyAnalytics")
-            .document(weekKey)
+            .collection("dailyDocs")
+            .document(makeDayID(from: startTime))
 
         let roundLengthSeconds = max(0, Int(endTime.timeIntervalSince(startTime)))
 
@@ -525,12 +522,10 @@ final class CourseRepository {
             // -------------------------
             // 1) Peak analytics
             // -------------------------
-            let peak = data["peakAnalytics"] as? [String: Any] ?? [:]
             var hourly = peak["hourlyCounts"] as? [Int] ?? Array(repeating: 0, count: 24)
-            var daily  = peak["dailyCounts"]  as? [Int] ?? Array(repeating: 0, count: 7)
 
             if hourly.count != 24 { hourly = Array(repeating: 0, count: 24) }
-            if daily.count != 7 { daily = Array(repeating: 0, count: 7) }
+            
 
             if hour >= 0 && hour < 24 { hourly[hour] += increment }
             if weekday >= 0 && weekday < 7 { daily[weekday] += increment }
@@ -539,6 +534,8 @@ final class CourseRepository {
                 "hourlyCounts": hourly,
                 "dailyCounts": daily
             ]
+            
+            let hourlyCounts: ["hourlyCounts": [String: Int] = [
 
             // -------------------------
             // 2) Hole analytics
@@ -608,13 +605,7 @@ final class CourseRepository {
         increment: Int = 1,
         completion: @escaping (Bool) -> Void
     ) {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone.current
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        let dayKey = formatter.string(from: Date())
+        let dayKey = makeDayID(from: Date())
 
         let dayRef = db.collection(collectionName)
             .document(courseID)

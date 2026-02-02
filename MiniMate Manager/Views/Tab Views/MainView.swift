@@ -79,65 +79,51 @@ struct MainView: View {
                     )
                 }
             }
-            .padding([.top, .horizontal])
             
-            TitleView(colors: viewModel.selectedCourse?.courseColors)
+            TitleView(colors: viewModel.selectedCourse?.courseColors, isManager: true)
                 .frame(height: 150)
                 .padding(.bottom)
             
             ZStack(alignment: .top){
                 
                 ScrollView{
-                    Rectangle()
-                        .fill(Color.clear)
-                        .frame(height: 120)
-                    
-                    HStack{
-                        Spacer()
-                        Text("ADD STUFF HERE")
-                        Spacer()
+                    VStack (spacing: 16){
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: 94)
+                        
+                        HStack{
+                            Spacer()
+                            Text("ADD STUFF HERE")
+                            Spacer()
+                        }
+                        .padding()
+                        .background {
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(.ultraThinMaterial)
+                        }
+                        
+                        HStack{
+                            Spacer()
+                            Text("ADD STUFF HERE")
+                            Spacer()
+                        }
+                        .padding()
+                        .background {
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(.ultraThinMaterial)
+                        }
                     }
-                    .padding()
-                    .background {
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill(.ultraThinMaterial)
-                    }
-                    .padding()
                 }
                 
                 VStack{
                     HStack(spacing: 14){
-                        Button {
-                            showLeaderBoardSheet = true
-                        } label: {
-                            HStack{
-                                Image(systemName: "flag.pattern.checkered")
-                                Text("Leaderboard")
-                            }
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                            .padding(.horizontal)
-                            .background {
-                                RoundedRectangle(cornerRadius: 17)
-                                    .foregroundStyle(Color.orange)
-                            }
+                        mainViewButton(title: "Leaderboard", icon: "flag.pattern.checkered", color: Color.green) {
+                            // MARK: TODO
                         }
-                        Button {
-                            showLeaderBoardSheet = true
-                        } label: {
-                            HStack{
-                                Image(systemName: "medal")
-                                Text("Tournament")
-                            }
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                            .padding(.horizontal)
-                            .background {
-                                RoundedRectangle(cornerRadius: 17)
-                                    .foregroundStyle(Color.green)
-                            }
+                        
+                        mainViewButton(title: "Tournament", icon: "medal", color: Color.orange) {
+                            // MARK: TODO
                         }
                     }
                 }
@@ -146,9 +132,28 @@ struct MainView: View {
                     RoundedRectangle(cornerRadius: 25)
                         .ifAvailableGlassEffect()
                 })
-                .padding(.horizontal)
             }
             Spacer()
+        }
+        .padding()
+    }
+    
+    func mainViewButton(title: String, icon: String? = nil, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                if let icon = icon {
+                    Image(systemName: icon)
+                }
+                Text(title)
+                    .fontWeight(.semibold)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .background {
+                RoundedRectangle(cornerRadius: 17)
+                    .foregroundStyle(color)
+            }
+            .foregroundColor(.white)
         }
     }
 }

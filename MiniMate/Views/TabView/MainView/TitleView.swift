@@ -3,10 +3,13 @@ import SwiftUI
 struct TitleView: View {
     
     var colors: [Color]
+    var isManager: Bool
     
-    init(colors: [Color]?) {
+    init(colors: [Color]?, isManager: Bool = false) {
         self.colors = colors ?? [.red, .orange, .yellow, .green, .blue, .purple, .indigo, .pink]
+        self.isManager = isManager
     }
+
     
     var body: some View {
         ZStack {
@@ -19,15 +22,26 @@ struct TitleView: View {
                         .bold()
                     Spacer()
                 }
-                HStack {
-                    Spacer()
-                    Text("Mate")
-                        .font(.largeTitle)
-                        .foregroundColor(.mainOpp)
-                        .bold()
+                
+                if !isManager {
+                    HStack {
+                        Spacer()
+                        Text("Mate")
+                            .font(.largeTitle)
+                            .foregroundColor(.mainOpp)
+                            .bold()
+                    }
+                } else {
+                    HStack {
+                        Spacer()
+                        Text("Manager")
+                            .font(.title)
+                            .foregroundColor(.mainOpp)
+                            .bold()
+                    }
                 }
             }
-            .frame(width: 130)
+            .frame(width: isManager ? 150 : 130)
             
             // Orbiting background
             OrbitingCirclesView(colors: colors)

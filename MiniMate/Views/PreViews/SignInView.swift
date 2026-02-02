@@ -69,17 +69,20 @@ struct SignInView: View {
                     .foregroundStyle(.secondary)
                     .colorScheme(.dark)
                     
+            #if MINIMATE
                 Text("Mini Mate")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .colorScheme(.dark)
+            #endif
                 
-                #if MANAGER
-                Text("Manager")
+            #if MANAGER
+                Text("Mini Manager")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .colorScheme(.dark)
-                #endif
+            #endif
+            
             }
             
             Spacer()

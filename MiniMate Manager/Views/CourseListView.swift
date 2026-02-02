@@ -189,11 +189,26 @@ struct CourseListView: View {
                     }
                 }
             }
+            
+            Button {
+                // later: open URL
+            } label: {
+                HStack {
+                    Image(systemName: "safari.fill")
+                    Text("Get another course password")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(RoundedRectangle(cornerRadius: 18).fill(.ultraThinMaterial))
+                .foregroundStyle(.mainOpp)
+            }
         }
     }
     
     var firstCourse: some View {
-        
         VStack{
             HStack{
                 Spacer()
@@ -270,7 +285,7 @@ struct CourseListView: View {
                     } label: {
                         HStack {
                             Image(systemName: "safari.fill")
-                            Text("Get my course password (coming soon)")
+                            Text("Get my course password")
                             Spacer()
                             Image(systemName: "chevron.right")
                         }
@@ -278,9 +293,8 @@ struct CourseListView: View {
                         .padding()
                         .frame(maxWidth: .infinity)
                         .background(RoundedRectangle(cornerRadius: 18).fill(.ultraThinMaterial))
+                        .foregroundStyle(.mainOpp)
                     }
-                    .disabled(true)
-                    .opacity(0.6)
                 }
                 .padding(.top, 6)
                 
