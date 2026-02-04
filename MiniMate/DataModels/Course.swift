@@ -49,6 +49,7 @@ struct DailyDoc: Codable, Equatable {
     var gamesPlayed: Int = 0
     var newPlayers: Int = 0
     var returningPlayers: Int = 0
+    
     var holeAnalytics: HoleAnalytics = HoleAnalytics()
     var hourlyCounts: [String: Int] = [:]
     var updatedAt: Date? = nil
@@ -66,12 +67,11 @@ struct HoleAnalytics: Codable, Equatable {
     var playsPerHole: [Int] = []
 }
 
-struct CourseEmail: Codable, Identifiable, Equatable {
-    var id: String            // docID = emailKey(email)
-    var firstSeen: String
-    var secondTolastPlayed: String
-    var lastPlayed: String
-    var playCount: Int
+struct CourseEmail: Codable, Equatable {
+    var firstSeen: String?
+    var secondSeen: String?
+    var lastPlayed: String?
+    var playCount: Int = 0
 }
 
 extension HoleAnalytics {

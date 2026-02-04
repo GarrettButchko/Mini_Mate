@@ -368,98 +368,124 @@ final class CourseRepository {
 
     
     // MARK: - Check if email exists in course - Good for new DailyDoc
-    func processPlayerEmailsForGame(
+    func updateDayAnalytics(
         emails: [String],
         courseID: String,
         completion: @escaping (Bool) -> Void
     ) {
+        // Get the id for the day
+        let todayID = makeDayID()
+        
+        // Makes default reference for the course, dailyDoc analytics and emails
         let courseRef = db.collection(collectionName).document(courseID)
+        let dayRef = courseRef.collection("dailyDoc").document(todayID)
+        let emailRef = courseRef.collection("emails")
 
+        // creates and array of emails that does not include the same emails
         let uniqueEmails = Array(Set(
             emails
                 .map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
         ))
-
         guard !uniqueEmails.isEmpty else {
             DispatchQueue.main.async { completion(true) }
             return
         }
 
-        let todayID = makeDayID()
-        let dayRef = courseRef.collection("dailyCount").document(todayID)
+        
 
         db.runTransaction({ tx, errPtr -> Any? in
-
-            // 1) READS
-            var snapsByEmail: [(email: String, snap: DocumentSnapshot?)] = []
-            snapsByEmail.reserveCapacity(uniqueEmails.count)
-
+            
+            // For Daily Analytics, Only 1 per day for each player
+            var newCount = 0
+            var returningCount = 0
+            
+            var result: [String: CourseEmail] = [:]
+            result.reserveCapacity(uniqueEmails.count)
+            
+            // gets courseEmail Data and gets the numbers to add to my newCount or returning count
             for email in uniqueEmails {
-                let emailRef = courseRef.collection("emails").document(self.emailKey(email))
+                let docRef = emailRef.document(self.emailKey(email))
+                
                 do {
-                    let snap = try tx.getDocument(emailRef)
-                    snapsByEmail.append((email: email, snap: snap))
-                } catch let e as NSError {
-                    errPtr?.pointee = e
+                    let snap = try tx.getDocument(docRef)
+                    
+                    guard snap.exists else {
+                        continue
+                    }
+                    
+                    do {
+                        let obj = try snap.data(as: CourseEmail.self)
+                        result[email] = obj
+                    } catch let decodeErr as NSError {
+                        errPtr?.pointee = decodeErr
+                        return nil
+                    }
+                    
+                } catch let readErr as NSError {
+                    errPtr?.pointee = readErr
                     return nil
                 }
             }
 
-            // 2) COMPUTE + WRITES
-            var newCount = 0
-            var returningCount = 0
+            for email in uniqueEmails {
+                let docRef = emailRef.document(self.emailKey(email))
 
-            for entry in snapsByEmail {
-                let emailRef = courseRef.collection("emails").document(self.emailKey(entry.email))
+                if let data = result[email]{
+                    guard var lastPlayed = data.lastPlayed, let firstSeen = data.firstSeen else {
+                        // handle missing required fields (skip or fail transaction)
+                        print("Missing lastPlayed or firstSeen for email: \(email)")
+                        continue
+                    }
 
-                if let snap = entry.snap, snap.exists {
-                    let lastPlayed = (snap.get("lastPlayed") as? String) ?? ""
-                    let firstSeen  = (snap.get("firstSeen") as? String) ?? lastPlayed
-                    let playCount  = (snap.get("playCount") as? Int) ?? 0
-                    let secondSeen = snap.get("secondSeen") as? String
-
+                    var playCount = data.playCount
+                    var secondSeen = data.secondSeen
+                    
                     // unique returners for the day
                     if lastPlayed != todayID {
                         returningCount += 1
-                    }
-
-                    var updates: [String: Any] = [
-                        "firstSeen": firstSeen, // backfill if needed
-                        "playCount": playCount + 1
-                    ]
-
-                    // update last/previous only if new day (keeps "previousPlayed" meaningful)
-                    if lastPlayed != todayID {
-                        updates["previousPlayed"] = lastPlayed.isEmpty ? todayID : lastPlayed
-                        updates["lastPlayed"] = todayID
+                        lastPlayed = todayID
                     }
 
                     // set secondSeen exactly once: on 2nd ever play
                     if playCount == 1 && secondSeen == nil {
-                        updates["secondSeen"] = todayID
+                        secondSeen = todayID
                     }
+                    
+                    playCount += 1
+                    
+                    let updatedCourseEmail = CourseEmail(firstSeen: firstSeen, secondSeen: secondSeen, lastPlayed: lastPlayed, playCount: playCount)
 
-                    tx.setData(updates, forDocument: emailRef, merge: true)
-
+                    do {
+                        try tx.setData(from: updatedCourseEmail, forDocument: docRef, merge: true)
+                    } catch let e as NSError {
+                        errPtr?.pointee = e
+                        return nil
+                    }
                 } else {
                     newCount += 1
-                    tx.setData([
-                        "firstSeen": todayID,
-                        "lastPlayed": todayID,
-                        "playCount": 1
-                    ], forDocument: emailRef, merge: true)
+                    
+                    let updatedCourseEmail = CourseEmail(firstSeen: todayID, secondSeen: nil, lastPlayed: todayID, playCount: 1)
+                    
+                    do {
+                        try tx.setData(from: updatedCourseEmail, forDocument: docRef, merge: true)
+                    } catch let e as NSError {
+                        errPtr?.pointee = e
+                        return nil
+                    }
                 }
             }
+            
+            
 
-            var dayUpdates: [String: Any] = [
-                "dayID": todayID,
-                "updatedAt": FieldValue.serverTimestamp()
-            ]
-            if newCount > 0 { dayUpdates["newPlayers"] = FieldValue.increment(Int64(newCount)) }
-            if returningCount > 0 { dayUpdates["returningPlayers"] = FieldValue.increment(Int64(returningCount)) }
+            //var dayUpdates: [String: Any] = [
+            //    "dayID": todayID,
+            //    "updatedAt": FieldValue.serverTimestamp()
+            //]
+            //if newCount > 0 { dayUpdates["newPlayers"] = FieldValue.increment(Int64(newCount)) }
+            //if returningCount > 0 { dayUpdates["returningPlayers"] = FieldValue.increment(Int64(returningCount)) }
 
-            tx.setData(dayUpdates, forDocument: dayRef, merge: true)
+            //tx.setData(dayUpdates, forDocument: dayRef, merge: true)
 
             return true
         }) { _, error in
@@ -499,12 +525,14 @@ final class CourseRepository {
 
         // Use YOUR current convention for dailyCounts: Sunday=0..Saturday=6
         let hour = Calendar.current.component(.hour, from: startTime)
+        
+        let dayID = makeDayID(from: startTime)
 
         // Weekly doc reference (subcollection under the course)
         let weekRef = db.collection(collectionName)
             .document(courseID)
             .collection("dailyDocs")
-            .document(makeDayID(from: startTime))
+            .document(dayID)
 
         let roundLengthSeconds = max(0, Int(endTime.timeIntervalSince(startTime)))
 
@@ -520,7 +548,7 @@ final class CourseRepository {
             let data = snap.data() ?? [:]
 
             // -------------------------
-            // 1) Peak analytics
+            // 1) Returning and First time users already accounted for 
             // -------------------------
             var hourly = peak["hourlyCounts"] as? [Int] ?? Array(repeating: 0, count: 24)
 
@@ -599,7 +627,7 @@ final class CourseRepository {
     }
     
     // MARK: - Unified Daily Metric Updater
-    func updateDailyMetric(
+    func updateGameCount(
         courseID: String,
         metric: DailyMetric,
         increment: Int = 1,
