@@ -9,8 +9,8 @@ import SwiftUI
 
 extension Shape {
     @ViewBuilder
-    func ifAvailableGlassEffect(makeColor: Color? = nil) -> some View {
-        let fillColor = (makeColor ?? Color.subTwo).opacity(0.30)
+    func ifAvailableGlassEffect(strokeWidth: CGFloat = 1, opacity: CGFloat = 0.30, makeColor: Color? = nil) -> some View {
+        let fillColor = (makeColor ?? Color.subTwo).opacity(opacity)
         let strokeColor = (makeColor ?? Color.subTwo)
 
         if #available(iOS 26.0, *) {
@@ -18,12 +18,12 @@ extension Shape {
                 .fill(fillColor)
                 .glassEffect(in: self)
                 .clipShape(self) // clip BEFORE adding border
-                .overlay(self.stroke(strokeColor, lineWidth: 1)) // ← correct border
+                .overlay(self.stroke(strokeColor, lineWidth: strokeWidth)) // ← correct border
         } else {
             self
                 .ultraThinMaterialVsColorFill(makeColor: fillColor)
                 .clipShape(self)
-                .overlay(self.stroke(strokeColor, lineWidth: 1))
+                .overlay(self.stroke(strokeColor, lineWidth: strokeWidth))
                 .shadow(radius: 10)
         }
     }

@@ -409,7 +409,7 @@ struct CourseView: View {
                     } label: {
                         HStack {
                             Image(systemName: "safari.fill")
-                            Text("This your Course? Click to Manage!")
+                            Text("This your Course? Click to Claim!")
                             Spacer()
                             Image(systemName: "chevron.right")
                         }

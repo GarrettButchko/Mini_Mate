@@ -165,9 +165,9 @@ struct JoinView: View {
                     VStack {
                         ProgressView()
                             .scaleEffect(1.5)
+                            .frame(width: 40, height: 40)
                         Text("Waiting...").font(.caption)
-                    }
-                    .padding(.horizontal)
+                    }.padding(.horizontal)
                 }
             }
             .frame(height: 75)

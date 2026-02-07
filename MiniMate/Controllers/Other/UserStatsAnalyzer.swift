@@ -30,7 +30,7 @@ class UserStatsAnalyzer {
         let userIDSet = Set(games.flatMap { $0.players.map { $0.userId } })
         var count = 0
         for id in userIDSet {
-            if id != userID && id.contains("guest") {
+            if id != userID || id.contains("guest") {
                 count += 1
             }
         }

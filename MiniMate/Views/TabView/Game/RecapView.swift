@@ -82,17 +82,23 @@ struct RecapView<Content: View>: View {
                         Spacer()
                     }
                     
-                    Button{
+                    Button {
                         showReviewSheet = true
                     } label: {
-                        ZStack{
-                            RoundedRectangle(cornerRadius: 25)
-                                .foregroundStyle(Color.blue)
-                            Text("Review Game")
-                                .foregroundStyle(.white)
-                        }
+                        Label("Review Game", systemImage: "chart.bar.xaxis")
+                            .font(.headline)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .foregroundStyle(.blue)
                     }
-                    .frame(width: 140, height: 40)
+                    .background {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Capsule()
+                                    .stroke(.blue.opacity(0.6), lineWidth: 1)
+                            )
+                    }
                     .sheet(isPresented: $showReviewSheet){
                         if let game = game {
                             GameReviewView(game: game)
@@ -106,7 +112,7 @@ struct RecapView<Content: View>: View {
                 }
                 .padding()
             }
-            
+            .padding(.bottom)
         }
     }
 }

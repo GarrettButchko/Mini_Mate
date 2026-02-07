@@ -242,15 +242,15 @@ struct StatsView: View {
             if let analyzer = viewModel.analyzer {
                 SectionStatsView(title: "Basic Stats", spacing: spacing) {
                     HStack(spacing: spacing){
-                        StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)", color: .green)
-                        StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)", color: .blue)
+                        StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)")
+                        StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)")
                     }
                     
-                    StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", color: .blue)
+                    StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)")
                     
                     HStack(spacing: spacing){
-                        StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame), color: .blue)
-                        StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole), color: .green)
+                        StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame))
+                        StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole))
                     }
                 }
                 .padding(.top)
@@ -272,10 +272,10 @@ struct StatsView: View {
                 .padding(.top)
                 SectionStatsView(title: "Misc Stats", spacing: spacing) {
                     HStack(spacing: spacing){
-                        StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)", color: .blue)
-                        StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)", color: .green)
+                        StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)")
+                        StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)")
                     }
-                    StatCard(title: "Hole in One's", value: "\(analyzer.holeInOneCount)", color: .blue)
+                    StatCard(title: "Hole in One's", value: "\(analyzer.holeInOneCount)")
                 }
                 .padding(.top)
                 SectionStatsView(title: "Average 9 Hole Game", spacing: spacing){

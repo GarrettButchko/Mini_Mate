@@ -8,26 +8,61 @@ import SwiftUI
 
 struct StatCard: View {
     @Environment(\.colorScheme) private var colorScheme
+    @State var showInfo: Bool = false
     var title: String
     var value: String
-    var color: Color
+    var color: Color? = nil
     var cornerRadius: CGFloat = 12
-
+    var cardHeight: CGFloat? = nil
+    var infoText: String = "No Text Yet"
+    
     var body: some View {
-        HStack{
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .foregroundStyle(.mainOpp)
-                    .fontWeight(.semibold)
-                Text(value)
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundStyle(color)
-                Spacer()
+        
+            VStack(spacing: 8) {
+                HStack{
+                    Text(title)
+                        .foregroundStyle(.mainOpp)
+                        .font(.system(size: 14, weight: .semibold))
+                    
+                    Spacer()
+                    
+                    Button {
+                        showInfo = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .foregroundStyle(.blue)
+                        
+                    }
+                    .confirmationDialog("Info", isPresented: $showInfo, titleVisibility: .visible) {
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        Text(infoText)
+                    }
+                }
+                
+                HStack{
+                    Text(value)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            color != nil
+                            ? AnyShapeStyle(color!)
+                            : AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [.blue, .green],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                        )
+                    Spacer()
+                }
             }
-            Spacer()
-        }
         .padding()
+        .frame(height: cardHeight)
         .background(colorScheme == .light
                     ? AnyShapeStyle(Color.white)
                     : AnyShapeStyle(.ultraThinMaterial))

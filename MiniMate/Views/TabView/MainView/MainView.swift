@@ -325,8 +325,10 @@ struct MainView: View {
                                     }
                                     .padding()
                                     .frame(height: 50)
-                                    .background(Color.purple)
-                                    .clipShape(RoundedRectangle(cornerRadius: 25))
+                                    .background {
+                                        RoundedRectangle(cornerRadius: 25)
+                                            .ifAvailableGlassEffect(strokeWidth: 0, opacity: 0.7, makeColor: .purple)
+                                    }
                                     .shadow(radius: 10)
                                 }
                                 .sheet(isPresented: $showDonation) {
@@ -445,6 +447,10 @@ struct MainView: View {
             if NetworkChecker.shared.isConnected {
                 gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
             }
+            
+            if gameModel.getCourse() != nil {
+                showTextAndButtons = true
+            }
         }
     }
     
@@ -481,26 +487,26 @@ struct MainView: View {
                     viewManager.navigateToGameReview(games.sorted(by: { $0.date > $1.date }).first!)
                 } label: {
                     SectionStatsView(title: "Last Game", spacing: 12, makeColor: gameModel.getCourse()?.scoreCardColor){
-                        HStack{
-                            HStack{
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Winner")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .foregroundStyle(.mainOpp)
-                                    PhotoIconView(photoURL: analyzer?.winnerOfLatestGame?.photoURL, name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇", imageSize: 30, background: Color.yellow)
-                                    Spacer()
-                                }
-                                Spacer()
+                        let cardHeight: CGFloat = 90
+
+                        HStack {
+                            VStack {
+            
+                                PhotoIconView(
+                                    photoURL: analyzer?.winnerOfLatestGame?.photoURL,
+                                    name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇",
+                                    imageSize: 30,
+                                    background: .yellow
+                                )
                             }
                             .padding()
-                            .frame(height: 120)
-                            .background(colorScheme == .light
-                                        ? AnyShapeStyle(Color.white)
-                                        : AnyShapeStyle(.ultraThinMaterial))
+                            .frame(height: cardHeight)
+                            .background(colorScheme == .light ? AnyShapeStyle(Color.white) : AnyShapeStyle(.ultraThinMaterial))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                            StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", color: .green, cornerRadius: 12)
+
+                            StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", cornerRadius: 12, cardHeight: cardHeight)
                         }
+
                         
                         BarChartView(data: analyzer?.usersHolesOfLatestGame ?? [], title: "Recap of Game")
                         

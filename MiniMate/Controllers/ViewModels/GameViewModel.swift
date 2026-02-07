@@ -330,17 +330,21 @@ final class GameViewModel: ObservableObject, Observable {
         resetGame()
         resetCourse()
         liveGameRepo.fetchGame(id: id) { game in
-            if let game = game, !game.dismissed && !game.started && !game.completed && !game.players.contains(where: { $0.userId == userId }) {
+            if let game = game,
+               !game.dismissed,
+               !game.started,
+               !game.completed,
+               !game.players.contains(where: { $0.userId == userId }) {
                 self.setGame(game)
                 self.addUser()
                 self.listenForUpdates()
                 completion(true)
             } else {
-                completion (false)
+                completion(false)
             }
-            completion(false)
         }
     }
+
     
     func leaveGame(userId: String) {
         guard onlineGame else { return }
@@ -432,6 +436,7 @@ final class GameViewModel: ObservableObject, Observable {
     func finishAndPersistGame(game: Game, in context: ModelContext, isGuest: Bool = false) {
         stopListening()
         game.endTime = Date()
+        game.live = false
         
         var finished: Game = Game()
         

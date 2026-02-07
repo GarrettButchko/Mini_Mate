@@ -59,16 +59,18 @@ struct ScoreCardView: View {
                             viewManager.navigateToMain(1)
                         }
                     } label: {
-                        ZStack {
+                        
+                        Label(isGuest ? "Back to Sign In Menu" : "Go Back to Main Menu",
+                              systemImage: isGuest ? "person.crop.circle" : "house.fill")
+                        .foregroundStyle(.white)
+                        .fontWeight(.bold)
+                        .padding(.vertical, 20)
+                        .padding(.horizontal, 30)
+                        .background{
                             RoundedRectangle(cornerRadius: 25)
                                 .fill(Color.blue)
-                                .frame(width: 220, height: 60)
-                            Text(isGuest ? "Back to Sign In Manu" : "Go Back to Main Menu")
-                                .foregroundColor(.white).fontWeight(.bold)
-                                .padding(.horizontal, 30)
                         }
                     }
-                    .padding(.bottom)
                 }
                 .transition(.opacity)
             }
