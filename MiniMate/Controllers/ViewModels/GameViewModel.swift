@@ -99,7 +99,6 @@ final class GameViewModel: ObservableObject, Observable {
         
         // 1) Merge top-level fields
         game.id            = newGame.id
-        game.location      = newGame.location
         game.date          = newGame.date
         game.completed     = newGame.completed
         game.numberOfHoles = newGame.numberOfHoles
@@ -109,25 +108,6 @@ final class GameViewModel: ObservableObject, Observable {
         game.lastUpdated   = newGame.lastUpdated
         game.courseID      = newGame.courseID
         lastUpdated        = newGame.lastUpdated
-        
-        if let courseID = newGame.courseID {
-            self.courseRepo.fetchCourse(id: courseID) { course in
-                if let course = course {
-                    self.course = course
-                    print("✅ Course loaded: \(course.name)")
-                    self.hasLoaded = true
-                } else {
-                    print("⚠️ Course not found for ID: \(courseID) creating new course")
-                    if let location = self.game.location {
-                        self.courseRepo.createCourseWithMapItem(location: location) { course in
-                            if let course {
-                                self.course = course
-                            }
-                        }
-                    }
-                }
-            }
-        }
         
         // 2) Rebuild players and their holes from remote data
         for remotePlayer in newGame.players {
@@ -147,18 +127,6 @@ final class GameViewModel: ObservableObject, Observable {
         objectWillChange.send() // notify before mutating
         lastUpdated = Date()
         self.game.completed = completedGame
-        pushUpdate()
-    }
-    
-    func setLocation(_ location: MapItemDTO?) {
-        objectWillChange.send() // notify before mutating
-        lastUpdated = Date()
-        self.game.location = location
-        if let location = location{
-            game.courseID = CourseIDGenerator.generateCourseID(from: location)
-        } else {
-            game.courseID = nil
-        }
         pushUpdate()
     }
     
@@ -224,31 +192,32 @@ final class GameViewModel: ObservableObject, Observable {
             guard incoming.lastUpdated > self.game.lastUpdated else { return }
             
             self.objectWillChange.send()
-            self.game.lastUpdated = incoming.lastUpdated
-            
+
             // 1) merge top‐level fields…
-            self.game.id          = incoming.id
-            self.game.location          = incoming.location
-            self.game.date          = incoming.date
-            self.game.completed     = incoming.completed
+            self.game.id = incoming.id
+            self.game.hostUserId = incoming.hostUserId
+            self.game.date = incoming.date
+            self.game.completed = incoming.completed
             self.game.numberOfHoles = incoming.numberOfHoles
-            self.game.started       = incoming.started
-            self.game.dismissed     = incoming.dismissed
-            self.game.live    = incoming.live
+            self.game.started = incoming.started
+            self.game.dismissed = incoming.dismissed
+            self.game.live = incoming.live
+            self.game.lastUpdated = incoming.lastUpdated
+            self.game.courseID = incoming.courseID
+            self.game.startTime = incoming.startTime
+            self.game.endTime = incoming.endTime
             
             // 2) build a lookup of remote players by ID
-            let remoteByID = Dictionary(uniqueKeysWithValues:
-                                            incoming.players.map { ($0.id, $0) }
+            let remoteByID = Dictionary(uniqueKeysWithValues: incoming.players.map { ($0.id, $0) }
             )
             
             // 3) update or remove existing local players
             self.game.players.removeAll { local in
                 guard let remote = remoteByID[local.id] else {
-                    // local player no longer in remote list → drop them
                     return true
                 }
                 // still present → update their fields
-                local.inGame       = remote.inGame
+                local.inGame = remote.inGame
                 
                 // merge holes
                 for (hIdx, holeDTO) in remote.holes.enumerated() where hIdx < local.holes.count {
@@ -396,6 +365,12 @@ final class GameViewModel: ObservableObject, Observable {
             
             game.hostUserId = guestData.id
             
+            if let course = course {
+                game.courseID = course.id
+            } else {
+                print("No course set for game")
+            }
+            
             addUser(guestData: guestData)
             pushUpdate()
         } else {
@@ -409,6 +384,12 @@ final class GameViewModel: ObservableObject, Observable {
             game.id = generateGameCode()
             
             game.hostUserId = authModel.userModel!.googleId
+            
+            if let course = course {
+                game.courseID = course.id
+            } else {
+                print("No course set for game")
+            }
             
             addUser()
             pushUpdate()
@@ -444,20 +425,18 @@ final class GameViewModel: ObservableObject, Observable {
     }
     
     /// Deep-clone the game you just finished, persist it locally & remotely, then reset.
-    func finishAndPersistGame(in context: ModelContext, isGuest: Bool = false) {
+    func finishAndPersistGame(game: Game, in context: ModelContext, isGuest: Bool = false) {
         stopListening()
         game.endTime = Date()
 
         let finished = Game(
             id: game.id,
             hostUserId: game.hostUserId,
-            location: game.location,
             date: game.date,
             completed: game.completed,
             numberOfHoles: game.numberOfHoles,
             started: game.started,
             dismissed: game.dismissed,
-            totalTime: game.totalTime,
             live: game.live,
             lastUpdated: game.lastUpdated,
             courseID: game.courseID,
@@ -474,6 +453,8 @@ final class GameViewModel: ObservableObject, Observable {
             startTime: game.startTime,
             endTime: game.endTime
         )
+        
+        print(finished)
 
         let group = DispatchGroup()
         var allOK = true
@@ -540,11 +521,7 @@ final class GameViewModel: ObservableObject, Observable {
         completion: @escaping (Bool) -> Void
     ) {
         guard let courseID = finished.courseID else {
-            completion(false)
-            return
-        }
-        guard let startTime = finished.startTime,
-              let endTime = finished.endTime else {
+            print("No Course Id No Analytics")
             completion(false)
             return
         }
@@ -554,8 +531,8 @@ final class GameViewModel: ObservableObject, Observable {
             emails: emails,
             courseID: courseID,
             game: finished,
-            startTime: startTime,
-            endTime: endTime
+            startTime: finished.startTime,
+            endTime: finished.endTime
         ) { success in
             completion(success)
         }
@@ -595,11 +572,7 @@ final class GameViewModel: ObservableObject, Observable {
                     showTextAndButtons.wrappedValue = true
                 }
                 
-                self.setLocation(closestPlace.toDTO())
-                print("🎯 Game model location set: \(closestPlace.toDTO().name ?? "No name")")
-                
                 let courseID = CourseIDGenerator.generateCourseID(from: closestPlace.toDTO())
-                
                 
                 self.courseRepo.fetchCourse(id: courseID) { course in
                     if let course = course {
@@ -608,11 +581,9 @@ final class GameViewModel: ObservableObject, Observable {
                         self.hasLoaded = true
                     } else {
                         print("⚠️ Course not found for ID: \(courseID) creating new course")
-                        if let location = self.game.location {
-                            self.courseRepo.createCourseWithMapItem(location: location) { course in
-                                if let course {
-                                    self.course = course
-                                }
+                        self.courseRepo.createCourseWithMapItem(courseID: courseID, location: closestPlace.toDTO()) { course in
+                            if let course {
+                                self.course = course
                             }
                         }
                     }
@@ -634,7 +605,6 @@ final class GameViewModel: ObservableObject, Observable {
     }
     
     func exit(showTxtButtons: Binding<Bool>, handler: LocationHandler){
-        setLocation(nil)
         resetCourse()
         showTxtButtons.wrappedValue = false
     }

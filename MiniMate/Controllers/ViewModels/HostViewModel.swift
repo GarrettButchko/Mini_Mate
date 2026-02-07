@@ -95,7 +95,6 @@ final class HostViewModel: ObservableObject {
     
     func exit(showTxtButtons: Binding<Bool>, email: Binding<String>, gameModel: GameViewModel, handler: LocationHandler){
         email.wrappedValue = ""
-        gameModel.setLocation(nil)
         gameModel.resetCourse()
         showTxtButtons.wrappedValue = false
     }

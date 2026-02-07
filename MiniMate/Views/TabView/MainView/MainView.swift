@@ -172,7 +172,7 @@ struct MainView: View {
                                             .fontWeight(.bold)
                                             .transition(.opacity.combined(with: .scale))
                                     } else {
-                                        Text("Start a Game")
+                                        Text("Start a Round")
                                             .font(.title)
                                             .fontWeight(.bold)
                                             .transition(.opacity.combined(with: .scale))

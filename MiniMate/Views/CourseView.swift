@@ -406,6 +406,25 @@ struct CourseView: View {
                                 : AnyShapeStyle(.ultraThinMaterial))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     
+                    Button {
+                        // later: open URL
+                    } label: {
+                        HStack {
+                            Image(systemName: "safari.fill")
+                            Text("This your Course? Click to Manage!")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.mainOpp)
+                    }
+                    .background(colorScheme == .light
+                                ? AnyShapeStyle(Color.white)
+                                : AnyShapeStyle(.ultraThinMaterial))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    
                 }
                 .onAppear {
                     if let selected = locationHandler.selectedItem {

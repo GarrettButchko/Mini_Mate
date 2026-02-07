@@ -209,8 +209,7 @@ final class CourseRepository {
     }
 
     #if MINIMATE
-    func createCourseWithMapItem(location: MapItemDTO, completion: @escaping (Course?) -> Void) {
-        let courseID = CourseIDGenerator.generateCourseID(from: location)
+    func createCourseWithMapItem(courseID: String, location: MapItemDTO, completion: @escaping (Course?) -> Void) {
         let ref = db.collection(collectionName).document(courseID)
         
         ref.getDocument { snapshot, error in
@@ -367,210 +366,130 @@ final class CourseRepository {
     }
 
     
-    // MARK: - Check if email exists in course - Good for new DailyDoc
+    // MARK: - Update Day Analytics
     func updateDayAnalytics(
         emails: [String],
         courseID: String,
-        game: Game,
+        game: Game, // Ensure your Game model has 'players' and 'holes'
         startTime: Date,
         endTime: Date,
         completion: @escaping (Bool) -> Void
     ) {
-        let updatedAt = Date()
-        // Get the id for the day
-        let todayID = makeDayID()
         
-        // Makes default reference for the course, dailyDoc analytics and emails
+        print("Running updateDayAnalytics")
+        let updatedAt = Date()
+        let todayID = makeDayID()
+        let currentHour = Calendar.current.component(.hour, from: updatedAt)
+        
         let courseRef = db.collection(collectionName).document(courseID)
         let dayRef = courseRef.collection("dailyDocs").document(todayID)
         let emailRef = courseRef.collection("emails")
-
-        // creates and array of emails that does not include the same emails
+        
         let uniqueEmails = Array(Set(
             emails
                 .map { $0.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
         ))
+        
         guard !uniqueEmails.isEmpty else {
+            print("Empty Emails")
             DispatchQueue.main.async { completion(true) }
             return
         }
-
+        
         db.runTransaction({ tx, errPtr -> Any? in
+            // --- 1. READ PHASE ---
+            var emailSnapshots: [String: DocumentSnapshot] = [:]
+            var resultDay: DailyDoc? = nil
             
-            // For Daily Analytics, Only 1 per day for each player
+            do {
+                for email in uniqueEmails {
+                    let docRef = emailRef.document(self.emailKey(email))
+                    emailSnapshots[email] = try tx.getDocument(docRef)
+                }
+                let daySnap = try tx.getDocument(dayRef)
+                if daySnap.exists {
+                    resultDay = try daySnap.data(as: DailyDoc.self)
+                }
+            } catch let err as NSError {
+                errPtr?.pointee = err
+                return nil
+            }
+            
+            // --- 2. LOGIC PHASE (No tx calls here) ---
             var newCount = 0
             var returningCount = 0
+            var emailUpdates: [(DocumentReference, CourseEmail)] = []
             
-            var result: [String: CourseEmail] = [:]
-            result.reserveCapacity(uniqueEmails.count)
-            
-            // gets courseEmail Data and gets the numbers to add to my newCount or returning count
             for email in uniqueEmails {
                 let docRef = emailRef.document(self.emailKey(email))
+                let snap = emailSnapshots[email]
                 
-                do {
-                    let snap = try tx.getDocument(docRef)
-                    
-                    guard snap.exists else {
-                        continue
-                    }
-                    
-                    do {
-                        let obj = try snap.data(as: CourseEmail.self)
-                        result[email] = obj
-                    } catch let decodeErr as NSError {
-                        errPtr?.pointee = decodeErr
-                        return nil
-                    }
-                    
-                } catch let readErr as NSError {
-                    errPtr?.pointee = readErr
-                    return nil
-                }
-            }
-
-            for email in uniqueEmails {
-                let docRef = emailRef.document(self.emailKey(email))
-
-                if let data = result[email]{
+                if let snap = snap, snap.exists, let data = try? snap.data(as: CourseEmail.self) {
                     var lastPlayed = data.lastPlayed ?? todayID
-                    let firstSeen = data.firstSeen ?? todayID
-
-                    var playCount = data.playCount
                     var secondSeen = data.secondSeen
+                    let playCount = data.playCount
                     
-                    // unique returners for the day
                     if lastPlayed != todayID {
                         returningCount += 1
                         lastPlayed = todayID
                     }
-
-                    // set secondSeen exactly once: on 2nd ever play
                     if playCount == 1 && secondSeen == nil {
                         secondSeen = todayID
                     }
                     
-                    playCount += 1
-                    
-                    let updatedCourseEmail = CourseEmail(firstSeen: firstSeen, secondSeen: secondSeen, lastPlayed: lastPlayed, playCount: playCount)
-
-                    do {
-                        try tx.setData(from: updatedCourseEmail, forDocument: docRef, merge: true)
-                    } catch let e as NSError {
-                        errPtr?.pointee = e
-                        return nil
-                    }
+                    let updated = CourseEmail(firstSeen: data.firstSeen ?? todayID, secondSeen: secondSeen, lastPlayed: lastPlayed, playCount: playCount + 1)
+                    emailUpdates.append((docRef, updated))
                 } else {
                     newCount += 1
-                    
-                    let updatedCourseEmail = CourseEmail(firstSeen: todayID, secondSeen: nil, lastPlayed: todayID, playCount: 1)
-                    
-                    do {
-                        try tx.setData(from: updatedCourseEmail, forDocument: docRef, merge: true)
-                    } catch let e as NSError {
-                        errPtr?.pointee = e
-                        return nil
-                    }
+                    let updated = CourseEmail(firstSeen: todayID, secondSeen: nil, lastPlayed: todayID, playCount: 1)
+                    emailUpdates.append((docRef, updated))
                 }
             }
             
-            var resultDay: DailyDoc? = nil
-            
-            do {
-                let snap = try tx.getDocument(dayRef)
-                
-                do {
-                    let obj = try snap.data(as: DailyDoc.self)
-                    resultDay = obj
-                } catch let decodeErr as NSError {
-                    errPtr?.pointee = decodeErr
-                    return nil
-                }
-                
-            } catch let readErr as NSError {
-                errPtr?.pointee = readErr
-                return nil
-            }
-            
-            let hour = Calendar.current.component(.hour, from: startTime)
+            // Analytics calculations
             let roundLengthSeconds = max(0, Int(endTime.timeIntervalSince(startTime)))
+            var totalStrokes = resultDay?.holeAnalytics.totalStrokesPerHole ?? [:]
+            var playsPerHole = resultDay?.holeAnalytics.playsPerHole ?? [:]
+            var hourlyCounts = resultDay?.hourlyCounts ?? [:]
             
-            if let day = resultDay {
-                
-                let roundSeconds = day.totalRoundSeconds + Int64(roundLengthSeconds)
-                let gamesPlayed = day.gamesPlayed + 1
-                let returningPlayers = day.returningPlayers + returningCount
-                let newPlayers = day.newPlayers + newCount
-                
-                var totalStrokes = day.holeAnalytics.totalStrokesPerHole
-                var playsPerHole = day.holeAnalytics.playsPerHole
-
-                updateHoleAnalytics(totalStrokes: &totalStrokes, playsPerHole: &playsPerHole)
-                
-                let holeAnalytics = HoleAnalytics(totalStrokesPerHole: totalStrokes, playsPerHole: playsPerHole)
-                
-                var hourlyCounts = day.hourlyCounts
-                
-                updateHourlyCounts(hourlyCounts: &hourlyCounts)
-                
-                let newResult = DailyDoc(dayID: todayID, totalRoundSeconds: roundSeconds, gamesPlayed: gamesPlayed, newPlayers: newPlayers, returningPlayers: returningPlayers, holeAnalytics: holeAnalytics, hourlyCounts: hourlyCounts, updatedAt: updatedAt)
-                
-                do {
-                    try tx.setData(from: newResult, forDocument: dayRef, merge: true)
-                } catch let e as NSError {
-                    errPtr?.pointee = e
-                    return nil
-                }
-            } else {
-                
-                var totalStrokes : [String:Int] = [:]
-                var playsPerHole : [String:Int] = [:]
-                
-                updateHoleAnalytics(totalStrokes: &totalStrokes, playsPerHole: &playsPerHole)
-                
-                let holeAnalytics = HoleAnalytics(totalStrokesPerHole: totalStrokes, playsPerHole: playsPerHole)
-                
-                var hourlyCounts : [String:Int] = [:]
-                
-                updateHourlyCounts(hourlyCounts: &hourlyCounts)
-                
-                let firstResult = DailyDoc(dayID: todayID, totalRoundSeconds: Int64(roundLengthSeconds), gamesPlayed: 1, newPlayers: newCount, returningPlayers: returningCount, holeAnalytics: holeAnalytics, hourlyCounts: hourlyCounts, updatedAt: updatedAt)
-                
-                do {
-                    try tx.setData(from: firstResult, forDocument: dayRef, merge: true)
-                } catch let e as NSError {
-                    errPtr?.pointee = e
-                    return nil
+            for player in game.players {
+                for h in player.holes {
+                    guard h.strokes != 0 else { continue }
+                    let key = String(h.number)
+                    totalStrokes[key, default: 0] += h.strokes
+                    playsPerHole[key, default: 0] += 1
                 }
             }
+            hourlyCounts[String(currentHour), default: 0] += 1
             
-            func updateHoleAnalytics(
-                totalStrokes: inout [String:Int],
-                playsPerHole: inout [String:Int]
-            ) {
-                for player in game.players {
-                    for h in player.holes {
-                        guard h.strokes != 0 else { continue }
-                        let key = String(h.number)
-                        totalStrokes[key, default: 0] += h.strokes
-                        playsPerHole[key, default: 0] += 1
-                    }
+            let finalDailyDoc = DailyDoc(
+                dayID: todayID,
+                totalRoundSeconds: (resultDay?.totalRoundSeconds ?? 0) + Int64(roundLengthSeconds),
+                gamesPlayed: (resultDay?.gamesPlayed ?? 0) + 1,
+                newPlayers: (resultDay?.newPlayers ?? 0) + newCount,
+                returningPlayers: (resultDay?.returningPlayers ?? 0) + returningCount,
+                holeAnalytics: HoleAnalytics(totalStrokesPerHole: totalStrokes, playsPerHole: playsPerHole),
+                hourlyCounts: hourlyCounts,
+                updatedAt: updatedAt
+            )
+            
+            // --- 3. WRITE PHASE (All at the very end) ---
+            do {
+                for (ref, obj) in emailUpdates {
+                    try tx.setData(from: obj, forDocument: ref, merge: true)
                 }
-            }
-            
-            func updateHourlyCounts(hourlyCounts: inout [String:Int]) {
-                hourlyCounts[String(hour), default: 0] += 1
+                try tx.setData(from: finalDailyDoc, forDocument: dayRef, merge: true)
+            } catch let err as NSError {
+                errPtr?.pointee = err
+                return nil
             }
             
             return true
         }) { _, error in
             DispatchQueue.main.async {
-                if let error = error as NSError? {
-                    print("❌ processPlayerEmailsForGame failed:",
-                          "code=\(error.code)",
-                          "domain=\(error.domain)",
-                          "msg=\(error.localizedDescription)")
+                if let error = error {
+                    print("❌ updateDayAnalytics failed: \(error.localizedDescription)")
                     completion(false)
                 } else {
                     completion(true)
@@ -578,7 +497,7 @@ final class CourseRepository {
             }
         }
     }
-
+    
     func uploadCourseImages(id: String, _ image: UIImage, key: String, completion: @escaping (Result<URL, Error>) -> Void) {
         guard let data = image.pngData() else {
             return completion(.failure(NSError(

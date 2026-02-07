@@ -42,8 +42,10 @@ struct ScoreCardView: View {
             .onChange(of: gameModel.gameValue.completed) { old, new in
                 if new {
                     let finishedDTO = gameModel.gameValue.toDTO()
-                    passGame = Game.fromDTO(finishedDTO)   // ⬅️ capture BEFORE resetting model
-                    endGame()
+                    
+                    let game = Game.fromDTO(finishedDTO)
+                    passGame = game   // ⬅️ capture BEFORE resetting model
+                    endGame(game: game)
                     withAnimation { showRecap = true }
                 }
             }
@@ -338,10 +340,11 @@ struct ScoreCardView: View {
         return String(format: "%d:%02d", minutes, secs)
     }
     
-    private func endGame(isGuest: Bool = false) {
+    private func endGame(game: Game, isGuest: Bool = false) {
         guard !hasUploaded else { return }
+        
         // 1️⃣ finish-and-persist before we pop the view
-        gameModel.finishAndPersistGame(in: context, isGuest: isGuest)
+        gameModel.finishAndPersistGame(game: game, in: context, isGuest: isGuest)
         hasUploaded = true
     }
 }
