@@ -41,11 +41,14 @@ struct RecapView<VM: ViewManager & ObservableObject, Content: View>: View {
                 
                 VStack(spacing: 10){
                     Spacer()
-                    Text("Review of Game")
-                        .font(.subheadline)
-                        .opacity(0.5)
-                    Text("Congratulations!")
-                        .font(.largeTitle)
+                    VStack{
+                        Text("Review of Game")
+                            .font(.subheadline)
+                            .opacity(0.5)
+                        Text("Congratulations!")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                    }
                     
                     Spacer()
                     
@@ -187,6 +190,10 @@ struct PlayerStandingView: View {
                 if onlyPlayer {
                     RoundedRectangle(cornerRadius: 25)
                         .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 25)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
                 } else {
                     RoundedRectangle(cornerRadius: 25)
                         .fill(color)

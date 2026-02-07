@@ -11,7 +11,7 @@ struct StatCard: View {
     var title: String
     var value: String
     var color: Color
-    var cornerRadius: CGFloat = 25
+    var cornerRadius: CGFloat = 12
 
     var body: some View {
         HStack{

@@ -54,17 +54,33 @@ struct DailyDoc: Codable, Equatable {
     var hourlyCounts: [String: Int] = [:]
     var updatedAt: Date? = nil
     
-    init(dayID: String = "") {
+    init(
+        dayID: String,
+        totalRoundSeconds: Int64 = 0,
+        gamesPlayed: Int = 0,
+        newPlayers: Int = 0,
+        returningPlayers: Int = 0,
+        holeAnalytics: HoleAnalytics = HoleAnalytics(),
+        hourlyCounts: [String: Int] = [:],
+        updatedAt: Date = Date()
+    ) {
         self.dayID = dayID
         self.weekID = Self.isoWeekID(from: dayID) ?? ""
         self.weekDay = Self.weekday(from: dayID) ?? 0
+        self.totalRoundSeconds = totalRoundSeconds
+        self.gamesPlayed = gamesPlayed
+        self.newPlayers = newPlayers
+        self.returningPlayers = returningPlayers
+        self.holeAnalytics = holeAnalytics
+        self.hourlyCounts = hourlyCounts
+        self.updatedAt = updatedAt
     }
 }
 
 // finds the total number of strokes per hole in a given week, as well as the number of times that hole has been played, then it finds the average strokes per hole that week
 struct HoleAnalytics: Codable, Equatable {
-    var totalStrokesPerHole: [Int] = []
-    var playsPerHole: [Int] = []
+    var totalStrokesPerHole: [String:Int] = [:]
+    var playsPerHole: [String:Int] = [:]
 }
 
 struct CourseEmail: Codable, Equatable {
@@ -72,19 +88,6 @@ struct CourseEmail: Codable, Equatable {
     var secondSeen: String?
     var lastPlayed: String?
     var playCount: Int = 0
-}
-
-extension HoleAnalytics {
-    mutating func ensureCount(_ n: Int) {
-        if totalStrokesPerHole.count != n { totalStrokesPerHole = Array(repeating: 0, count: n) }
-        if playsPerHole.count != n { playsPerHole = Array(repeating: 0, count: n) }
-    }
-
-    func averagePerHole() -> [Double] {
-        zip(totalStrokesPerHole, playsPerHole).map { total, plays in
-            plays > 0 ? Double(total) / Double(plays) : 0
-        }
-    }
 }
 
 extension DailyDoc {
@@ -146,9 +149,8 @@ extension DailyDoc {
     private static func weekday(from dayID: String) -> Int? {
         guard let date = dayFormatter.date(from: dayID) else { return nil }
 
-        var cal = Calendar(identifier: .iso8601)
+        let cal = Calendar(identifier: .iso8601)
 
-        
         return cal.component(.weekday, from: date)
     }
 }

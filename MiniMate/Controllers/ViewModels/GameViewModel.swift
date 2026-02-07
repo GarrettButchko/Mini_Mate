@@ -119,7 +119,11 @@ final class GameViewModel: ObservableObject, Observable {
                 } else {
                     print("⚠️ Course not found for ID: \(courseID) creating new course")
                     if let location = self.game.location {
-                        self.courseRepo.createCourseWithMapItem(location: location) { complete in }
+                        self.courseRepo.createCourseWithMapItem(location: location) { course in
+                            if let course {
+                                self.course = course
+                            }
+                        }
                     }
                 }
             }
@@ -539,47 +543,21 @@ final class GameViewModel: ObservableObject, Observable {
             completion(false)
             return
         }
-        
-        let group = DispatchGroup()
-        var allSucceeded = true
-        
-        // 1️⃣ Emails (new / returning players)
+        guard let startTime = finished.startTime,
+              let endTime = finished.endTime else {
+            completion(false)
+            return
+        }
+
         let emails = finished.players.compactMap { $0.email }
-        group.enter()
-        courseRepo.processPlayerEmailsForGame(
+        courseRepo.updateDayAnalytics(
             emails: emails,
-            courseID: courseID
+            courseID: courseID,
+            game: finished,
+            startTime: startTime,
+            endTime: endTime
         ) { success in
-            if !success { allSucceeded = false }
-            group.leave()
-        }
-        
-        // 2️⃣ Games played count
-        group.enter()
-        courseRepo.updateGameCount(courseID: courseID) { success in
-            if !success { allSucceeded = false }
-            group.leave()
-        }
-        
-        // 3️⃣ Weekly analytics (if times exist)
-        if let startTime = finished.startTime,
-           let endTime = finished.endTime {
-            
-            group.enter()
-            courseRepo.updateWeeklyAnalytics(
-                courseID: courseID,
-                game: finished,
-                startTime: startTime,
-                endTime: endTime
-            ) { success in
-                if !success { allSucceeded = false }
-                group.leave()
-            }
-        }
-        
-        // 4️⃣ Notify once EVERYTHING is done
-        group.notify(queue: .main) {
-            completion(allSucceeded)
+            completion(success)
         }
     }
 
@@ -618,7 +596,7 @@ final class GameViewModel: ObservableObject, Observable {
                 }
                 
                 self.setLocation(closestPlace.toDTO())
-                print("🎯 Game model location set: \(closestPlace.toDTO())")
+                print("🎯 Game model location set: \(closestPlace.toDTO().name ?? "No name")")
                 
                 let courseID = CourseIDGenerator.generateCourseID(from: closestPlace.toDTO())
                 
@@ -631,7 +609,11 @@ final class GameViewModel: ObservableObject, Observable {
                     } else {
                         print("⚠️ Course not found for ID: \(courseID) creating new course")
                         if let location = self.game.location {
-                            self.courseRepo.createCourseWithMapItem(location: location) { complete in }
+                            self.courseRepo.createCourseWithMapItem(location: location) { course in
+                                if let course {
+                                    self.course = course
+                                }
+                            }
                         }
                     }
                 }
@@ -672,4 +654,3 @@ final class GameViewModel: ObservableObject, Observable {
     func resetCourse(){ course = nil; game.courseID = nil}
     func getCourse() -> Course? { course }
 }
-

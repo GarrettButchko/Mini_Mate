@@ -61,14 +61,16 @@ struct SkimShareLinkView: View {
 
 struct SwipeableRowModifier: ViewModifier {
     @Binding var editingID: String?
-    @State var offsetX: CGFloat = 0
+    @State private var offsetX: CGFloat = 0
     @State private var lastOffsetX: CGFloat = 0
+    @State private var hasVibrated = false
     var id: String
     
     let pausePoint: CGFloat = -100
     let commitPoint: CGFloat = -50
     let resetPoint: CGFloat = 0
     let deletePoint: CGFloat = -220
+    var showNonDeleteButtons: Bool { offsetX > deletePoint }
     
     let buttonOne: ButtonSkim?
     let buttonTwo: ButtonSkim?
@@ -78,28 +80,38 @@ struct SwipeableRowModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
+            .overlay(alignment: .trailing) {
+                if editingID == id {
+                    actionButtons
+                        .opacity(offsetX < -10 ? 1 : 0)
+                        .offset(x: -offsetX)   // keep buttons fixed as row moves
+                        .frame(width: max(0, -offsetX - 10))
+                        .transition(.opacity)
+                        .padding(.leading)
+                }
+            }
             .offset(x: offsetX)
-            .animation(.easeOut(duration: 0.3), value: offsetX)
             .simultaneousGesture(dragGesture)
-            .highPriorityGesture(
-                tapGesture
-                    .exclusively(before: dragGesture)
-            )
+            .onTapGesture {
+                if editingID != id {
+                    buttonPressFunction()
+                } else { /* If we are editing, let the taps pass through to buttons */ }
+            }
             .onChange(of: editingID) { oldValue, newValue in
                 if newValue != id {
-                    withAnimation(){
+                    withAnimation(.easeOut(duration: 0.2)){
                         offsetX = resetPoint
                         lastOffsetX = resetPoint
                     }
                 }
             }
-        
-        
-        if editingID == id && offsetX < -10{
-            
-            VStack{
-                if let deleteFunc = deleteFunction{
-                    if offsetX > deletePoint {
+    }
+    
+    var actionButtons: some View {
+        VStack(spacing: 8){
+            if let deleteFunc = deleteFunction{
+                if showNonDeleteButtons {
+                    Group{
                         if let buttonOne = buttonOne {
                             if buttonOne.isShared {
                                 SkimShareLinkView(buttonSkim: buttonOne, offsetX: $offsetX)
@@ -115,100 +127,76 @@ struct SwipeableRowModifier: ViewModifier {
                             }
                         }
                     }
-                    
-                    GeometryReader { proxy in
-                        Button {
-                            deleteFunc()
-                        } label: {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 25)
-                                    .fill(Color.red)
-                                if offsetX < -35 {
-                                    Image(systemName: "xmark")
-                                        .foregroundStyle(.white)
-                                        .font(.title2)
-                                        .opacity(offsetX < commitPoint ? 1 : 0)
-                                }
-                                
-                            }
-                        }
-                        .onChange(of: proxy.size.height) { _, newValue in
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
-                        }
-                    }
-                } else {
-                    if let buttonOne = buttonOne {
-                        if buttonOne.isShared {
-                            SkimShareLinkView(buttonSkim: buttonOne, offsetX: $offsetX)
-                        } else {
-                            SkimButtonView(buttonSkim: buttonOne, offsetX: $offsetX)
-                        }
-                    }
-                    if let buttonTwo = buttonTwo {
-                        if buttonTwo.isShared {
-                            SkimShareLinkView(buttonSkim: buttonTwo, offsetX: $offsetX)
-                        } else {
-                            SkimButtonView(buttonSkim: buttonTwo, offsetX: $offsetX)
+                    .transition(.opacity)
+                }
+                
+                Button {
+                    deleteFunc()
+                } label: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(Color.red)
+                        if offsetX < -35 {
+                            Image(systemName: "xmark")
+                                .foregroundStyle(.white)
+                                .font(.title2)
+                                .opacity(offsetX < commitPoint ? 1 : 0)
                         }
                     }
                 }
+            } else {
+                if let buttonOne = buttonOne {
+                    if buttonOne.isShared {
+                        SkimShareLinkView(buttonSkim: buttonOne, offsetX: $offsetX)
+                    } else {
+                        SkimButtonView(buttonSkim: buttonOne, offsetX: $offsetX)
+                    }
+                }
+                if let buttonTwo = buttonTwo {
+                    if buttonTwo.isShared {
+                        SkimShareLinkView(buttonSkim: buttonTwo, offsetX: $offsetX)
+                    } else {
+                        SkimButtonView(buttonSkim: buttonTwo, offsetX: $offsetX)
+                    }
+                }
             }
-            .offset(x: offsetX)
-            .frame(width: -offsetX - 10)
-            .animation(.easeOut(duration: 0.3), value: offsetX)
-            .padding(.trailing, 20)
-            .transition(.opacity)
-            .padding([.trailing, .vertical])
         }
     }
     
     var dragGesture: some Gesture {
         DragGesture(minimumDistance: 20)
             .onChanged { value in
-                
-                    if value.translation.width < resetPoint { // dragging left only
-                        withAnimation(){
-                            let totalOffset = lastOffsetX + value.translation.width
-                            offsetX = totalOffset
-                            if editingID != id {
-                                editingID = id
-                            }
-                        }
+                let totalOffset = lastOffsetX + value.translation.width
+                let clamped = min(resetPoint, max(totalOffset, deletePoint - 80))
+                if clamped != offsetX {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        offsetX = clamped
                     }
-                    if lastOffsetX + value.translation.width < resetPoint {
-                        withAnimation(){
-                            let totalOffset = lastOffsetX + value.translation.width
-                            offsetX = totalOffset
-                        }
-                    }
-                    if offsetX == deletePoint {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                    }
-                
+                }
+                if offsetX < resetPoint, editingID != id {
+                    editingID = id
+                }
+                if offsetX < deletePoint && !hasVibrated {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    hasVibrated = true
+                } else if offsetX > deletePoint {
+                    hasVibrated = false
+                }
             }
             .onEnded { value in
-
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     if offsetX < deletePoint {
-                        if let deleteFunction = deleteFunction {
-                            withAnimation(){
-                                deleteFunction()
-                            }
-                        }
-                    } else if offsetX > deletePoint && offsetX < commitPoint {
-                        withAnimation {
-                            offsetX = pausePoint
-                        }
+                        deleteFunction?()
+                        offsetX = resetPoint
+                        editingID = nil
+                    } else if offsetX < commitPoint {
+                        offsetX = pausePoint
                     } else {
-                        withAnimation(){
-                            editingID = nil
-                        }
+                        offsetX = resetPoint
+                        editingID = nil
                     }
-                    withAnimation(){
-                        lastOffsetX = offsetX
-                    }
-                
+                    lastOffsetX = offsetX
+                }
             }
     }
     

@@ -117,6 +117,9 @@ struct StatsView: View {
             .onAppear{
                 viewModel.onAppear(user: authModel.userModel!, games: games, context: context)
             }
+            .onChange(of: games) { oldValue, newValue in
+                viewModel.onAppear(user: authModel.userModel!, games: newValue, context: context)
+            }
         }
     }
     

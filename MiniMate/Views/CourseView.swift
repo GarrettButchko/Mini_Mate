@@ -130,7 +130,7 @@ struct CourseView: View {
                     Marker(name, coordinate: item.placemark.coordinate)
                         .tint(exists ? .purple : .green)
                 }
-
+                
             }
             UserAnnotation()
         }
@@ -239,7 +239,7 @@ struct CourseView: View {
                             .clipShape(Capsule())
                             .shadow(color: Color.black.opacity(0.1), radius: 5)
                         
-                    
+                        
                     }
                 }
             }
@@ -289,39 +289,52 @@ struct CourseView: View {
                         .background(Color.purple.opacity(0.2))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-
-                
+                    
+                    
                     
                     // MARK: - Contact Info
-                    if let selected = locationHandler.bindingForSelectedItem().wrappedValue,
-                       selected.phoneNumber != nil || selected.url != nil {
-                        
-                        VStack {
-                            if viewModel.scene == nil {
-                                HStack{
-                                    Spacer()
-                                    ProgressView("Loading Look Around...")
-                                    Spacer()
-                                }
-                            } else {
-                                LookAroundPreview(scene: $viewModel.scene)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .shadow(color: Color.black.opacity(0.1), radius: 10)
+                    
+                    
+                    Group{
+                        switch viewModel.result {
+                        case .loading:
+                            HStack {
+                                Spacer()
+                                ProgressView("Loading Look Around...")
+                                Spacer()
                             }
+                            .frame(height: 100)
+                            
+                        case .found:
+                            LookAroundPreview(scene: $viewModel.scene)
+                                .frame(height: 200) // Keep height consistent
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .shadow(color: .black.opacity(0.1), radius: 10)
+                            
+                        case .error(let message):
+                            Text(message)
+                                .padding()
+                                .background(colorScheme == .light
+                                            ? AnyShapeStyle(Color.white)
+                                            : AnyShapeStyle(.ultraThinMaterial))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        case .noSceneFound:
+                            EmptyView()
+                        case .idle:
+                            EmptyView()
                         }
-                        .frame(height: 200)
-                        .onAppear {
-                            viewModel.fetchScene(for: selected)
-                        }
-                        
-                        HStack {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "phone.fill")
-                                    Text("Contact")
-                                        .font(.headline)
-                                }
-
+                    }
+                    
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "phone.fill")
+                                Text("Contact")
+                                    .font(.headline)
+                            }
+                            
+                            if let selected = locationHandler.bindingForSelectedItem().wrappedValue {
                                 if let phone = selected.phoneNumber,
                                    let phoneURL = URL(string: "tel://\(phone.filter { $0.isNumber })") {
                                     Link(destination: phoneURL) {
@@ -338,7 +351,7 @@ struct CourseView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
-
+                                
                                 if let url = selected.url {
                                     Link(destination: url) {
                                         HStack{
@@ -355,15 +368,16 @@ struct CourseView: View {
                                     }
                                 }
                             }
-                            .shadow(color: Color.black.opacity(0.1), radius: 10)
-                            Spacer()
                         }
-                        .padding()
-                        .background(colorScheme == .light
-                                    ? AnyShapeStyle(Color.white)
-                                    : AnyShapeStyle(.ultraThinMaterial))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: Color.black.opacity(0.1), radius: 10)
+                        Spacer()
                     }
+                    .padding()
+                    .background(colorScheme == .light
+                                ? AnyShapeStyle(Color.white)
+                                : AnyShapeStyle(.ultraThinMaterial))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    
                     
                     // MARK: - Location Info
                     
@@ -392,6 +406,16 @@ struct CourseView: View {
                                 : AnyShapeStyle(.ultraThinMaterial))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     
+                }
+                .onAppear {
+                    if let selected = locationHandler.selectedItem {
+                        viewModel.fetchScene(for: selected)
+                    }
+                }
+                .onChange(of: locationHandler.selectedItem) { oldItem, newItem in
+                    if let newItem = newItem {
+                        viewModel.fetchScene(for: newItem)
+                    }
                 }
                 
                 Rectangle()

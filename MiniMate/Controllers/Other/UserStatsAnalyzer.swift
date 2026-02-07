@@ -14,7 +14,6 @@ class UserStatsAnalyzer {
     var games: [Game] = []
     let userID: String
     
-    
     init(user: UserModel, games: [Game], context: ModelContext) {
         self.gameIDs = user.gameIDs
         self.games = games

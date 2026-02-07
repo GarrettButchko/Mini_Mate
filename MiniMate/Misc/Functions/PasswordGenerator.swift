@@ -29,7 +29,7 @@ public final class PasswordGenerator {
     private static let uppercase = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     private static let lowercase = Array("abcdefghijklmnopqrstuvwxyz")
     private static let digits    = Array("0123456789")
-    private static let symbols   = Array("!@#$%^&*()-_=+[]{};:,.<>?/|~`")
+    private static let symbols   = Array("!@#$%&()[]{}")
 
     // MARK: - Strong Password
     private static func generateStrong(length: Int, useSymbols: Bool) -> String {
