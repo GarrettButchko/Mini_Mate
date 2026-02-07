@@ -80,7 +80,7 @@ struct SwipeableRowModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .overlay(alignment: .trailing) {
+            .background(alignment: .trailing) {
                 if editingID == id {
                     actionButtons
                         .opacity(offsetX < -10 ? 1 : 0)

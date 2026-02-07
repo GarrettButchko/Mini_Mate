@@ -12,7 +12,7 @@ struct ProView: View {
     @State private var thankYou = false
     @State private var errorMessage: String?
     @Binding var showSheet: Bool
-    @ObservedObject var authModel: AuthViewModel
+    @EnvironmentObject var authModel: AuthViewModel
     @StateObject var iapManager = IAPManager()
     
     let benefits = [

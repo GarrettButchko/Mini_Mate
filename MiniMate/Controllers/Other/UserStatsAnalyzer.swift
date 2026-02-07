@@ -27,15 +27,22 @@ class UserStatsAnalyzer {
     }
     
     var totalPlayersFaced: Int {
-        Set(games.flatMap { $0.players.map { $0.userId } }).count
+        let userIDSet = Set(games.flatMap { $0.players.map { $0.userId } })
+        var count = 0
+        for id in userIDSet {
+            if id != userID && id.contains("guest") {
+                count += 1
+            }
+        }
+        return count
     }
     
     var totalStrokes: Int {
-        games.flatMap { $0.players }.filter { $0.userId == userID }.flatMap { $0.holes }.map { $0.strokes }.reduce(0, +)
+        games.flatMap { $0.players }.filter { $0.userId == userID || $0.userId.contains("guest") }.flatMap { $0.holes }.map { $0.strokes }.reduce(0, +)
     }
     
     var totalHolesPlayed: Int {
-        games.flatMap { $0.players }.filter { $0.userId == userID }.flatMap { $0.holes }.count
+        games.flatMap { $0.players }.filter { $0.userId == userID || $0.userId.contains("guest") }.flatMap { $0.holes }.count
     }
     
     var averageStrokesPerGame: Double {
@@ -52,19 +59,19 @@ class UserStatsAnalyzer {
     
     var bestGameStrokes: Int? {
         games.compactMap { game in
-            game.players.first(where: { $0.userId == userID })?.holes.map { $0.strokes }.reduce(0, +)
+            game.players.first(where: { $0.userId == userID || $0.userId.contains("guest")})?.holes.map { $0.strokes }.reduce(0, +)
         }.min()
     }
     
     var worstGameStrokes: Int? {
         games.compactMap { game in
-            game.players.first(where: { $0.userId == userID })?.holes.map { $0.strokes }.reduce(0, +)
+            game.players.first(where: { $0.userId == userID || $0.userId.contains("guest")})?.holes.map { $0.strokes }.reduce(0, +)
         }.max()
     }
     
     var holeInOneCount: Int {
         games.flatMap { $0.players }
-            .filter { $0.userId == userID }
+            .filter { $0.userId == userID || $0.userId.contains("guest")}
             .flatMap { $0.holes }
             .filter { $0.strokes == 1 }
             .count
@@ -85,7 +92,7 @@ class UserStatsAnalyzer {
         
         // Go through all games, all players, all holes
         for game in games {
-            if let player = game.players.first(where: { $0.userId == userID }) {
+            if let player = game.players.first(where: { $0.userId == userID || $0.userId.contains("guest")}) {
                 for hole in player.holes {
                     guard hole.number <= numberOfHoles else { continue }
                     holeStrokesDict[hole.number, default: []].append(hole.strokes)

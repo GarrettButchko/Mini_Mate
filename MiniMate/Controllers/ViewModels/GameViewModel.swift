@@ -107,6 +107,7 @@ final class GameViewModel: ObservableObject, Observable {
         game.live          = newGame.live
         game.lastUpdated   = newGame.lastUpdated
         game.courseID      = newGame.courseID
+        game.locationName  = newGame.locationName
         lastUpdated        = newGame.lastUpdated
         
         // 2) Rebuild players and their holes from remote data
@@ -205,6 +206,7 @@ final class GameViewModel: ObservableObject, Observable {
             self.game.lastUpdated = incoming.lastUpdated
             self.game.courseID = incoming.courseID
             self.game.startTime = incoming.startTime
+            self.game.locationName = incoming.locationName
             self.game.endTime = incoming.endTime
             
             // 2) build a lookup of remote players by ID
@@ -367,6 +369,7 @@ final class GameViewModel: ObservableObject, Observable {
             
             if let course = course {
                 game.courseID = course.id
+                game.locationName = course.name
             } else {
                 print("No course set for game")
             }
@@ -387,6 +390,7 @@ final class GameViewModel: ObservableObject, Observable {
             
             if let course = course {
                 game.courseID = course.id
+                game.locationName = course.name
             } else {
                 print("No course set for game")
             }
@@ -428,31 +432,10 @@ final class GameViewModel: ObservableObject, Observable {
     func finishAndPersistGame(game: Game, in context: ModelContext, isGuest: Bool = false) {
         stopListening()
         game.endTime = Date()
-
-        let finished = Game(
-            id: game.id,
-            hostUserId: game.hostUserId,
-            date: game.date,
-            completed: game.completed,
-            numberOfHoles: game.numberOfHoles,
-            started: game.started,
-            dismissed: game.dismissed,
-            live: game.live,
-            lastUpdated: game.lastUpdated,
-            courseID: game.courseID,
-            players: game.players.map { player in
-                Player(
-                    id: player.id,
-                    userId: player.userId,
-                    name: player.name,
-                    photoURL: player.photoURL,
-                    holes: player.holes.map { Hole(number: $0.number, strokes: $0.strokes) },
-                    email: player.email
-                )
-            },
-            startTime: game.startTime,
-            endTime: game.endTime
-        )
+        
+        var finished: Game = Game()
+        
+        copyGame(into: &finished, from: game)
         
         print(finished)
 
@@ -515,6 +498,35 @@ final class GameViewModel: ObservableObject, Observable {
             self.resetGame()
         }
     }
+    
+    func copyGame(into target: inout Game, from source: Game) {
+        target = Game(
+            id: source.id,
+            hostUserId: source.hostUserId,
+            date: source.date,
+            completed: source.completed,
+            numberOfHoles: source.numberOfHoles,
+            started: source.started,
+            dismissed: source.dismissed,
+            live: source.live,
+            lastUpdated: source.lastUpdated,
+            courseID: source.courseID,
+            players: source.players.map { player in
+                Player(
+                    id: player.id,
+                    userId: player.userId,
+                    name: player.name,
+                    photoURL: player.photoURL,
+                    holes: player.holes.map { Hole(number: $0.number, strokes: $0.strokes) },
+                    email: player.email
+                )
+            },
+            locationName: source.locationName,
+            startTime: source.startTime,
+            endTime: source.endTime
+        )
+    }
+
 
     func processAnalytics(
         finishedGame finished: Game,

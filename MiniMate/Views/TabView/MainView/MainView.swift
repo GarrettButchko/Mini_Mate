@@ -19,9 +19,9 @@ struct MainView: View {
     
     @Environment(\.colorScheme) private var colorScheme
     
-    @ObservedObject var viewManager: ViewManager
-    @ObservedObject var authModel: AuthViewModel
-    @ObservedObject var gameModel: GameViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var gameModel: GameViewModel
     
     @State private var nameIsPresented = false
     @State private var isSheetPresented = false
@@ -213,7 +213,7 @@ struct MainView: View {
                                             showHost = true
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager)
+                                            HostView(showHost: $showHost)
                                                 .presentationDetents([.large])
                                         }
                                         
@@ -249,7 +249,7 @@ struct MainView: View {
                                             }
                                         }
                                         .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager)
+                                            HostView(showHost: $showHost)
                                                 .presentationDetents([.large])
                                         }
                                         
@@ -330,7 +330,7 @@ struct MainView: View {
                                     .shadow(radius: 10)
                                 }
                                 .sheet(isPresented: $showDonation) {
-                                    ProView(showSheet: $showDonation, authModel: authModel)
+                                    ProView(showSheet: $showDonation)
                                 }
                                 .padding()
                             }
@@ -480,7 +480,7 @@ struct MainView: View {
                 Button {
                     viewManager.navigateToGameReview(games.sorted(by: { $0.date > $1.date }).first!)
                 } label: {
-                    SectionStatsView(title: "Last Game", makeColor: gameModel.getCourse()?.scoreCardColor){
+                    SectionStatsView(title: "Last Game", spacing: 12, makeColor: gameModel.getCourse()?.scoreCardColor){
                         HStack{
                             HStack{
                                 VStack(alignment: .leading, spacing: 8) {

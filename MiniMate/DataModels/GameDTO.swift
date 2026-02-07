@@ -18,6 +18,7 @@ struct GameDTO: Codable {
     var lastUpdated: Double
     var courseID: String?
     var players: [PlayerDTO]
+    var locationName: String?
     var startTime: Double
     var endTime: Double
 
@@ -33,6 +34,7 @@ struct GameDTO: Codable {
         case lastUpdated
         case courseID
         case players
+        case locationName
         case startTime
         case endTime
     }
@@ -52,6 +54,7 @@ struct GameDTO: Codable {
         lastUpdated   = try c.decodeIfPresent(Double.self, forKey: .lastUpdated) ?? 0
         courseID      = try c.decodeIfPresent(String.self, forKey: .courseID)
         players       = try c.decodeIfPresent([PlayerDTO].self, forKey: .players) ?? []
+        locationName = try c.decodeIfPresent(String.self, forKey: .locationName)
         startTime     = try c.decodeIfPresent(Double.self, forKey: .startTime) ?? Date().timeIntervalSince1970
         endTime       = try c.decodeIfPresent(Double.self, forKey: .endTime) ?? Date().timeIntervalSince1970
     }
@@ -69,6 +72,7 @@ struct GameDTO: Codable {
         lastUpdated: Double,
         courseID: String?,
         players: [PlayerDTO],
+        locationName: String? = nil,
         startTime: Double,
         endTime: Double
     ) {
@@ -83,6 +87,7 @@ struct GameDTO: Codable {
         self.lastUpdated = lastUpdated
         self.courseID = courseID
         self.players = players
+        self.locationName = locationName
         self.startTime = startTime
         self.endTime = endTime
     }

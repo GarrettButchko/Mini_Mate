@@ -39,7 +39,6 @@ final class ProfileViewModel: ObservableObject {
         localGameRepo: LocalGameRepository,
         remoteGameRepo: FirestoreGameRepository,
         viewManager: ViewManager,
-        isSheetPresent: Binding<Bool>
     ) {
         self.authModel = authModel
         self.userRepo = userRepo

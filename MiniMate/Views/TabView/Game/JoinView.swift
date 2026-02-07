@@ -8,7 +8,7 @@ import SwiftUI
 struct JoinView: View {
     @Environment(\.modelContext) private var context
     
-    @ObservedObject var viewManager: ViewManager
+    @EnvironmentObject var viewManager: ViewManager
     
     @Binding var showHost: Bool
     
@@ -21,7 +21,6 @@ struct JoinView: View {
         showHost: Binding<Bool>
     ) {
         self._showHost = showHost
-        self.viewManager = viewManager
         _viewModel = StateObject(
             wrappedValue: JoinViewModel(
                 gameModel: gameModel,
@@ -146,6 +145,11 @@ struct JoinView: View {
                     Text("Holes:")
                     Spacer()
                     Text("\(viewModel.gameModel.gameValue.numberOfHoles)")
+                }
+                HStack {
+                    Text("Location:")
+                    Spacer()
+                    Text("\(viewModel.gameModel.gameValue.locationName ?? "No Location")")
                 }
             }
         }

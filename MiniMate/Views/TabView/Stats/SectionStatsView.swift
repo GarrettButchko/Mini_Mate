@@ -10,13 +10,12 @@ import SwiftData
 struct SectionStatsView<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     var title: String
+    var spacing: CGFloat
+    
     var makeColor: Color? = nil
     @ViewBuilder var content: () -> Content
-    
-    
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: spacing) {
             HStack {
                 Text(title)
                     .font(.title3).fontWeight(.bold)

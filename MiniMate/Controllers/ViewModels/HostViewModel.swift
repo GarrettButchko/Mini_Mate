@@ -106,7 +106,9 @@ final class HostViewModel: ObservableObject {
         }
     }
     
-    func timeString(from seconds: Int) -> String {
+    func timeString() -> String {
+        let seconds = Int(timeRemaining)
+        
         let minutes = seconds / 60
         let secs = seconds % 60
         return String(format: "%d:%02d", minutes, secs)

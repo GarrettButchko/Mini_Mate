@@ -43,15 +43,15 @@ struct ContentView: View {
             Group {
                 switch viewManager.currentView {
                 case .main(let tab):
-                    MainTabView(viewManager: viewManager, authModel: authModel, gameModel: gameModel, selectedTab: tab)
+                    MainTabView(selectedTab: tab)
                 case .welcome:
                     WelcomeView(viewManager: viewManager)
                     
                 case .scoreCard(let isGuest):
-                    ScoreCardView(viewManager: viewManager, authModel: authModel, gameModel: gameModel, isGuest: isGuest)
+                    ScoreCardView(isGuest: isGuest)
                     
                 case .gameReview(let gameModel):
-                    GameReviewView(viewManager: viewManager, game: gameModel, showBackToStatsButton: true)
+                    GameReviewView(game: gameModel, showBackToStatsButton: true)
                 case .ad(let isGuest):
                     InterstitialAdView(adUnitID: "ca-app-pub-8261962597301587/3394145015") {
                         if isGuest {
@@ -61,9 +61,9 @@ struct ContentView: View {
                         }
                     }
                 case .signIn:
-                    SignInView(authModel: authModel, viewManager: viewManager)
+                    SignInView()
                 case .host:
-                    HostView(showHost: $showHost, authModel: authModel, viewManager: viewManager, isGuest: true, showLocationButton: true)
+                    HostView(showHost: $showHost, isGuest: true, showLocationButton: true)
                 }
             
                 
@@ -71,6 +71,9 @@ struct ContentView: View {
             .transition(currentTransition)
             
         }
+        .environmentObject(gameModel)
+        .environmentObject(authModel)
+        .environmentObject(viewManager)
         .animation(.easeInOut(duration: 0.4), value: viewManager.currentView)
         .onChange(of: viewManager.currentView, { oldValue, newValue in
             previousView = viewManager.currentView
@@ -112,9 +115,9 @@ struct ContentView: View {
 
 struct MainTabView: View {
     @Environment(\.modelContext) private var context
-    @ObservedObject var viewManager: ViewManager
-    @ObservedObject var authModel: AuthViewModel
-    @ObservedObject var gameModel: GameViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var gameModel: GameViewModel
     //let ad: Ad?
     
     @StateObject var iapManager = IAPManager()
@@ -123,25 +126,22 @@ struct MainTabView: View {
     
     @State var selectedTab: Int
     
-    init(viewManager: ViewManager, authModel: AuthViewModel, gameModel: GameViewModel, selectedTab: Int){
-        self.viewManager = viewManager
-        self.authModel = authModel
-        self.gameModel = gameModel
+    init(selectedTab: Int){
         self.selectedTab = selectedTab
     }
     
     var body: some View {
         
         TabView(selection: $selectedTab) {
-            StatsView(viewManager: viewManager, authModel: authModel)
+            StatsView()
                 .tabItem { Label("Stats", systemImage: "chart.bar.xaxis") }
                 .tag(0)
             
-            MainView(viewManager: viewManager, authModel: authModel, gameModel: gameModel)
+            MainView()
                 .tabItem { Label("Home", systemImage: "house.fill") }
                 .tag(1)
             if NetworkChecker.shared.isConnected {
-                CourseView(viewManager: viewManager, authModel: authModel)
+                CourseView()
                     .tabItem { Label("Courses", systemImage: "figure.golf") }
                     .tag(2)
             }

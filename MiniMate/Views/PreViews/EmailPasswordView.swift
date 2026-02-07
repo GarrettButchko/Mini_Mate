@@ -11,8 +11,8 @@ import SwiftData
 struct EmailPasswordView: View {
     @Environment(\.modelContext) private var context
 
-    @ObservedObject var viewManager: ViewManager
-    @ObservedObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
     
     @Binding var showEmail: Bool
     @State var showSignUp: Bool = false

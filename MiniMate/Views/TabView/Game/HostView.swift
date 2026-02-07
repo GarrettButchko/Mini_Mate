@@ -21,8 +21,8 @@ struct HostView: View {
     @State var isRotating = false
     @State var showLocationButton: Bool = false
     
-    @ObservedObject var authModel: AuthViewModel
-    @ObservedObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
     
     @StateObject var viewModel: HostViewModel
     
@@ -30,14 +30,10 @@ struct HostView: View {
     
     init(
             showHost: Binding<Bool>,
-            authModel: AuthViewModel,
-            viewManager: ViewManager,
             isGuest: Bool = false,
             showLocationButton: Bool = false
         ) {
             self._showHost = showHost
-            self.authModel = authModel
-            self.viewManager = viewManager
             self.isGuest = isGuest
             self.showLocationButton = showLocationButton
             
@@ -154,23 +150,19 @@ struct HostView: View {
                     HStack {
                         Text("Expires in:")
                         Spacer()
-                        Text(viewModel.timeString(from: Int(viewModel.timeRemaining)))
+                        Text(viewModel.timeString())
                             .monospacedDigit()
                     }
                 }
-                
-                DatePicker("Date & Time", selection: gameModel.binding(for: \.date))
-                    .onChange(of: locationHandler.selectedItem) { _, newValue in
-                        viewModel.handleLocationChange(newValue, gameModel: gameModel)
-                    }
-
                 
                 if locationHandler.hasLocationAccess{
                     locationSection
                 }
                 
                 if let course = gameModel.getCourse() {
-                    if course.pars == nil {
+                    if let pars = course.pars {
+                        UserInfoRow(label: "Holes", value: String(pars.count))
+                    } else {
                         HStack {
                             Text("Holes:")
                             NumberPickerView(
@@ -302,7 +294,7 @@ struct HostView: View {
             }
         }
         .onAppear {
-            if !showLocationButton {
+            if showLocationButton {
                 viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
             }
         }

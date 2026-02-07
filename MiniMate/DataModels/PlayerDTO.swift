@@ -15,7 +15,9 @@ struct PlayerDTO: Codable, Identifiable, Equatable {
     var inGame: Bool
     var holes: [HoleDTO]
     var email: String?
-    
+}
+
+extension PlayerDTO {
     func convertToLBREP() -> LeaderboardEntry? {
         if let email = email {
             return LeaderboardEntry(id: id, userId: userId, name: name, photoURL: photoURL, totalStrokes: totalStrokes, email: email)

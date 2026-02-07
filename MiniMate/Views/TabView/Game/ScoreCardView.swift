@@ -10,9 +10,9 @@ struct ScoreCardView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     
-    @StateObject var viewManager: ViewManager
-    @StateObject var authModel: AuthViewModel
-    @ObservedObject var gameModel: GameViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var gameModel: GameViewModel
     
     @State private var scrollOffset: CGFloat = 0
     @State private var uuid: UUID? = nil
@@ -44,13 +44,14 @@ struct ScoreCardView: View {
                     let finishedDTO = gameModel.gameValue.toDTO()
                     
                     let game = Game.fromDTO(finishedDTO)
-                    passGame = game   // ⬅️ capture BEFORE resetting model
-                    endGame(game: game)
+                    
+                    passGame = game
+                    endGame(game: game, isGuest: isGuest)
                     withAnimation { showRecap = true }
                 }
             }
             if showRecap, let pg = passGame {
-                RecapView(viewManager: viewManager, course: gameModel.getCourse(), game: pg, isGuest: isGuest){
+                RecapView(course: gameModel.getCourse(), game: pg, isGuest: isGuest){
                     Button {
                         if NetworkChecker.shared.isConnected && (isGuest || !authModel.userModel!.isPro) {
                             viewManager.navigateToAd(isGuest)

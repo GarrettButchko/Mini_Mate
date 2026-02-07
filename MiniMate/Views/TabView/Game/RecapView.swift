@@ -7,9 +7,9 @@
 import SwiftUI
 import ConfettiSwiftUI
 
-struct RecapView<VM: ViewManager & ObservableObject, Content: View>: View {
+struct RecapView<Content: View>: View {
     @Environment(\.modelContext) private var context
-    @StateObject var viewManager: VM
+    @EnvironmentObject var viewManager: ViewManager
     
     @State var confettiTrigger: Bool = false
     @State var showReviewSheet: Bool = false
@@ -95,7 +95,7 @@ struct RecapView<VM: ViewManager & ObservableObject, Content: View>: View {
                     .frame(width: 140, height: 40)
                     .sheet(isPresented: $showReviewSheet){
                         if let game = game {
-                            GameReviewView(viewManager: viewManager, game: game)
+                            GameReviewView(game: game)
                         }
                     }
                     content()

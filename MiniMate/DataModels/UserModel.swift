@@ -45,7 +45,9 @@ class UserModel: Identifiable, Equatable {
         self.accountType = accountType
         self.adminCourses = adminCourses
     }
+}
 
+extension UserModel{
     static func == (lhs: UserModel, rhs: UserModel) -> Bool {
         return lhs.googleId == rhs.googleId
     }

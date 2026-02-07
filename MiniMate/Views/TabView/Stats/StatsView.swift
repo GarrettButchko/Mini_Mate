@@ -39,8 +39,8 @@ struct StatsView: View {
         return sortedGames
     }
     
-    @StateObject var viewManager: ViewManager
-    @StateObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
     
     @State private var isDismissed = false
     
@@ -95,17 +95,28 @@ struct StatsView: View {
                                     viewModel.editOn = false
                                 }
                         } else {
-                            ScrollView{
+                            VStack(spacing: 8) {
+                                Spacer()
                                 Image("logoOpp")
                                     .resizable()
-                                    .frame(width: 50, height: 50)
-                                    .padding()
+                                    .scaledToFit()
+                                    .frame(width: 48, height: 48)
+                                    .opacity(0.8)
+                                
+                                Text("No Games Yet")
+                                    .font(.headline)
+                                
+                                Text("Hit the course to see your stats appear.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                Spacer()
                             }
+                            .padding(.vertical, 24)
                             .onAppear {
                                 viewModel.editOn = false
                             }
                         }
-                        
                     }
                 }
                 .animation(.easeInOut(duration: 0.3), value: viewModel.pickedSection)
@@ -155,17 +166,33 @@ struct StatsView: View {
                     if !authModel.userModel!.gameIDs.isEmpty {
                         if !viewModel.isRefreshing {
                             ForEach(games) { game in
-                                GameRow(context: _context, editOn: $viewModel.editOn, editingGameID: $viewModel.editingGameID, authModel: authModel, game: game, viewManager: viewManager, presentShareSheet: viewModel.presentShareSheet)
+                                GameRow(context: _context, editOn: $viewModel.editOn, editingGameID: $viewModel.editingGameID, game: game, presentShareSheet: viewModel.presentShareSheet)
                                     .transition(.opacity)
                             }
+                            Image("logoOpp")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .padding()
                         } else {
                             ProgressView()
                         }
                     } else {
-                        Image("logoOpp")
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                            .padding()
+                        VStack(spacing: 8) {
+                            Image("logoOpp")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 48, height: 48)
+                                .opacity(0.8)
+
+                            Text("No Games Yet!")
+                                .font(.headline)
+
+                            Text("Play a game to get started.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 24)
                     }
                     
                     Rectangle()
@@ -209,17 +236,21 @@ struct StatsView: View {
     }
     
     private var overViewSection: some View {
-        ScrollView {
+        let spacing : CGFloat = 10
+        
+        return ScrollView {
             if let analyzer = viewModel.analyzer {
-                SectionStatsView(title: "Basic Stats") {
-                    HStack{
-                        StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", color: .blue)
+                SectionStatsView(title: "Basic Stats", spacing: spacing) {
+                    HStack(spacing: spacing){
                         StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)", color: .green)
                         StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)", color: .blue)
                     }
-                    HStack{
-                        StatCard(title: "Average Strokes per Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame), color: .blue)
-                        StatCard(title: "Average Strokes per Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole), color: .green)
+                    
+                    StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", color: .blue)
+                    
+                    HStack(spacing: spacing){
+                        StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame), color: .blue)
+                        StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole), color: .green)
                     }
                 }
                 .padding(.top)
@@ -235,19 +266,19 @@ struct StatsView: View {
                     .padding(.top)
                 }
                 
-                SectionStatsView(title: "Average 18 Hole Game"){
+                SectionStatsView(title: "Average 18 Hole Game", spacing: spacing){
                     BarChartView(data: analyzer.averageHoles18, title: "Average Strokes")
                 }
                 .padding(.top)
-                SectionStatsView(title: "Misc Stats") {
-                    HStack{
+                SectionStatsView(title: "Misc Stats", spacing: spacing) {
+                    HStack(spacing: spacing){
                         StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)", color: .blue)
                         StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)", color: .green)
-                        StatCard(title: "Hole in One's", value: "\(analyzer.holeInOneCount)", color: .blue)
                     }
+                    StatCard(title: "Hole in One's", value: "\(analyzer.holeInOneCount)", color: .blue)
                 }
                 .padding(.top)
-                SectionStatsView(title: "Average 9 Hole Game"){
+                SectionStatsView(title: "Average 9 Hole Game", spacing: spacing){
                     BarChartView(data: analyzer.averageHoles9, title: "Average Strokes")
                 }
                 .padding(.vertical)
@@ -267,7 +298,7 @@ struct StatsView: View {
 
 struct GameGridView: View {
     @Binding var editOn: Bool
-    @StateObject var authModel: AuthViewModel
+    @EnvironmentObject var authModel: AuthViewModel
     @Environment(\.modelContext) private var context
     var game: Game
     var sortedPlayers: [Player] {
@@ -281,7 +312,7 @@ struct GameGridView: View {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     
-                    if let gameLocName = game.location?.name{
+                    if let gameLocName = game.locationName{
                         MarqueeText(
                             text: gameLocName,
                             font: UIFont.preferredFont(forTextStyle: .title3),
@@ -378,13 +409,13 @@ struct GameGridView: View {
 struct GameRow: View {
     @Environment(\.modelContext) var context
     
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    
     @Binding var editOn: Bool
     @Binding var editingGameID: String?
-    @StateObject var authModel: AuthViewModel
     
     var game: Game
-    
-    var viewManager: ViewManager
     var presentShareSheet: (String) -> Void
     
     var localGameRepo: LocalGameRepository { LocalGameRepository(context: context) }
@@ -393,7 +424,7 @@ struct GameRow: View {
     var body: some View {
         GeometryReader { proxy in
             HStack{
-                GameGridView(editOn: $editOn, authModel: authModel, game: game)
+                GameGridView(editOn: $editOn, game: game)
                     .frame(width: proxy.size.width)
                     .transition(.opacity)
                     .swipeMod(

@@ -17,9 +17,8 @@ struct StatCard: View {
         HStack{
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                     .foregroundStyle(.mainOpp)
+                    .fontWeight(.semibold)
                 Text(value)
                     .font(.title)
                     .fontWeight(.bold)
@@ -29,7 +28,6 @@ struct StatCard: View {
             Spacer()
         }
         .padding()
-        .frame(height: 120)
         .background(colorScheme == .light
                     ? AnyShapeStyle(Color.white)
                     : AnyShapeStyle(.ultraThinMaterial))

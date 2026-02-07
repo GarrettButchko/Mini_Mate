@@ -24,8 +24,8 @@ struct SignInView: View {
     @Environment(\.modelContext) var context
     @Environment(\.colorScheme)  var colorScheme
     
-    @ObservedObject var authModel : AuthViewModel
-    @ObservedObject var viewManager : ViewManager
+    @EnvironmentObject var authModel : AuthViewModel
+    @EnvironmentObject var viewManager : ViewManager
     
     @State var guestGame: Game? = nil
 
@@ -102,15 +102,11 @@ struct SignInView: View {
                 StartButtons(
                     showEmailSignIn: $showEmailSignIn,
                     errorMessage: $errorMessage,
-                    guestGame: $guestGame,
-                    authModel: authModel,
-                    viewManager: viewManager
+                    guestGame: $guestGame
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
                 EmailPasswordView(
-                    viewManager: viewManager,
-                    authModel: authModel,
                     showEmail: $showEmailSignIn,
                     email: $email,
                     password: $password,
@@ -151,8 +147,8 @@ struct StartButtons: View {
     
     @Binding var guestGame: Game?
     
-    var authModel: AuthViewModel
-    var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
     
     var body: some View {
         VStack(spacing: 16){

@@ -25,8 +25,8 @@ enum DeleteAlertType: Identifiable {
 struct ProfileView: View {
     @Environment(\.modelContext) private var context
     
-    @ObservedObject var viewManager: ViewManager
-    @ObservedObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
     
     @Binding var isSheetPresent: Bool
     @State var showLoginOverlay: Bool = false
@@ -50,8 +50,6 @@ struct ProfileView: View {
         isSheetPresent: Binding<Bool>,
         context: ModelContext
     ) {
-        self.viewManager = viewManager
-        self.authModel = authModel
         self._isSheetPresent = isSheetPresent
 
         _viewModel = StateObject(
@@ -59,7 +57,7 @@ struct ProfileView: View {
                 authModel: authModel,
                 userRepo: UserRepository(context: context),
                 localGameRepo: LocalGameRepository(context: context), remoteGameRepo: FirestoreGameRepository(),
-                viewManager: viewManager, isSheetPresent: isSheetPresent
+                viewManager: viewManager
             )
         )
     }
@@ -264,7 +262,7 @@ struct ProfileView: View {
             }
             #if MINIMATE
             .sheet(isPresented: $showPro) {
-                ProView(showSheet: $showPro, authModel: authModel)
+                ProView(showSheet: $showPro)
             }
             #endif
         }

@@ -14,15 +14,13 @@ struct CourseView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var locationHandler: LocationHandler
     
-    @ObservedObject var viewManager: ViewManager
-    @ObservedObject var authModel: AuthViewModel
+    @EnvironmentObject var viewManager: ViewManager
+    @EnvironmentObject var authModel: AuthViewModel
     @StateObject var courseViewModel: CourseViewModel
     
     @StateObject var viewModel = LookAroundViewModel()
     
-    init(viewManager: ViewManager, authModel: AuthViewModel) {
-        self.viewManager = viewManager
-        self.authModel = authModel
+    init() {
         _courseViewModel = StateObject(
             wrappedValue: CourseViewModel()
         )

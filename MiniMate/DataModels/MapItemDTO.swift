@@ -10,7 +10,6 @@ struct MapItemDTO: Codable, Equatable {
     let name: String?
     let phoneNumber: String?
     let url: String?
-    
     let address: AddressDTO?
     let coordinate: CoordinateDTO
 }

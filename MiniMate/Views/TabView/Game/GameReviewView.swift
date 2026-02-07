@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct GameReviewView: View {
-    @ObservedObject var viewManager: ViewManager
+    @EnvironmentObject var viewManager: ViewManager
     @StateObject private var viewModel: GameReviewViewModel
     
     var showBackToStatsButton: Bool = false
@@ -17,13 +17,12 @@ struct GameReviewView: View {
     @State private var showInfoView: Bool
     
     // Custom init to assign @StateObject and normal vars
-    init(viewManager: ViewManager, game: Game, showBackToStatsButton: Bool = false, isInCourseSettings: Bool = false, scrollOffset: CGFloat = 0, uuid: UUID? = nil, showInfoView: Bool = false) {
+    init(game: Game, showBackToStatsButton: Bool = false, isInCourseSettings: Bool = false, scrollOffset: CGFloat = 0, uuid: UUID? = nil, showInfoView: Bool = false) {
         self.showBackToStatsButton = showBackToStatsButton
         self.isInCourseSettings = isInCourseSettings
         
         _viewModel = StateObject(wrappedValue: GameReviewViewModel(game: game))
         
-        _viewManager = ObservedObject(wrappedValue: viewManager)
         _scrollOffset = State(initialValue: scrollOffset)
         _uuid = State(initialValue: uuid)
         _showInfoView = State(initialValue: showInfoView)

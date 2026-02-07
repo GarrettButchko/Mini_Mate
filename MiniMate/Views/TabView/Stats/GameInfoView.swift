@@ -37,6 +37,7 @@ struct GameInfoView: View {
                         UserInfoRow(label: "Number of players", value: "\(game.players.count)")
                         UserInfoRow(label: "Number of holes", value: "\(game.numberOfHoles)")
                         UserInfoRow(label: "Date Started", value: game.date.formatted(date: .abbreviated, time: .omitted))
+                        UserInfoRow(label: "Location", value: game.locationName ?? "No Location")
                         UserInfoRow(label: "Course ID", value: game.courseID ?? "No Course ID")
                     }
                 }

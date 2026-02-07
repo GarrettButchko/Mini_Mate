@@ -17,40 +17,12 @@ class Player: Identifiable, Equatable {
     var name: String
     var photoURL: URL?
     var email: String?
-    
-    // Computed property: sum of strokes across all holes
-    var totalStrokes: Int {
-        holes.reduce(0) { $0 + $1.strokes }
-    }
-    
-    var incomplete: Bool {
-        for hole in holes {
-            if (hole.strokes == 0) {
-                return true
-            }
-        }
-        return false
-    }
 
     @Relationship(deleteRule: .nullify)
     var game: Game?
 
     @Relationship(deleteRule: .cascade, inverse: \Hole.player)
     var holes: [Hole] = []
-
-    static func == (lhs: Player, rhs: Player) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.userId == rhs.userId &&
-        lhs.name == rhs.name &&
-        lhs.photoURL == rhs.photoURL &&
-        lhs.inGame == rhs.inGame &&
-        lhs.holes == rhs.holes &&
-        lhs.email == rhs.email
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case id, userId, name, photoURL, inGame, holes, email
-    }
 
     init(
         id: String = UUID().uuidString,
@@ -72,6 +44,32 @@ class Player: Identifiable, Equatable {
         for hole in self.holes {
             hole.player = self
         }
+    }
+}
+
+extension Player {
+    // Computed property: sum of strokes across all holes
+    var totalStrokes: Int {
+        holes.reduce(0) { $0 + $1.strokes }
+    }
+    
+    var incomplete: Bool {
+        for hole in holes {
+            if (hole.strokes == 0) {
+                return true
+            }
+        }
+        return false
+    }
+
+    static func == (lhs: Player, rhs: Player) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.userId == rhs.userId &&
+        lhs.name == rhs.name &&
+        lhs.photoURL == rhs.photoURL &&
+        lhs.inGame == rhs.inGame &&
+        lhs.holes == rhs.holes &&
+        lhs.email == rhs.email
     }
 
     func toDTO() -> PlayerDTO {
@@ -99,4 +97,3 @@ class Player: Identifiable, Equatable {
         )
     }
 }
-
