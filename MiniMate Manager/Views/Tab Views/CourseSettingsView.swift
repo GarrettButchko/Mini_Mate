@@ -88,31 +88,23 @@ struct CourseSettingsView: View {
                     let holes2 = (1...holeCount).map { number in
                         Hole(number: number, strokes: Int.random(in: 1...6))
                     }
-
                     
-                    VStack{
-                        Capsule()
-                            .frame(width: 38, height: 6)
-                            .foregroundColor(.gray)
-                            .padding(.top)
-                        GameReviewView(viewManager: ViewManager(), game:
-                                        Game(
-                                            id: "EXAMPLE",
-                                            date: Date(),
-                                            completed: true,
-                                            numberOfHoles: 18,
-                                            started: true,
-                                            dismissed: true,
-                                            live: false,
-                                            lastUpdated: Date(),
-                                            courseID: viewModel.selectedCourse!.id,
-                                            players: [
-                                                Player(id: "1", userId: "Example 1", name: "Garrett", inGame: false, holes: holes1),
-                                                Player(id: "2", userId: "Example 2", name: "Joey", inGame: false, holes: holes2)
-                                            ]
-                                        ), showBackToStatsButton: true, isInCourseSettings: true
-                        )
-                    }
+                    GameReviewView(game:Game(
+                        id: "EXAMPLE",
+                        date: Date(),
+                        completed: true,
+                        numberOfHoles: 18,
+                        started: true,
+                        dismissed: true,
+                        live: false,
+                        lastUpdated: Date(),
+                        courseID: viewModel.selectedCourse!.id,
+                        players: [
+                            Player(id: "1", userId: "Example 1", name: "Garrett", inGame: false, holes: holes1),
+                            Player(id: "2", userId: "Example 2", name: "Joey", inGame: false, holes: holes2)
+                        ]
+                    ), showBackToStatsButton: true, isInCourseSettings: true)
+                    .presentationDragIndicator(.visible)
                 }
             }
         }

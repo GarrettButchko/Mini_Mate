@@ -35,6 +35,7 @@ struct MainView: View {
     @State var showInfo: Bool = false
     @State var showTextAndButtons: Bool = false
     @State var isRotating: Bool = false
+    @State var gameReview: Game? = nil
     
     private var uniGameRepo: UnifiedGameRepository { UnifiedGameRepository(context: context) }
     
@@ -481,39 +482,45 @@ struct MainView: View {
     }
     
     var lastGameStats: some View {
-        Group{
+        let lastGame = games.sorted(by: { $0.date > $1.date }).first!
+        
+        return Group{
             if games.count != 0{
                 Button {
-                    viewManager.navigateToGameReview(games.sorted(by: { $0.date > $1.date }).first!)
+                    gameReview = lastGame
                 } label: {
                     SectionStatsView(title: "Last Game", spacing: 12, makeColor: gameModel.getCourse()?.scoreCardColor){
                         let cardHeight: CGFloat = 90
-
-                        HStack {
-                            VStack {
-            
-                                PhotoIconView(
-                                    photoURL: analyzer?.winnerOfLatestGame?.photoURL,
-                                    name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇",
-                                    imageSize: 30,
-                                    background: .yellow
-                                )
+                        
+                        HStack(spacing: 12){
+                            if lastGame.players.count != 1 {
+                                VStack{
+                                    
+                                    PhotoIconView(
+                                        photoURL: analyzer?.winnerOfLatestGame?.photoURL,
+                                        name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇",
+                                        imageSize: 30,
+                                        background: .yellow
+                                    )
+                                }
+                                .padding()
+                                .frame(height: cardHeight)
+                                .background(colorScheme == .light ? AnyShapeStyle(Color.white) : AnyShapeStyle(.ultraThinMaterial))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
-                            .padding()
-                            .frame(height: cardHeight)
-                            .background(colorScheme == .light ? AnyShapeStyle(Color.white) : AnyShapeStyle(.ultraThinMaterial))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                            StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", cornerRadius: 12, cardHeight: cardHeight)
+                            StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", cornerRadius: 12, cardHeight: cardHeight, infoText: "The number of strokes you had last game.")
                         }
-
-                        
                         BarChartView(data: analyzer?.usersHolesOfLatestGame ?? [], title: "Recap of Game")
-                        
+                            .frame(height: 150)
                     }
                     .padding(.bottom)
                 }
-                
+                .sheet(item: $gameReview) {
+                    gameReview = nil
+                } content: { game in
+                    GameReviewView(game: game, showBackToStatsButton: true, gameReview: $gameReview)
+                        .presentationDragIndicator(.visible)
+                }
             } else {
                 Image("logoOpp")
                     .resizable()

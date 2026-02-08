@@ -48,7 +48,7 @@ final class CourseRepository {
                 dataName: object
             ])
     }
-
+    
     func listenToCourse(
         id: String,
         onUpdate: @escaping (Course?) -> Void
@@ -121,18 +121,18 @@ final class CourseRepository {
             completion([])
             return
         }
-
+        
         let group = DispatchGroup()
         let resultsQueue = DispatchQueue(label: "CourseRepository.fetchCourses.resultsQueue")
         var results: [String: Course] = [:]
-
+        
         for id in ids {
             group.enter()
-
+            
             let ref = db.collection(collectionName).document(id)
             ref.getDocument { snapshot, error in
                 defer { group.leave() }
-
+                
                 guard
                     error == nil,
                     let snapshot,
@@ -140,7 +140,7 @@ final class CourseRepository {
                 else {
                     return
                 }
-
+                
                 Task { @MainActor in
                     do {
                         let course = try snapshot.data(as: Course.self)
@@ -153,7 +153,7 @@ final class CourseRepository {
                 }
             }
         }
-
+        
         group.notify(queue: .main) {
             // Preserve original order of IDs
             let orderedCourses = ids.compactMap { results[$0] }
@@ -207,8 +207,8 @@ final class CourseRepository {
                 completion(exists)
             }
     }
-
-    #if MINIMATE
+    
+#if MINIMATE
     func createCourseWithMapItem(courseID: String, location: MapItemDTO, completion: @escaping (Course?) -> Void) {
         let ref = db.collection(collectionName).document(courseID)
         
@@ -239,8 +239,8 @@ final class CourseRepository {
             }
         }
     }
-    #endif
-
+#endif
+    
     
     func findCourseIDWithPassword(withPassword password: String, completion: @escaping (String?) -> Void) {
         db.collection(collectionName)
@@ -289,7 +289,7 @@ final class CourseRepository {
     func removeEmail(email: String, courseID: String, completion: @escaping (Bool) -> Void) {
         let ref = db.collection(collectionName).document(courseID)
         let key = emailKey(email)
-
+        
         // No transaction needed with map structure
         ref.updateData([
             "emails.\(key)": FieldValue.delete()
@@ -308,16 +308,16 @@ final class CourseRepository {
             .lowercased()
             .replacingOccurrences(of: ".", with: ",")
     }
-
+    
     func emailFromKey(_ key: String) -> String {
         key.replacingOccurrences(of: ",", with: ".")
     }
-
+    
     
     // MARK: Admin Id
     func addAdminIDtoCourse(adminID: String, courseID: String, completion: @escaping (Bool) -> Void) {
         let ref = db.collection(collectionName).document(courseID)
-
+        
         ref.updateData([
             "adminIDs": FieldValue.arrayUnion([adminID])
         ]) { error in
@@ -329,7 +329,7 @@ final class CourseRepository {
             }
         }
     }
-
+    
     func removAdminIDfromCourse(email: String, courseID: String, completion: @escaping (Bool) -> Void) {
         db.collection(collectionName)
             .document(courseID)
@@ -364,7 +364,7 @@ final class CourseRepository {
             }
         }
     }
-
+    
     
     // MARK: - Update Day Analytics
     func updateDayAnalytics(
@@ -549,10 +549,10 @@ func makeWeekID(from date: Date = Date()) -> String {
 func makeDayID(from date: Date = Date()) -> String {
     var calendar = Calendar(identifier: .iso8601)
     calendar.timeZone = TimeZone.current
-
+    
     let year  = calendar.component(.year, from: date)
     let month = calendar.component(.month, from: date)
     let day   = calendar.component(.day, from: date)
-
+    
     return String(format: "%04d-%02d-%02d", year, month, day)
 }

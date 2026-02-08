@@ -50,8 +50,6 @@ struct ContentView: View {
                 case .scoreCard(let isGuest):
                     ScoreCardView(isGuest: isGuest)
                     
-                case .gameReview(let gameModel):
-                    GameReviewView(game: gameModel, showBackToStatsButton: true)
                 case .ad(let isGuest):
                     InterstitialAdView(adUnitID: "ca-app-pub-8261962597301587/3394145015") {
                         if isGuest {

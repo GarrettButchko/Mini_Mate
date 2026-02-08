@@ -48,6 +48,8 @@ struct StatsView: View {
     
     @State var isRotating: Bool = false
     
+    @State var gameReview: Game? = nil
+    
     var body: some View {
         if (authModel.userModel != nil) {
             VStack{
@@ -166,8 +168,14 @@ struct StatsView: View {
                     if !authModel.userModel!.gameIDs.isEmpty {
                         if !viewModel.isRefreshing {
                             ForEach(games) { game in
-                                GameRow(context: _context, editOn: $viewModel.editOn, editingGameID: $viewModel.editingGameID, game: game, presentShareSheet: viewModel.presentShareSheet)
+                                GameRow(context: _context, editOn: $viewModel.editOn, editingGameID: $viewModel.editingGameID, gameReview: $gameReview, game: game, presentShareSheet: viewModel.presentShareSheet)
                                     .transition(.opacity)
+                                    .sheet(item: $gameReview) {
+                                        gameReview = nil
+                                    } content: { game in
+                                        GameReviewView(game: game, showBackToStatsButton: true, gameReview: $gameReview)
+                                            .presentationDragIndicator(.visible)
+                                    }
                             }
                             Image("logoOpp")
                                 .resizable()
@@ -242,15 +250,15 @@ struct StatsView: View {
             if let analyzer = viewModel.analyzer {
                 SectionStatsView(title: "Basic Stats", spacing: spacing) {
                     HStack(spacing: spacing){
-                        StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)")
-                        StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)")
+                        StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)", infoText: "Number of players other than yourself you played with.")
+                        StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)", infoText: "Total holes played (including unfinished holes).")
                     }
                     
-                    StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)")
+                    StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", infoText: "Total games played.")
                     
                     HStack(spacing: spacing){
-                        StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame))
-                        StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole))
+                        StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame), infoText: "Average strokes per game.")
+                        StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole), infoText: "Average strokes per hole.")
                     }
                 }
                 .padding(.top)
@@ -266,19 +274,19 @@ struct StatsView: View {
                     .padding(.top)
                 }
                 
-                SectionStatsView(title: "Average 18 Hole Game", spacing: spacing){
+                SectionStatsView(title: "Average 18-Hole Game", spacing: spacing){
                     BarChartView(data: analyzer.averageHoles18, title: "Average Strokes")
                 }
                 .padding(.top)
                 SectionStatsView(title: "Misc Stats", spacing: spacing) {
                     HStack(spacing: spacing){
-                        StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)")
-                        StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)")
+                        StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)", color: .green, infoText: "Lowest total strokes in a game.")
+                        StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)", color: .red, infoText: "Highest total strokes in a game.")
                     }
-                    StatCard(title: "Hole in One's", value: "\(analyzer.holeInOneCount)")
+                    StatCard(title: "Holes-in-One", value: "\(analyzer.holeInOneCount)", infoText: "Number of holes with one stroke.")
                 }
                 .padding(.top)
-                SectionStatsView(title: "Average 9 Hole Game", spacing: spacing){
+                SectionStatsView(title: "Average 9-Hole Game", spacing: spacing){
                     BarChartView(data: analyzer.averageHoles9, title: "Average Strokes")
                 }
                 .padding(.vertical)
@@ -322,6 +330,9 @@ struct GameGridView: View {
                         )
                         .foregroundStyle(.mainOpp)
                         .font(.title3).fontWeight(.bold)
+                        
+                        Text("\(game.startTime.formatted(.dateTime.month(.abbreviated).day().year())) - \(game.numberOfHoles) Holes")
+                            .font(.caption).foregroundColor(.secondary)
                     } else {
                         MarqueeText(
                             text: game.date.formatted(date: .abbreviated, time: .shortened),
@@ -332,11 +343,10 @@ struct GameGridView: View {
                         )
                         .foregroundStyle(.mainOpp)
                         .font(.title3).fontWeight(.bold)
+                        
+                        Text("\(game.numberOfHoles) Holes")
+                            .font(.caption).foregroundColor(.secondary)
                     }
-                    
-                    
-                    Text("Number of Holes: \(game.numberOfHoles)")
-                        .font(.caption).foregroundColor(.secondary)
                 }
                 
                 
@@ -377,6 +387,7 @@ struct GameGridView: View {
         .padding()
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 25))
+        .frame(height: 250)
     }
     
     
@@ -415,6 +426,8 @@ struct GameRow: View {
     @Binding var editOn: Bool
     @Binding var editingGameID: String?
     
+    @Binding var gameReview: Game?
+    
     var game: Game
     var presentShareSheet: (String) -> Void
     
@@ -431,7 +444,7 @@ struct GameRow: View {
                         editingID: $editingGameID,
                         id: game.id,
                         buttonPressFunction: {
-                            viewManager.navigateToGameReview(game)
+                            gameReview = game
                         },
                         buttonOne:
                         NetworkChecker.shared.isConnected ?
@@ -453,7 +466,7 @@ struct GameRow: View {
                     }
             }
         }
-        .frame(height: 198)
+        .frame(height: 250)
     }
     
     /// Build a plain-text summary (you could also return a URL to a generated PDF/image)
@@ -488,4 +501,3 @@ struct ActivityView: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
-

@@ -30,6 +30,8 @@ struct RecapView<Content: View>: View {
         return players.isEmpty ? [] : players
     }
     
+    @State var gameReview: Game? = nil
+    
     let content: () -> Content
     
     var body: some View {
@@ -83,7 +85,7 @@ struct RecapView<Content: View>: View {
                     }
                     
                     Button {
-                        showReviewSheet = true
+                        gameReview = game
                     } label: {
                         Label("Review Game", systemImage: "chart.bar.xaxis")
                             .font(.headline)
@@ -99,10 +101,11 @@ struct RecapView<Content: View>: View {
                                     .stroke(.blue.opacity(0.6), lineWidth: 1)
                             )
                     }
-                    .sheet(isPresented: $showReviewSheet){
-                        if let game = game {
-                            GameReviewView(game: game)
-                        }
+                    .sheet(item: $gameReview){
+                        gameReview = nil
+                    } content: { game in
+                        GameReviewView(game: game, gameReview: $gameReview)
+                            .presentationDragIndicator(.visible)
                     }
                     content()
                 }

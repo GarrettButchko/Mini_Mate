@@ -35,7 +35,8 @@ final class GameViewModel: ObservableObject, Observable {
     private var liveGameRepo = LiveGameRepository()
     private var courseRepo = CourseRepository()
     private var authModel: AuthViewModel
-    private var listenerHandle: DatabaseHandle?
+    private var listenerHandles: [DatabaseHandle] = []
+    private var listenerRefs: [DatabaseReference] = []
     
     // Initialization
     init(game: Game,
@@ -139,9 +140,12 @@ final class GameViewModel: ObservableObject, Observable {
     }
     
     func stopListening() {
-        guard let ref = gameRef(), let handle = listenerHandle else { return }
-        ref.removeObserver(withHandle: handle)
-        listenerHandle = nil
+        guard !listenerHandles.isEmpty else { return }
+        for (ref, handle) in zip(listenerRefs, listenerHandles) {
+            ref.removeObserver(withHandle: handle)
+        }
+        listenerHandles.removeAll()
+        listenerRefs.removeAll()
     }
     
     func setLastUpdated(_ date: Date) {
@@ -181,61 +185,86 @@ final class GameViewModel: ObservableObject, Observable {
             print("Invalid game.id or not online — skipping Firebase call")
             return
         }
-        
-        listenerHandle = ref.observe(.value) { [weak self] snap in
-            guard let self = self,
-                  snap.exists(),
-                  let dto: GameDTO = try? snap.data(as: GameDTO.self)
-            else { return }
-            let incoming = Game.fromDTO(dto)
-            
-            // ignore echoes
-            guard incoming.lastUpdated > self.game.lastUpdated else { return }
-            
+        // Top-level field changes (avoid full snapshot reads)
+        let rootHandle = ref.observe(.childChanged) { [weak self] snap in
+            guard let self = self else { return }
+            if snap.key == "players" { return }
             self.objectWillChange.send()
-
-            // 1) merge top‐level fields…
-            self.game.id = incoming.id
-            self.game.hostUserId = incoming.hostUserId
-            self.game.date = incoming.date
-            self.game.completed = incoming.completed
-            self.game.numberOfHoles = incoming.numberOfHoles
-            self.game.started = incoming.started
-            self.game.dismissed = incoming.dismissed
-            self.game.live = incoming.live
-            self.game.lastUpdated = incoming.lastUpdated
-            self.game.courseID = incoming.courseID
-            self.game.startTime = incoming.startTime
-            self.game.locationName = incoming.locationName
-            self.game.endTime = incoming.endTime
-            
-            // 2) build a lookup of remote players by ID
-            let remoteByID = Dictionary(uniqueKeysWithValues: incoming.players.map { ($0.id, $0) }
-            )
-            
-            // 3) update or remove existing local players
-            self.game.players.removeAll { local in
-                guard let remote = remoteByID[local.id] else {
-                    return true
-                }
-                // still present → update their fields
-                local.inGame = remote.inGame
-                
-                // merge holes
-                for (hIdx, holeDTO) in remote.holes.enumerated() where hIdx < local.holes.count {
-                    local.holes[hIdx].strokes = holeDTO.strokes
-                }
-                
-                return false
+            switch snap.key {
+            case "id":
+                self.game.id = snap.value as? String ?? self.game.id
+            case "hostUserId":
+                self.game.hostUserId = snap.value as? String ?? self.game.hostUserId
+            case "date":
+                if let ts = snap.value as? TimeInterval { self.game.date = Date(timeIntervalSince1970: ts) }
+                else if let num = snap.value as? NSNumber { self.game.date = Date(timeIntervalSince1970: num.doubleValue) }
+            case "completed":
+                self.game.completed = snap.value as? Bool ?? self.game.completed
+            case "numberOfHoles":
+                if let num = snap.value as? NSNumber { self.game.numberOfHoles = num.intValue }
+            case "started":
+                self.game.started = snap.value as? Bool ?? self.game.started
+            case "dismissed":
+                self.game.dismissed = snap.value as? Bool ?? self.game.dismissed
+            case "live":
+                self.game.live = snap.value as? Bool ?? self.game.live
+            case "lastUpdated":
+                if let ts = snap.value as? TimeInterval { self.game.lastUpdated = Date(timeIntervalSince1970: ts) }
+                else if let num = snap.value as? NSNumber { self.game.lastUpdated = Date(timeIntervalSince1970: num.doubleValue) }
+            case "courseID":
+                self.game.courseID = snap.value as? String
+            case "startTime":
+                if let ts = snap.value as? TimeInterval { self.game.startTime = Date(timeIntervalSince1970: ts) }
+                else if let num = snap.value as? NSNumber { self.game.startTime = Date(timeIntervalSince1970: num.doubleValue) }
+            case "locationName":
+                self.game.locationName = snap.value as? String
+            case "endTime":
+                if let ts = snap.value as? TimeInterval { self.game.endTime = Date(timeIntervalSince1970: ts) }
+                else if let num = snap.value as? NSNumber { self.game.endTime = Date(timeIntervalSince1970: num.doubleValue) }
+            default:
+                break
             }
-            
-            // 4) append any brand‐new players
-            for remote in incoming.players where !self.game.players.contains(where: { $0.id == remote.id }) {
-                
-                initializeHoles(for: remote)
+        }
+        listenerHandles.append(rootHandle)
+        listenerRefs.append(ref)
+        
+        // Player add/update/remove listeners
+        let playersRef = ref.child("players")
+        
+        let addHandle = playersRef.observe(.childAdded) { [weak self] snap in
+            guard let self = self,
+                  let dto: PlayerDTO = try? snap.data(as: PlayerDTO.self)
+            else { return }
+            let remote = Player.fromDTO(dto)
+            self.attachHoles(to: remote)
+            if !self.game.players.contains(where: { $0.id == remote.id }) {
+                self.objectWillChange.send()
                 self.game.players.append(remote)
             }
         }
+        listenerHandles.append(addHandle)
+        listenerRefs.append(playersRef)
+        
+        let changeHandle = playersRef.observe(.childChanged) { [weak self] snap in
+            guard let self = self,
+                  let dto: PlayerDTO = try? snap.data(as: PlayerDTO.self)
+            else { return }
+            let remote = Player.fromDTO(dto)
+            if let local = self.game.players.first(where: { $0.id == remote.id }) {
+                self.objectWillChange.send()
+                self.mergePlayer(local: local, remote: remote)
+            }
+        }
+        listenerHandles.append(changeHandle)
+        listenerRefs.append(playersRef)
+        
+        let removeHandle = playersRef.observe(.childRemoved) { [weak self] snap in
+            guard let self = self else { return }
+            self.objectWillChange.send()
+            self.game.players.removeAll { $0.id == snap.key }
+        }
+        listenerHandles.append(removeHandle)
+        listenerRefs.append(playersRef)
     }
     
     func deleteFromFirebaseGamesArr(){
@@ -256,6 +285,42 @@ final class GameViewModel: ObservableObject, Observable {
             hole.player = player
             return hole
         }
+    }
+
+    private func attachHoles(to player: Player) {
+        // Preserve existing strokes and ensure player linkage.
+        for hole in player.holes {
+            hole.player = player
+        }
+
+        if player.holes.count < game.numberOfHoles {
+            let existing = Set(player.holes.map(\.number))
+            for n in 1...game.numberOfHoles where !existing.contains(n) {
+                let hole = Hole(number: n)
+                hole.player = player
+                player.holes.append(hole)
+            }
+        }
+
+        player.holes.sort { $0.number < $1.number }
+    }
+
+    private func mergePlayer(local: Player, remote: Player) {
+        local.inGame = remote.inGame
+        local.name = remote.name
+        local.photoURL = remote.photoURL
+        local.email = remote.email
+
+        for remoteHole in remote.holes {
+            if let localHole = local.holes.first(where: { $0.number == remoteHole.number }) {
+                localHole.strokes = remoteHole.strokes
+            } else {
+                let hole = Hole(number: remoteHole.number, strokes: remoteHole.strokes)
+                hole.player = local
+                local.holes.append(hole)
+            }
+        }
+        local.holes.sort { $0.number < $1.number }
     }
     
     private func generateGameCode(length: Int = 6) -> String {

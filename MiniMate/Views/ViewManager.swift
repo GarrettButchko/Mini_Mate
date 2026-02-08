@@ -12,7 +12,6 @@ enum ViewType {
     case main(Int)
     case welcome
     case scoreCard(Bool)
-    case gameReview(Game)
     case ad(Bool)
     case signIn
     case host
@@ -53,10 +52,6 @@ class ViewManager: AppNavigationManaging, ObservableObject{
         currentView = .ad(isGuest)
     }
     
-    func navigateToGameReview(_ gameModel: Game) {
-        currentView = .gameReview(gameModel)
-    }
-    
     func navigateAfterSignIn() {
         navigateToMain(1)
     }
@@ -72,7 +67,6 @@ extension ViewType: Equatable {
         case (.main, .main),
              (.welcome, .welcome),
             (.scoreCard, .scoreCard),
-            (.gameReview, .gameReview),
             (.ad, .ad),
             (.signIn, .signIn),
             (.host, .host):

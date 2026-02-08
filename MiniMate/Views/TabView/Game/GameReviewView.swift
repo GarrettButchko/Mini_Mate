@@ -16,8 +16,10 @@ struct GameReviewView: View {
     @State private var uuid: UUID?
     @State private var showInfoView: Bool
     
+    @Binding var gameReview: Game?
+    
     // Custom init to assign @StateObject and normal vars
-    init(game: Game, showBackToStatsButton: Bool = false, isInCourseSettings: Bool = false, scrollOffset: CGFloat = 0, uuid: UUID? = nil, showInfoView: Bool = false) {
+    init(game: Game, showBackToStatsButton: Bool = false, isInCourseSettings: Bool = false, scrollOffset: CGFloat = 0, uuid: UUID? = nil, showInfoView: Bool = false, gameReview: Binding<Game?> = .constant(nil)) {
         self.showBackToStatsButton = showBackToStatsButton
         self.isInCourseSettings = isInCourseSettings
         
@@ -26,11 +28,15 @@ struct GameReviewView: View {
         _scrollOffset = State(initialValue: scrollOffset)
         _uuid = State(initialValue: uuid)
         _showInfoView = State(initialValue: showInfoView)
+        _gameReview = gameReview
     }
     
     var body: some View {
         VStack {
             headerView
+                .padding(.top)
+            BarChartView(data: viewModel.averageStrokes(), title: "Average Strokes", paddingReview: true, cornerRadius: 25, backgroundType: .ultraThin)
+                .frame(height: 140)
             scoreGridView
             footerView
         }
@@ -40,14 +46,11 @@ struct GameReviewView: View {
         }
     }
     
+    
+    
     // MARK: Header
     private var headerView: some View {
         VStack{
-            if !showBackToStatsButton{
-                Capsule()
-                    .frame(width: 38, height: 6)
-                    .foregroundColor(.gray)
-            }
             HStack {
                 VStack(alignment: .leading){
                     Text("Scorecard")
@@ -85,7 +88,7 @@ struct GameReviewView: View {
             scoreCardBackground
         }
         .clipShape(RoundedRectangle(cornerRadius: 25))
-        .padding(.vertical)
+        .padding(.vertical, 10)
     }
     
     private var scoreCardBackground: some View {
@@ -201,7 +204,7 @@ struct GameReviewView: View {
                         Button {
                             if !isInCourseSettings {
                                 #if MINIMATE
-                                viewManager.navigateToMain(0)
+                                gameReview = nil
                                 #endif
                             }
                         } label: {
@@ -209,7 +212,7 @@ struct GameReviewView: View {
                                 RoundedRectangle(cornerRadius: 25)
                                     .fill(Color.blue)
                                     .frame(width: 200, height: 60)
-                                Text("Back to Stats")
+                                Text("Dismiss")
                                     .foregroundColor(.white).fontWeight(.bold)
                             }
                         }
@@ -296,7 +299,6 @@ struct GameReviewView: View {
             }
             
         }
-        .padding(.bottom)
     }
 }
 

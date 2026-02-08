@@ -74,7 +74,7 @@ struct CourseView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 25))
                                 } else {
                                     searchResultsView
-                                        .padding([.horizontal, .top])
+                                        
                                         .background(content: {
                                             RoundedRectangle(cornerRadius: 25)
                                                 .ifAvailableGlassEffect()
@@ -190,6 +190,7 @@ struct CourseView: View {
                     
                 }
             }
+            .padding([.top, .horizontal])
             
             ScrollView {
                 VStack(alignment: .leading) {
@@ -211,6 +212,7 @@ struct CourseView: View {
                     .fill(.clear)
                     .frame(height: 4)
             }
+            .contentMargins(.vertical, 5)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
         }
@@ -264,28 +266,37 @@ struct CourseView: View {
                         courseViewModel.updateSupportedLocation(for: newItem)
                     }
                     
-                    if let supported = courseViewModel.isSupportedLocation, supported == true {
-                        HStack{
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 8) {
-                                    Image("logoOpp")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 20, height: 20)
-                                    Text("Supported Location")
-                                        .font(.headline)
-                                }
+                    if courseViewModel.nameExists[locationHandler.bindingForSelectedItem().wrappedValue?.name ?? ""] ?? false {
+                        HStack(alignment: .top, spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.purple.opacity(0.2))
+                                    .frame(width: 36, height: 36)
+                                Image("logoOpp")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 18, height: 18)
+                            }
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Supported Location")
+                                    .font(.headline)
                                 
                                 if let name = locationHandler.bindingForSelectedItem().wrappedValue?.name {
-                                    Text("\(name) is a Mini Mate officially supported location, meaning par information and more are available here!")
-                                        .font(.callout)
+                                    Text("\(name) has official MiniMate data (par + more).")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
-                            Spacer()
                         }
-                        .padding()
-                        .background(Color.purple.opacity(0.2))
+                        .padding(14)
+                        .background(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.purple.opacity(0.5), lineWidth: 2)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+
                     }
                     
                     
