@@ -212,7 +212,8 @@ struct CourseView: View {
                     .fill(.clear)
                     .frame(height: 4)
             }
-            .contentMargins(.vertical, 5)
+            .contentMargins(.horizontal, 16)
+            .contentMargins(.vertical, 8)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
         }

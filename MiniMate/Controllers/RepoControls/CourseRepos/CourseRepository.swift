@@ -208,7 +208,7 @@ final class CourseRepository {
             }
     }
     
-#if MINIMATE
+
     func createCourseWithMapItem(courseID: String, location: MapItemDTO, completion: @escaping (Course?) -> Void) {
         let ref = db.collection(collectionName).document(courseID)
         
@@ -239,7 +239,7 @@ final class CourseRepository {
             }
         }
     }
-#endif
+
     
     
     func findCourseIDWithPassword(withPassword password: String, completion: @escaping (String?) -> Void) {

@@ -259,9 +259,31 @@ final class GameViewModel: ObservableObject, Observable {
         listenerRefs.append(playersRef)
         
         let removeHandle = playersRef.observe(.childRemoved) { [weak self] snap in
-            guard let self = self else { return }
-            self.objectWillChange.send()
-            self.game.players.removeAll { $0.id == snap.key }
+            // 1. Decode the snapshot using your DTO, just like you do in childAdded
+            guard let self = self,
+                  let dto: PlayerDTO = try? snap.data(as: PlayerDTO.self)
+            else {
+                print("❌ Could not decode removed player data")
+                return
+            }
+            
+            // 2. Convert DTO to your local Player model
+            let remote = Player.fromDTO(dto)
+            
+            print("🗑️ Firebase removed player: \(remote.name) with userId: \(remote.userId)")
+            
+            DispatchQueue.main.async {
+                withAnimation {
+                    // 3. Notify the UI of the impending change
+                    self.objectWillChange.send()
+                    
+                    // 4. Remove using the userId from the decoded DTO
+                    self.game.players.removeAll { $0.id == remote.id }
+                    
+                    // 5. Explicitly update the published game property to force a refresh
+                    self.game = self.game
+                }
+            }
         }
         listenerHandles.append(removeHandle)
         listenerRefs.append(playersRef)
@@ -413,11 +435,22 @@ final class GameViewModel: ObservableObject, Observable {
     
     func leaveGame(userId: String) {
         guard onlineGame else { return }
+        
+        // 1. First, remove the player locally
         objectWillChange.send()
-        stopListening()
-        self.removePlayer(userId: userId)
+        withAnimation {
+            game.players.removeAll { $0.userId == userId }
+        }
+        
+        // 2. Push this change to Firebase so the Host (and others) see it
+        // We do this BEFORE stopping the listeners or resetting the game
         pushUpdate()
-        resetGame()
+        
+        // 3. Give Firebase a tiny moment to send the packet, then clean up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.stopListening()
+            self.resetGame()
+        }
     }
     
     
@@ -623,56 +656,37 @@ final class GameViewModel: ObservableObject, Observable {
     
     
     // MARK: Course
+
     func findClosestLocationAndLoadCourse(locationHandler: LocationHandler, showTextAndButtons: Binding<Bool>) {
-        
         guard !hasLoaded else { return }
 
-        guard locationHandler.hasLocationAccess else {
-            print("⚠️ No location permission yet")
-            return
-        }
-        guard locationHandler.userLocation != nil else {
-            print("⏳ Waiting for user location...")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.findClosestLocationAndLoadCourse(locationHandler: locationHandler, showTextAndButtons: showTextAndButtons)
+        // Use a Task to move the heavy lifting off the Main Thread
+        Task(priority: .userInitiated) {
+            // 1. Wait for location without blocking the UI
+            while locationHandler.userLocation == nil {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s sleep
             }
-            return
-        }
-        // Guard to prevent multiple calls
-        print("🚀 Starting findClosestLocationAndLoadCourse()")
-        
-        locationHandler.findClosestMiniGolf { closestPlace in
-            guard let closestPlace = closestPlace else {
-                print("⚠️ No closest mini golf location found")
-                return
-            }
-            
-            print("📍 Closest mini golf found: \(closestPlace.name ?? "Unknown")")
-            
-            DispatchQueue.main.async {
-                withAnimation {
-                    showTextAndButtons.wrappedValue = true
-                }
-                
-                let courseID = CourseIDGenerator.generateCourseID(from: closestPlace.toDTO())
-                
-                self.courseRepo.fetchCourse(id: courseID) { course in
-                    if let course = course {
+
+            // 2. Perform the heavy MapKit search
+            locationHandler.findClosestMiniGolf { closestPlace in
+                guard let closestPlace = closestPlace else { return }
+
+                // 3. Switch back to Main for UI and Firebase
+                Task { @MainActor in
+                    withAnimation { showTextAndButtons.wrappedValue = true }
+                    
+                    let courseID = CourseIDGenerator.generateCourseID(from: closestPlace.toDTO())
+                    
+                    // Now fetch the course
+                    self.courseRepo.fetchCourse(id: courseID) { course in
                         self.course = course
-                        print("✅ Course loaded: \(course.name)")
                         self.hasLoaded = true
-                    } else {
-                        print("⚠️ Course not found for ID: \(courseID) creating new course")
-                        self.courseRepo.createCourseWithMapItem(courseID: courseID, location: closestPlace.toDTO()) { course in
-                            if let course {
-                                self.course = course
-                            }
-                        }
                     }
                 }
             }
         }
     }
+
     
     func setUp(showTxtButtons: Binding<Bool>, handler: LocationHandler) {
         if getCourse() == nil && !getHasLoaded() {

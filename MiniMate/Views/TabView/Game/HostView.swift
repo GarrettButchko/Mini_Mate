@@ -20,6 +20,7 @@ struct HostView: View {
     @State var newPlayerEmail = ""
     @State var isRotating = false
     @State var showLocationButton: Bool = false
+    @State var showQRCode: Bool = false
     
     @EnvironmentObject var authModel: AuthViewModel
     @EnvironmentObject var viewManager: ViewManager
@@ -29,64 +30,76 @@ struct HostView: View {
     var isGuest: Bool
     
     init(
-            showHost: Binding<Bool>,
-            isGuest: Bool = false,
-            showLocationButton: Bool = false
-        ) {
-            self._showHost = showHost
-            self.isGuest = isGuest
-            self.showLocationButton = showLocationButton
-            
-            // Correct way to initialize a StateObject with dependencies
-            _viewModel = StateObject(wrappedValue: HostViewModel())
-        }
+        showHost: Binding<Bool>,
+        isGuest: Bool = false,
+        showLocationButton: Bool = false
+    ) {
+        self._showHost = showHost
+        self.isGuest = isGuest
+        self.showLocationButton = showLocationButton
+        
+        // Correct way to initialize a StateObject with dependencies
+        _viewModel = StateObject(wrappedValue: HostViewModel())
+    }
     
     var body: some View {
         mainContent
     }
     
     private var mainContent: some View {
-        VStack {
-            if !isGuest {
-                Capsule()
-                    .frame(width: 38, height: 6)
-                    .foregroundColor(.gray)
-                    .padding(10)
-            }
-            
-            HStack(spacing: 10){
-                
-                if isGuest {
-                    Button {
-                        viewManager.navigateToSignIn()
-                        gameModel.dismissGame()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(.blue)
-                            .frame(width: 20, height: 20)
-                    }
-                    .padding(.horizontal, 8)
-                }
-                
-                Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    
-                Spacer()
-            }
-            .padding(.leading, 20)
+        ZStack{
             
             Form {
-                gameInfoSection
                 playersSection
+                gameInfoSection
             }
-            startGameSection
+            .contentMargins(.top, 100)
+            .contentMargins(.bottom, 70)
             
-            if isGuest {
-                Color.clear
-                    .frame(width: 20, height: 30)
+            VStack{
+                VStack{
+                    if !isGuest {
+                        Capsule()
+                            .frame(width: 38, height: 6)
+                            .foregroundColor(.gray)
+                            .padding(10)
+                    }
+                    
+                    HStack(spacing: 10){
+                        
+                        if isGuest {
+                            Button {
+                                viewManager.navigateToSignIn()
+                                gameModel.dismissGame()
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 20, height: 20)
+                            }
+                            .padding(.horizontal, 8)
+                        }
+                        
+                        Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Spacer()
+                    }
+                    .padding(.leading, 20)
+                }
+                .padding(.bottom, 16)
+                .background(.ultraThinMaterial)
+                
+                Spacer()
+                
+                startGameSection
+                
+                if isGuest {
+                    Color.clear
+                        .frame(width: 20, height: 30)
+                }
             }
         }
         .onChange(of: showHost) { _, newValue in
@@ -104,7 +117,7 @@ struct HostView: View {
                     .autocapitalization(.none)   // starts lowercase / no auto-cap
                     .keyboardType(.emailAddress)
             }
-                
+            
             Button("Add") {
                 viewModel.addPlayer(newPlayerName: $newPlayerName, newPlayerEmail: $newPlayerEmail, gameModel: gameModel)
             }
@@ -116,7 +129,7 @@ struct HostView: View {
                 ProfanityFilter.containsBlockedWord(newPlayerName) ||
                 !newPlayerEmail.isValidEmail
                 :
-                newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                    newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                 ProfanityFilter.containsBlockedWord(newPlayerName)
             )
             .tint(.blue)
@@ -141,11 +154,31 @@ struct HostView: View {
         Group {
             Section {
                 if gameModel.isOnline {
-                    HStack {
-                        Text("Game Code:")
-                        Spacer()
-                        Text(gameModel.gameValue.id)
+                    VStack{
+                        HStack {
+                            Text("Game Code:")
+                            Spacer()
+                            Text(gameModel.gameValue.id)
+                            Image(systemName: "qrcode")
+                                .font(.system(size: 20, weight: .medium))
+                        }
+                        
+                        Image(uiImage: generateQRCode(from: gameModel.gameValue.id))
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 200)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.primary.opacity(0.1))
+                            )
                     }
+                    
                     
                     HStack {
                         Text("Expires in:")

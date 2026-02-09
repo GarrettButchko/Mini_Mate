@@ -8,10 +8,7 @@ struct MainView: View {
     @EnvironmentObject var locationHandler: LocationHandler
     
     @Query var allGames: [Game]
-    
-    var games: [Game] {
-        allGames.filter { authModel.userModel?.gameIDs.contains($0.id) == true }
-    }
+    @State private var filteredGames: [Game] = []
     
     var disablePlaying: Bool {
         authModel.userModel?.isPro == false && (authModel.userModel?.gameIDs.count ?? 0) >= 2
@@ -40,8 +37,15 @@ struct MainView: View {
     private var uniGameRepo: UnifiedGameRepository { UnifiedGameRepository(context: context) }
     
     @State private var analyzer: UserStatsAnalyzer? = nil
+    @State private var analyzerTask: Task<Void, Never>? = nil
+    @State private var showDeferredContent = false
+
+    private var userGameIDs: [String] {
+        authModel.userModel?.gameIDs ?? []
+    }
     
     var body: some View {
+        let course = gameModel.getCourse()
         
         ZStack {
             VStack(spacing: 24) {
@@ -56,7 +60,7 @@ struct MainView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         
-                        if let courseLogo = gameModel.getCourse()?.logo{
+                        if let courseLogo = course?.logo {
                             Divider()
                             
                             AsyncImage(url: URL(string: courseLogo)) { image in
@@ -68,6 +72,7 @@ struct MainView: View {
                             }
                             .frame(width: 40, height: 40)
                             .clipShape(Circle())
+                            .id(URL(string: courseLogo))
                         }
                     }
                     
@@ -88,6 +93,7 @@ struct MainView: View {
                             }
                             .frame(width: 40, height: 40)
                             .clipShape(Circle())
+                            .id(photoURL)
                         } else {
                             Image("logoOpp")
                                 .resizable()
@@ -119,14 +125,15 @@ struct MainView: View {
                                         .frame(height: 110)
                                     
                                     if NetworkChecker.shared.isConnected {
-                                        locationButtons
+                                        locationButtons(course: course)
                                     }
                                     
                                     proStopper
-                                    
-                                    ad
-                                    
-                                    lastGameStats
+
+                                    if showDeferredContent {
+                                        ad
+                                        lastGameStats
+                                    }
                                 }
                             }
                             .scrollIndicators(.hidden)
@@ -134,7 +141,7 @@ struct MainView: View {
                     }
                     
                     VStack(){
-                        TitleView(colors: gameModel.getCourse()?.courseColors)
+                        TitleView(colors: course?.courseColors)
                             .frame(height: 150)
                         
                         // MARK: - Game Action Buttons
@@ -289,7 +296,7 @@ struct MainView: View {
                         .padding()
                         .background(content: {
                             RoundedRectangle(cornerRadius: 25)
-                                .ifAvailableGlassEffect(makeColor: gameModel.getCourse()?.scoreCardColor)
+                                .ifAvailableGlassEffect(makeColor: course?.scoreCardColor)
                         })
                         
                         
@@ -344,19 +351,50 @@ struct MainView: View {
             .padding([.top, .horizontal])
         }
         .ignoresSafeArea(.keyboard)
-        .onAppear(){
-            if let user = authModel.userModel {
-                self.analyzer = UserStatsAnalyzer(user: user, games: games, context: context)
+        .task {
+            updateFilteredGames()
+            if !showDeferredContent {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                showDeferredContent = true
+            }
+            if NetworkChecker.shared.isConnected {
+                gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+            }
+            if course != nil {
+                showTextAndButtons = true
             }
         }
-        .onChange(of: games) { old, newGames in
-            if let user = authModel.userModel {
-                self.analyzer = UserStatsAnalyzer(user: user, games: newGames, context: context)
+        .onChange(of: allGames) { _, _ in
+            updateFilteredGames()
+        }
+        .onChange(of: userGameIDs) { _, _ in
+            updateFilteredGames()
+        }
+    }
+
+    private func updateFilteredGames() {
+        let ids = Set(userGameIDs)
+        let newGames = allGames.filter { ids.contains($0.id) }
+        filteredGames = newGames
+        refreshAnalyzer(with: newGames)
+    }
+
+    private func refreshAnalyzer(with games: [Game]) {
+        analyzerTask?.cancel()
+        guard let user = authModel.userModel else {
+            analyzer = nil
+            return
+        }
+        analyzerTask = Task {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            if Task.isCancelled { return }
+            await MainActor.run {
+                self.analyzer = UserStatsAnalyzer(user: user, games: games, context: context)
             }
         }
     }
     
-    var locationButtons: some View {
+    func locationButtons(course: Course?) -> some View {
         Group {
             if NetworkChecker.shared.isConnected {
                 HStack{
@@ -366,7 +404,7 @@ struct MainView: View {
                             Spacer()
                         }
                         if showTextAndButtons {
-                            if let item = gameModel.getCourse()?.name {
+                            if let item = course?.name {
                                 HStack{
                                     Text(item)
                                         .foregroundStyle(.secondary)
@@ -440,17 +478,9 @@ struct MainView: View {
                     }
                 }
                 .padding()
-                .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                .ultraThinMaterialVsColor(makeColor: course?.scoreCardColor)
                 .clipShape(RoundedRectangle(cornerRadius: 25))
-            }
-        }
-        .onAppear {
-            if NetworkChecker.shared.isConnected {
-                gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
-            }
-            
-            if gameModel.getCourse() != nil {
-                showTextAndButtons = true
+                .compositingGroup()
             }
         }
     }
@@ -463,6 +493,7 @@ struct MainView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
                     .clipShape(RoundedRectangle(cornerRadius: 25))
+                    .compositingGroup()
             }
         }
     }
@@ -477,56 +508,76 @@ struct MainView: View {
                 }
                 .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
                 .clipShape(RoundedRectangle(cornerRadius: 25))
+                .compositingGroup()
             }
         }
     }
     
+    @ViewBuilder
     var lastGameStats: some View {
-        let lastGame = games.sorted(by: { $0.date > $1.date }).first!
-        
-        return Group{
-            if games.count != 0{
-                Button {
-                    gameReview = lastGame
-                } label: {
-                    SectionStatsView(title: "Last Game", spacing: 12, makeColor: gameModel.getCourse()?.scoreCardColor){
-                        let cardHeight: CGFloat = 90
-                        
-                        HStack(spacing: 12){
-                            if lastGame.players.count != 1 {
-                                VStack{
-                                    
-                                    PhotoIconView(
-                                        photoURL: analyzer?.winnerOfLatestGame?.photoURL,
-                                        name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + "🥇",
-                                        imageSize: 30,
-                                        background: .yellow
-                                    )
-                                }
-                                .padding()
-                                .frame(height: cardHeight)
-                                .background(colorScheme == .light ? AnyShapeStyle(Color.white) : AnyShapeStyle(.ultraThinMaterial))
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                            StatCard(title: "Your Strokes", value: "\(analyzer?.usersScoreOfLatestGame ?? 0)", cornerRadius: 12, cardHeight: cardHeight, infoText: "The number of strokes you had last game.")
+        if let lastGame = analyzer?.latestGame {
+            
+            Button {
+                gameReview = lastGame
+            } label: {
+                SectionStatsView(
+                    title: "Last Game",
+                    spacing: 12,
+                    makeColor: gameModel.getCourse()?.scoreCardColor
+                ) {
+                    let cardHeight: CGFloat = 90
+                    
+                    HStack(spacing: 12) {
+                        // 2. Only show Winner if it's a multiplayer game
+                        if lastGame.players.count > 1 {
+                            PhotoIconView(
+                                photoURL: analyzer?.winnerOfLatestGame?.photoURL,
+                                name: (analyzer?.winnerOfLatestGame?.name ?? "N/A") + " 🥇",
+                                imageSize: 30,
+                                background: .yellow
+                            )
+                            .padding()
+                            .frame(height: cardHeight)
+                            .background(colorScheme == .light ? AnyShapeStyle(Color.white) : AnyShapeStyle(.ultraThinMaterial))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        BarChartView(data: analyzer?.usersHolesOfLatestGame ?? [], title: "Recap of Game")
-                            .frame(height: 150)
+                        
+                        StatCard(
+                            title: "Your Strokes",
+                            value: "\(analyzer?.usersScoreOfLatestGame ?? 0)",
+                            cornerRadius: 12,
+                            cardHeight: cardHeight,
+                            infoText: "The number of strokes you had last game."
+                        )
                     }
-                    .padding(.bottom)
+                    
+                    BarChartView(data: analyzer?.usersHolesOfLatestGame ?? [], title: "Recap of Game")
+                        .frame(height: 150)
                 }
-                .sheet(item: $gameReview) {
-                    gameReview = nil
-                } content: { game in
-                    GameReviewView(game: game, showBackToStatsButton: true, gameReview: $gameReview)
-                        .presentationDragIndicator(.visible)
-                }
-            } else {
+                .padding(.bottom)
+            }
+            .buttonStyle(.plain) // Prevents the whole card from dimming like a standard button
+            .sheet(item: $gameReview) { game in
+                GameReviewView(game: game, showBackToStatsButton: true, gameReview: $gameReview)
+                    .presentationDragIndicator(.visible)
+            }
+            
+        } else {
+            // 3. Elegant fallback if no games exist
+            VStack(spacing: 16) {
                 Image("logoOpp")
                     .resizable()
+                    .scaledToFit()
                     .frame(width: 50, height: 50)
-                Spacer()
+                    .grayscale(1.0)
+                    .opacity(0.5)
+                
+                Text("No games played yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 40)
         }
     }
     
@@ -546,6 +597,3 @@ struct MainView: View {
         }
     }
 }
-
-
-

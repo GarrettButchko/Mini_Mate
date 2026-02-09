@@ -11,6 +11,7 @@ struct JoinView: View {
     @EnvironmentObject var viewManager: ViewManager
     
     @Binding var showHost: Bool
+    @State private var showScanner = false
     
     @StateObject private var viewModel: JoinViewModel
     
@@ -30,70 +31,77 @@ struct JoinView: View {
     }
     
     var body: some View {
-        VStack {
-            Capsule()
-                .frame(width: 38, height: 6)
-                .foregroundColor(.gray)
-                .padding(10)
+        ZStack{
             
-            HStack {
-                Text("Join Game")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .padding(.leading, 30)
-                Spacer()
-            }
-            .padding(.bottom, 10)
+            mainContent
+                .contentMargins(.top, 100)
+                .contentMargins(.bottom, 70)
             
-            Form {
-                gameInfoSection
-                if viewModel.inGame {
-                    playersSection
+            VStack {
+                VStack{
+                    Capsule()
+                        .frame(width: 38, height: 6)
+                        .foregroundColor(.gray)
+                        .padding(10)
+                    
+                    HStack {
+                        Text("Join Game")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .padding(.leading, 30)
+                        Spacer()
+                    }
                 }
-            }
-            if viewModel.inGame {
-                Button {
-                    viewModel.showExitAlert = true
-                } label: {
-                    Text("Exit Game")
+                .padding(.bottom, 16)
+                .background(.ultraThinMaterial)
+                
+                Spacer()
+                
+                if viewModel.inGame {
+                    Button {
+                        viewModel.showExitAlert = true
+                    } label: {
+                        Text("Exit Game")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(Color.red)
+                                    .padding(.horizontal)
+                            )
+                    }
+                    .foregroundColor(.red)
+                    .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
+                        Button("Leave", role: .destructive) {
+                            viewModel.leaveGame()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                } else {
+                    Button {
+                        viewModel.joinGame()
+                    } label: {
+                        HStack(alignment: .center){
+                            Image(systemName: "person.2.badge.plus.fill")
+                            Text("Join Game")
+                        }
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
                             RoundedRectangle(cornerRadius: 25)
-                                .fill(Color.red)
-                                .padding(.horizontal)
+                                .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
                         )
-                }
-                .foregroundColor(.red)
-                .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
-                    Button("Leave", role: .destructive) {
-                        viewModel.leaveGame()
+                        .padding(.horizontal)
+                        .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
+                        .safeAreaPadding(.bottom, 10)
+                        
                     }
-                    Button("Cancel", role: .cancel) {}
+                    .disabled(viewModel.gameCode.isEmpty)
                 }
-            } else {
-                Button {
-                    viewModel.joinGame()
-                } label: {
-                    HStack(alignment: .center){
-                        Image(systemName: "person.2.badge.plus.fill")
-                        Text("Join Game")
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
-                    )
-                    .padding(.horizontal)
-                    .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
-                    
-                }
-                .disabled(viewModel.gameCode.isEmpty)
             }
         }
         .onChange(of: showHost) { oldValue, newValue in
@@ -108,53 +116,202 @@ struct JoinView: View {
             viewModel.gameDidDismiss($1)
         }
     }
-
+    
     // MARK: - Sections
-
-    private var gameInfoSection: some View {
-        Section(header: Text("Game Info")) {
+    private var mainContent: some View {
+        Group {
             if !viewModel.inGame {
-                HStack {
-                    Text("Enter Code:")
-                    Spacer()
-                    TextField("Game Code", text: $viewModel.gameCode)
-                        .frame(width: 150)
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
-                        )
-                    if viewModel.message != "" {
-                        Text("Error: " + viewModel.message)
-                    }
-                    
-                }
+                joinGameCard
             } else {
-                HStack {
-                    Text("Code:")
-                    Spacer()
-                    Text(viewModel.gameModel.gameValue.id)
-                }
-                HStack {
-                    Text("Date:")
-                    Spacer()
-                    Text(viewModel.gameModel.gameValue.date.formatted(date: .abbreviated, time: .shortened))
-                }
-                HStack {
-                    Text("Holes:")
-                    Spacer()
-                    Text("\(viewModel.gameModel.gameValue.numberOfHoles)")
-                }
-                HStack {
-                    Text("Location:")
-                    Spacer()
-                    Text("\(viewModel.gameModel.gameValue.locationName ?? "No Location")")
-                }
+                activeGameLobby
             }
         }
     }
 
+    // MARK: - Join Game View
+    @ViewBuilder
+    private var joinGameCard: some View {
+        VStack {
+            Spacer()
+            
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Text("Enter Game Code")
+                        .font(.system(.title2, design: .rounded))
+                        .fontWeight(.bold)
+                    
+                    Text("Ask the host for the 6-digit code")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                
+                // Input & Scanner
+                VStack(spacing: 20) {
+                    gameCodeTextField
+                    actionDivider
+                    scanButton
+                }
+                
+                if !viewModel.message.isEmpty {
+                    Text(viewModel.message)
+                        .font(.footnote)
+                        .foregroundStyle(.red.opacity(0.8))
+                        .transition(.blurReplace)
+                }
+            }
+            .padding(.vertical, 32)
+            .padding(.horizontal, 24)
+            .background {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.3), radius: 20, y: 6)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 25)
+            
+            Spacer()
+        }
+    }
+
+    // MARK: - Sub-Components
+    private var gameCodeTextField: some View {
+        TextField("000000", text: $viewModel.gameCode)
+            .font(.system(size: 34, weight: .bold, design: .monospaced))
+            .multilineTextAlignment(.center)
+            .keyboardType(.asciiCapable)
+            .textInputAutocapitalization(.characters)
+            .disableAutocorrection(true)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(white: 1, opacity: 0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
+            .frame(width: 240)
+            .onChange(of: viewModel.gameCode) { _, newValue in
+                let filtered = newValue.uppercased().filter { $0.isLetter || $0.isNumber }
+                viewModel.gameCode = String(filtered.prefix(6))
+            }
+    }
+
+    private var actionDivider: some View {
+        HStack {
+            Rectangle().fill(.separator).frame(height: 1)
+            Text("OR").font(.caption2).fontWeight(.black).foregroundStyle(.tertiary)
+            Rectangle().fill(.separator).frame(height: 1)
+        }
+        .padding(.horizontal, 40)
+    }
+
+    private var scanButton: some View {
+        Button {
+            showScanner = true
+        } label: {
+            Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                .fontWeight(.medium)
+                .foregroundStyle(.primary)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .background(Capsule().fill(.ultraThinMaterial))
+        }
+        .sheet(isPresented: $showScanner) {
+            camView // This contains your ZStack with QRScannerView and the Overlay
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    // MARK: - Active Game Lobby
+    @ViewBuilder
+    private var activeGameLobby: some View {
+        Form {
+            playersSection
+            
+            Section(header: Text("Game Info")) {
+                infoRow(title: "Code:", value: viewModel.gameModel.gameValue.id)
+                infoRow(title: "Date:", value: viewModel.gameModel.gameValue.date.formatted(date: .abbreviated, time: .shortened))
+                infoRow(title: "Holes:", value: "\(viewModel.gameModel.gameValue.numberOfHoles)")
+                infoRow(title: "Location:", value: viewModel.gameModel.gameValue.locationName ?? "No Location")
+            }
+        }
+    }
+
+    private func infoRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    
+    private var camView: some View {
+        ZStack {
+            QRScannerView { scannedCode in
+                let formattedCode = scannedCode
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .uppercased()
+                
+                DispatchQueue.main.async {
+                    viewModel.gameCode = formattedCode
+                    withAnimation {
+                        showScanner = false
+                    }
+                }
+            }
+            .ignoresSafeArea()
+            
+            // 1. The Mask (Centered on screen)
+            Color.black.opacity(0.6)
+                .mask {
+                    // 1. A solid canvas that covers the whole screen
+                    Rectangle()
+                        .overlay(
+                            // 2. The "hole" that gets cut out of that canvas
+                            RoundedRectangle(cornerRadius: 30)
+                                .frame(width: 260, height: 260)
+                                .blendMode(.destinationOut)
+                        )
+                }
+                .overlay{
+                    // 2. The Corners (Layered separately to ensure perfect centering)
+                    ScannerCornerShape()
+                        .stroke(.white, style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+                        .frame(width: 260, height: 260)
+                }
+                .ignoresSafeArea()
+            
+            // 3. The UI Text and Buttons (Purely for positioning labels)
+            VStack {
+                VStack(spacing: 8) {
+                    Text("Scan QR Code")
+                        .font(.system(.title2, design: .rounded))
+                        .fontWeight(.bold)
+                    
+                    Text("Center the code inside the frame")
+                        .font(.subheadline)
+                }
+                .padding(.top, 60)
+                .foregroundStyle(.white)
+                
+                Spacer() // Pushes text to top and button to bottom
+                
+                Button {
+                    showScanner = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.white.opacity(0.8))
+                }
+                .padding(.bottom, 40)
+            }
+        }
+    }
+    
     private var playersSection: some View {
         Section(header: Text("Players: \(viewModel.gameModel.gameValue.players.count)")) {
             ScrollView(.horizontal) {

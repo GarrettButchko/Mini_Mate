@@ -98,6 +98,7 @@
 				Misc/Functions/ProfanityFilter.swift,
 				Misc/isAvaliableGlassEffect.swift,
 				Misc/PhotoPicker.swift,
+				Misc/ScannerCornerShape.swift,
 				Misc/SynchronizedScrollViews.swift,
 				Misc/Views/NumberPickerView.swift,
 				Misc/Views/PhotoIconView.swift,
@@ -485,6 +486,7 @@
 				INFOPLIST_FILE = MiniMate/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Mini Mate";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Needed to scan QR Code to Join Game";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Needed for tracking your current position.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show where mini golf courses are close to you and to log in your game data.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -522,6 +524,7 @@
 				INFOPLIST_FILE = MiniMate/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Mini Mate";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Needed to scan QR Code to Join Game";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Needed for tracking your current position.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to show where mini golf courses are close to you and to log in your game data.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
