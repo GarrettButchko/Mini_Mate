@@ -45,49 +45,84 @@ struct HostView: View {
             .contentMargins(.bottom, 70)
             
             VStack{
-                VStack{
-                    if !isGuest {
-                        Capsule()
-                            .frame(width: 38, height: 6)
-                            .foregroundColor(.gray)
-                            .padding(10)
+                
+                HStack(spacing: 10){
+                    
+                    if isGuest {
+                        Button {
+                            viewManager.navigateToSignIn()
+                            gameModel.dismissGame()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .resizable()
+                                .scaledToFit()
+                                .foregroundStyle(.blue)
+                                .frame(width: 20, height: 20)
+                        }
+                        .padding(.horizontal, 8)
+                    } else {
+                        Color.clear
+                            .frame(width: 20, height: 20)
+                            .padding(.horizontal, 8)
                     }
                     
-                    HStack(spacing: 10){
-                        
-                        if isGuest {
-                            Button {
-                                viewManager.navigateToSignIn()
-                                gameModel.dismissGame()
-                            } label: {
-                                Image(systemName: "chevron.left")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .foregroundStyle(.blue)
-                                    .frame(width: 20, height: 20)
-                            }
-                            .padding(.horizontal, 8)
+                    Spacer()
+                    
+                    Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background{
+                            RoundedRectangle(cornerRadius: 25)
+                                .ifAvailableGlassEffect()
                         }
-                        
-                        Text(gameModel.isOnline ? "Hosting Game" : "Game Setup")
-                            .font(.title)
-                            .fontWeight(.bold)
-                        
-                        Spacer()
-                    }
-                    .padding(.leading, 20)
+                        .padding(.top, 20)
+                    
+                    Spacer()
+                    
+                    Color.clear
+                        .frame(width: 20, height: 20)
+                        .padding(.horizontal, 8)
                 }
-                .padding(.bottom, 16)
-                .background(.ultraThinMaterial)
+                
+                .padding(.bottom)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.sub.opacity(1),
+                            Color.clear
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .top)
+                )
+                    
+                
                 
                 Spacer()
                 
-                startGameSection
-                
-                if isGuest {
-                    Color.clear
-                        .frame(width: 20, height: 30)
+                Group{
+                    startGameSection
+                    
+                    if isGuest {
+                        Color.clear
+                            .frame(width: 20, height: 30)
+                    }
                 }
+                .padding(.top)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.sub.opacity(1),
+                            Color.clear
+                        ]),
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                )
             }
         }
         .contentShape(Rectangle())

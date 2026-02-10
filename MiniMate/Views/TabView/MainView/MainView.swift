@@ -38,6 +38,7 @@ struct MainView: View {
     
     @State private var analyzer: UserStatsAnalyzer? = nil
     @State private var analyzerTask: Task<Void, Never>? = nil
+    @State private var showLastGameStats = false
 
     private var userGameIDs: [String] {
         authModel.userModel?.gameIDs ?? []
@@ -48,301 +49,11 @@ struct MainView: View {
         
         ZStack {
             VStack(spacing: 24) {
-                // MARK: - Top Bar
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Welcome back,")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Text(authModel.userModel?.name ?? "User")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        if let courseLogo = course?.logo {
-                            Divider()
-                            
-                            AsyncImage(url: URL(string: courseLogo)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
-                                Text("Error")
-                            }
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                            .id(URL(string: courseLogo))
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        isSheetPresented = true
-                    }) {
-                        if let photoURL = authModel.firebaseUser?.photoURL {
-                            AsyncImage(url: photoURL) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
-                                Image("logoOpp")
-                                    .resizable()
-                                    .scaledToFill()
-                            }
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                            .id(photoURL)
-                        } else {
-                            Image("logoOpp")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 40, height: 40)
-                        }
-                    }
-                    .sheet(isPresented: $isSheetPresented) {
-                        ProfileView(
-                            viewManager: viewManager,
-                            authModel: authModel,
-                            isSheetPresent: $isSheetPresented, context: context
-                        )
-                    }
-                }
+                topBar
                 
-                ZStack{
-                    // MARK: - Under Buttons
-                    if authModel.userModel != nil{
-                        VStack{
-                            Rectangle()
-                                .fill(Color.clear)
-                                .frame(height: 175)
-                            
-                            ScrollView{
-                                VStack(spacing: 15){
-                                    Rectangle()
-                                        .fill(Color.clear)
-                                        .frame(height: 110)
-                                    
-                                    if NetworkChecker.shared.isConnected {
-                                        locationButtons(course: course)
-                                    }
-                                    
-                                    proStopper
-
-                                    ad
-                                    lastGameStats
-                                }
-                            }
-                            .scrollIndicators(.hidden)
-                        }
-                    }
-                    
-                    VStack(){
-                        TitleView(colors: course?.courseColors)
-                            .frame(height: 150)
-                        
-                        // MARK: - Game Action Buttons
-                        VStack {
-                            HStack {
-                                ZStack {
-                                    if isOnlineMode {
-                                        Button(action: {
-                                            withAnimation(.easeInOut(duration: 0.35)) {
-                                                isOnlineMode = false
-                                            }
-                                        }) {
-                                            ZStack {
-                                                Circle()
-                                                    .fill(.primary)
-                                                    .frame(width: 30, height: 30)
-                                                Image(systemName: "chevron.left")
-                                                    .foregroundStyle(.white)
-                                                    .frame(width: 20, height: 20)
-                                            }
-                                        }
-                                    } else {
-                                        // Keep layout aligned using an invisible spacer
-                                        Circle()
-                                            .fill(Color.clear)
-                                            .frame(width: 30, height: 30)
-                                    }
-                                }
-                                
-                                Spacer()
-                                
-                                ZStack {
-                                    if isOnlineMode {
-                                        Text("Online Options")
-                                            .font(.title)
-                                            .fontWeight(.bold)
-                                            .transition(.opacity.combined(with: .scale))
-                                    } else {
-                                        Text("Start a Round")
-                                            .font(.title)
-                                            .fontWeight(.bold)
-                                            .transition(.opacity.combined(with: .scale))
-                                    }
-                                }
-                                .animation(.easeInOut(duration: 0.35), value: isOnlineMode)
-                                
-                                Spacer()
-                                
-                                // Mirror the left spacer for symmetry
-                                
-                                Button {
-                                    showInfo = true
-                                } label: {
-                                    Image(systemName: "info.circle")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 25, height: 25)
-                                        .foregroundStyle(.blue)
-                                    
-                                }
-                                .confirmationDialog("Info", isPresented: $showInfo, titleVisibility: .visible) {
-                                    Button("OK", role: .cancel) {}
-                                } message: {
-                                    Text(isOnlineMode
-                                         ? "Host starts a server game. Join connects to an existing one. Multiple devices sync in real time."
-                                         : "Quick starts a local game. Online lets you host or join a networked game."
-                                    )
-                                }
-                            }
-                            
-                            ZStack {
-                                if isOnlineMode {
-                                    HStack(spacing: 16) {
-                                        gameModeButton(title: "Host", icon: "antenna.radiowaves.left.and.right", color: .purple) {
-                                            
-                                            gameModel.createGame(online: true)
-                                            showHost = true
-                                        }
-                                        .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost)
-                                                .presentationDetents([.large])
-                                        }
-                                        
-                                        gameModeButton(title: "Join", icon: "person.2.fill", color: .orange) {
-                                            
-                                            gameModel.resetGame()
-                                            showJoin = true
-                                            
-                                        }
-                                        .sheet(isPresented: $showJoin) {
-                                            JoinView(authModel: authModel, viewManager: viewManager, gameModel: gameModel, showHost: $showJoin)
-                                                .presentationDetents([.large])
-                                        }
-                                    }
-                                    .transition(.asymmetric(
-                                        insertion: .move(edge: .trailing).combined(with: .opacity),
-                                        removal: .move(edge: .trailing).combined(with: .opacity)
-                                    ))
-                                    .clipped()
-                                    
-                                } else {
-                                    
-                                    HStack(spacing: 16) {
-                                        gameModeButton(title: "Quick", icon: "person.fill", color: .blue) {
-                                            if !disablePlaying {
-                                                gameModel.createGame(online: false)
-                                                showHost = true
-                                                withAnimation {
-                                                    isOnlineMode = false
-                                                }
-                                            } else {
-                                                showDonation = true
-                                            }
-                                        }
-                                        .sheet(isPresented: $showHost) {
-                                            HostView(showHost: $showHost)
-                                                .presentationDetents([.large])
-                                        }
-                                        
-                                        if !NetworkChecker.shared.isConnected {
-                                            HStack {
-                                                Image(systemName: "globe")
-                                                Text("Connect")
-                                                    .fontWeight(.semibold)
-                                            }
-                                            .padding(10)
-                                            .frame(maxWidth: .infinity, minHeight: 50)
-                                            .background(RoundedRectangle(cornerRadius: 15).fill().foregroundStyle(.green))
-                                            .foregroundColor(.white)
-                                            .opacity(0.4)
-                                        } else {
-                                            gameModeButton(title: "Connect", icon: "globe", color: .green) {
-                                                if !disablePlaying {
-                                                    withAnimation {
-                                                        isOnlineMode = true
-                                                    }
-                                                } else {
-                                                    showDonation = true
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .transition(.asymmetric(
-                                        insertion: .move(edge: .leading).combined(with: .opacity),
-                                        removal: .move(edge: .leading).combined(with: .opacity)
-                                    ))
-                                }
-                            }
-                            .animation(.easeInOut(duration: 0.3), value: isOnlineMode)
-                            
-                        }
-                        .padding()
-                        .background(content: {
-                            RoundedRectangle(cornerRadius: 25)
-                                .ifAvailableGlassEffect(makeColor: course?.scoreCardColor)
-                        })
-                        
-                        
-                        Spacer()
-                        
-                        // Pro Mode Button
-                        if let userModel = authModel.userModel, !userModel.isPro && NetworkChecker.shared.isConnected {
-                            HStack {
-                                Spacer()
-                                Button {
-                                    if !showFirstStage {
-                                        withAnimation {
-                                            showFirstStage = true
-                                        }
-                                        
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
-                                            if showFirstStage {
-                                                withAnimation {
-                                                    showFirstStage = false
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        showDonation = true
-                                    }
-                                } label: {
-                                    HStack {
-                                        if showFirstStage {
-                                            Text("Tap to buy Pro!")
-                                                .transition(.move(edge: .trailing).combined(with: .opacity))
-                                                .foregroundStyle(.white)
-                                        }
-                                        Text("✨")
-                                    }
-                                    .padding()
-                                    .frame(height: 50)
-                                    .background {
-                                        RoundedRectangle(cornerRadius: 25)
-                                            .ifAvailableGlassEffect(strokeWidth: 0, opacity: 0.7, makeColor: .purple)
-                                    }
-                                    .shadow(radius: 10)
-                                }
-                                .sheet(isPresented: $showDonation) {
-                                    ProView(showSheet: $showDonation)
-                                }
-                                .padding()
-                            }
-                        }
-                    }
+                ZStack {
+                    scrollContent(course: course)
+                    actionButtonsSection(course: course)
                 }
             }
             .padding([.top, .horizontal])
@@ -364,6 +75,318 @@ struct MainView: View {
             updateFilteredGames()
         }
     }
+    
+    // MARK: - Main Sections
+    private var topBar: some View {
+        let course = gameModel.getCourse()
+        return HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Welcome back,")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                Text(authModel.userModel?.name ?? "User")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                if let courseLogo = course?.logo {
+                    Divider()
+                    
+                    AsyncImage(url: URL(string: courseLogo)) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        Text("Error")
+                    }
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+                    .id(URL(string: courseLogo))
+                }
+            }
+            
+            Spacer()
+            
+            profilePhotoButton
+        }
+    }
+    
+    private var profilePhotoButton: some View {
+        Button(action: {
+            isSheetPresented = true
+        }) {
+            if let photoURL = authModel.firebaseUser?.photoURL {
+                AsyncImage(url: photoURL) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    Image("logoOpp")
+                        .resizable()
+                        .scaledToFill()
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
+                .id(photoURL)
+            } else {
+                Image("logoOpp")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+            }
+        }
+        .sheet(isPresented: $isSheetPresented) {
+            ProfileView(
+                viewManager: viewManager,
+                authModel: authModel,
+                isSheetPresent: $isSheetPresented, context: context
+            )
+        }
+    }
+    
+    private func scrollContent(course: Course?) -> some View {
+        Group {
+            if authModel.userModel != nil {
+                VStack {
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(height: 175)
+                    
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            if NetworkChecker.shared.isConnected {
+                                locationButtons(course: course)
+                            }
+                            
+                            proStopper
+                            ad
+                            lastGameStats
+                        }
+                        .padding(.top, 16)
+                    }
+                    .contentMargins(.top, 109)
+                    .scrollIndicators(.hidden)
+                }
+            }
+        }
+    }
+    
+    private func actionButtonsSection(course: Course?) -> some View {
+        VStack {
+            TitleView(colors: course?.courseColors)
+                .frame(height: 150)
+            
+            VStack {
+                headerControls
+                gameModeButtons
+            }
+            .padding()
+            .background(content: {
+                RoundedRectangle(cornerRadius: 25)
+                    .ifAvailableGlassEffect(makeColor: course?.scoreCardColor)
+            })
+            
+            Spacer()
+            
+            proBuyButton
+        }
+    }
+    
+    private var headerControls: some View {
+        HStack {
+            ZStack {
+                if isOnlineMode {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            isOnlineMode = false
+                        }
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(.primary)
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "chevron.left")
+                                .foregroundStyle(.white)
+                                .frame(width: 20, height: 20)
+                        }
+                    }
+                } else {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 30, height: 30)
+                }
+            }
+            
+            Spacer()
+            
+            ZStack {
+                Text(isOnlineMode ? "Online Options" : "Start a Round")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .transition(.opacity.combined(with: .scale))
+            }
+            .animation(.easeInOut(duration: 0.35), value: isOnlineMode)
+            
+            Spacer()
+            
+            Button {
+                showInfo = true
+            } label: {
+                Image(systemName: "info.circle")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 25, height: 25)
+                    .foregroundStyle(.blue)
+            }
+            .alert("Info", isPresented: $showInfo) {
+                Button("OK") {}
+            } message: {
+                Text(isOnlineMode
+                     ? "Host starts a server game. Join connects to an existing one. Multiple devices sync in real time."
+                     : "Quick starts a local game. Online lets you host or join a networked game."
+                )
+            }
+        }
+    }
+    
+    private var gameModeButtons: some View {
+        ZStack {
+            if isOnlineMode {
+                onlineGameButtons
+            } else {
+                offlineGameButtons
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: isOnlineMode)
+    }
+    
+    private var onlineGameButtons: some View {
+        HStack(spacing: 16) {
+            gameModeButton(title: "Host", icon: "antenna.radiowaves.left.and.right", color: .purple) {
+                gameModel.createGame(online: true)
+                showHost = true
+            }
+            .sheet(isPresented: $showHost) {
+                HostView(showHost: $showHost)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+            
+            gameModeButton(title: "Join", icon: "person.2.fill", color: .orange) {
+                gameModel.resetGame()
+                showJoin = true
+            }
+            .sheet(isPresented: $showJoin) {
+                JoinView(authModel: authModel, viewManager: viewManager, gameModel: gameModel, showHost: $showJoin)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .transition(.asymmetric(
+            insertion: .move(edge: .trailing).combined(with: .opacity),
+            removal: .move(edge: .trailing).combined(with: .opacity)
+        ))
+        .clipped()
+    }
+    
+    private var offlineGameButtons: some View {
+        HStack(spacing: 16) {
+            gameModeButton(title: "Quick", icon: "person.fill", color: .blue) {
+                if !disablePlaying {
+                    gameModel.createGame(online: false)
+                    showHost = true
+                    withAnimation {
+                        isOnlineMode = false
+                    }
+                } else {
+                    showDonation = true
+                }
+            }
+            .sheet(isPresented: $showHost) {
+                HostView(showHost: $showHost)
+                    .presentationDetents([.large])
+                
+            }
+            
+            if !NetworkChecker.shared.isConnected {
+                disconnectedButton
+            } else {
+                gameModeButton(title: "Connect", icon: "globe", color: .green) {
+                    if !disablePlaying {
+                        withAnimation {
+                            isOnlineMode = true
+                        }
+                    } else {
+                        showDonation = true
+                    }
+                }
+            }
+        }
+        .transition(.asymmetric(
+            insertion: .move(edge: .leading).combined(with: .opacity),
+            removal: .move(edge: .leading).combined(with: .opacity)
+        ))
+    }
+    
+    private var disconnectedButton: some View {
+        HStack {
+            Image(systemName: "globe")
+            Text("Connect")
+                .fontWeight(.semibold)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 50)
+        .background(RoundedRectangle(cornerRadius: 15).fill().foregroundStyle(.green))
+        .foregroundColor(.white)
+        .opacity(0.4)
+    }
+    
+    private var proBuyButton: some View {
+        Group {
+            if let userModel = authModel.userModel, !userModel.isPro && NetworkChecker.shared.isConnected {
+                HStack {
+                    Spacer()
+                    Button {
+                        if !showFirstStage {
+                            withAnimation {
+                                showFirstStage = true
+                            }
+                            
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
+                                if showFirstStage {
+                                    withAnimation {
+                                        showFirstStage = false
+                                    }
+                                }
+                            }
+                        } else {
+                            showDonation = true
+                        }
+                    } label: {
+                        HStack {
+                            if showFirstStage {
+                                Text("Tap to buy Pro!")
+                                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                                    .foregroundStyle(.white)
+                            }
+                            Text("✨")
+                        }
+                        .padding()
+                        .frame(height: 50)
+                        .background {
+                            RoundedRectangle(cornerRadius: 25)
+                                .ifAvailableGlassEffect(strokeWidth: 0, opacity: 0.7, makeColor: .purple)
+                        }
+                        .shadow(radius: 10)
+                    }
+                    .sheet(isPresented: $showDonation) {
+                        ProView(showSheet: $showDonation)
+                    }
+                    .padding()
+                }
+            }
+        }
+    }
 
     private func updateFilteredGames() {
         let ids = Set(userGameIDs)
@@ -376,13 +399,17 @@ struct MainView: View {
         analyzerTask?.cancel()
         guard let user = authModel.userModel else {
             analyzer = nil
+            showLastGameStats = false
             return
         }
         analyzerTask = Task {
             try? await Task.sleep(nanoseconds: 200_000_000)
             if Task.isCancelled { return }
             await MainActor.run {
-                self.analyzer = UserStatsAnalyzer(user: user, games: games, context: context)
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.analyzer = UserStatsAnalyzer(user: user, games: games, context: context)
+                    self.showLastGameStats = self.analyzer?.latestGame != nil
+                }
             }
         }
     }
@@ -508,7 +535,7 @@ struct MainView: View {
     
     @ViewBuilder
     var lastGameStats: some View {
-        if let lastGame = analyzer?.latestGame {
+        if showLastGameStats, let lastGame = analyzer?.latestGame {
             
             Button {
                 gameReview = lastGame
@@ -549,14 +576,18 @@ struct MainView: View {
                 }
                 .padding(.bottom)
             }
-            .buttonStyle(.plain) // Prevents the whole card from dimming like a standard button
+            .buttonStyle(.plain)
             .sheet(item: $gameReview) { game in
                 GameReviewView(game: game, showBackToStatsButton: true, gameReview: $gameReview)
                     .presentationDragIndicator(.visible)
             }
+            .transition(.asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .opacity
+            ))
             
         } else {
-            // 3. Elegant fallback if no games exist
+            // Elegant fallback if no games exist
             VStack(spacing: 16) {
                 Image("logoOpp")
                     .resizable()
@@ -564,10 +595,7 @@ struct MainView: View {
                     .frame(width: 50, height: 50)
                     .grayscale(1.0)
                     .opacity(0.5)
-                
-                Text("No games played yet")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 40)

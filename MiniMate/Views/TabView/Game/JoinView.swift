@@ -38,70 +38,94 @@ struct JoinView: View {
                 .contentMargins(.bottom, 70)
             
             VStack {
-                VStack{
-                    Capsule()
-                        .frame(width: 38, height: 6)
-                        .foregroundColor(.gray)
-                        .padding(10)
-                    
-                    HStack {
-                        Text("Join Game")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .padding(.leading, 30)
-                        Spacer()
-                    }
+                HStack {
+                    Spacer()
+                    Text("Join Game")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background{
+                            RoundedRectangle(cornerRadius: 25)
+                                .ifAvailableGlassEffect()
+                        }
+                        .padding(.top, 20)
+                    Spacer()
                 }
-                .padding(.bottom, 16)
-                .background(.ultraThinMaterial)
+                .padding(.bottom)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.sub.opacity(1),
+                            Color.clear
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .top)
+                )
                 
                 Spacer()
                 
-                if viewModel.inGame {
-                    Button {
-                        viewModel.showExitAlert = true
-                    } label: {
-                        Text("Exit Game")
+                Group{
+                    if viewModel.inGame {
+                        Button {
+                            viewModel.showExitAlert = true
+                        } label: {
+                            Text("Exit Game")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 25)
+                                        .fill(Color.red)
+                                        .padding(.horizontal)
+                                )
+                        }
+                        .foregroundColor(.red)
+                        .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
+                            Button("Leave", role: .destructive) {
+                                viewModel.leaveGame()
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        }
+                    } else {
+                        Button {
+                            viewModel.joinGame()
+                        } label: {
+                            HStack(alignment: .center){
+                                Image(systemName: "person.2.badge.plus.fill")
+                                Text("Join Game")
+                            }
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(
                                 RoundedRectangle(cornerRadius: 25)
-                                    .fill(Color.red)
-                                    .padding(.horizontal)
+                                    .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
                             )
-                    }
-                    .foregroundColor(.red)
-                    .alert("Exit Game?", isPresented: $viewModel.showExitAlert) {
-                        Button("Leave", role: .destructive) {
-                            viewModel.leaveGame()
+                            .padding(.horizontal)
+                            .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
+                            .safeAreaPadding(.bottom, 10)
+                            
                         }
-                        Button("Cancel", role: .cancel) {}
+                        .disabled(viewModel.gameCode.isEmpty)
                     }
-                } else {
-                    Button {
-                        viewModel.joinGame()
-                    } label: {
-                        HStack(alignment: .center){
-                            Image(systemName: "person.2.badge.plus.fill")
-                            Text("Join Game")
-                        }
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(Color.blue.opacity(viewModel.gameCode.isEmpty ? 0.5 : 1))
-                        )
-                        .padding(.horizontal)
-                        .opacity(viewModel.gameCode.isEmpty ? 0.5 : 1)
-                        .safeAreaPadding(.bottom, 10)
-                        
-                    }
-                    .disabled(viewModel.gameCode.isEmpty)
                 }
+                .padding(.top)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.sub.opacity(1),
+                            Color.clear
+                        ]),
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                )
             }
         }
         .onChange(of: showHost) { oldValue, newValue in

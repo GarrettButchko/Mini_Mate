@@ -36,8 +36,8 @@ struct StatCard: View {
                             .foregroundStyle(.blue)
                         
                     }
-                    .confirmationDialog("Info", isPresented: $showInfo, titleVisibility: .visible) {
-                        Button("OK", role: .cancel) {}
+                    .alert("Info", isPresented: $showInfo) {
+                        Button("OK") {}
                     } message: {
                         Text(infoText)
                     }

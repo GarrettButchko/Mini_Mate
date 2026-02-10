@@ -52,7 +52,7 @@ struct StatsView: View {
     
     var body: some View {
         if (authModel.userModel != nil) {
-            VStack{
+            VStack(spacing: 12) {
                 HStack {
                     ZStack {
                         if viewModel.pickedSection == "Games" {
@@ -96,6 +96,7 @@ struct StatsView: View {
                                 .onAppear {
                                     viewModel.editOn = false
                                 }
+                                .contentMargins(.vertical, 12)
                         } else {
                             VStack(spacing: 8) {
                                 Spacer()
@@ -123,7 +124,7 @@ struct StatsView: View {
                 }
                 .animation(.easeInOut(duration: 0.3), value: viewModel.pickedSection)
             }
-            .safeAreaPadding([.top, .horizontal])
+            .safeAreaPadding([.horizontal])
             .sheet(isPresented: $viewModel.isSharePresented) {
                 ActivityView(activityItems: [viewModel.shareContent])
             }
@@ -141,12 +142,7 @@ struct StatsView: View {
     private var gamesSection: some View {
         ZStack{
             ScrollView {
-                
-                Rectangle()
-                    .frame(height: 75)
-                    .foregroundStyle(Color.clear)
-                
-                VStack (spacing: 15){
+                VStack(spacing: 16){
                     if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
                         VStack{
                             BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6344452429") // Replace with real one later
@@ -202,29 +198,22 @@ struct StatsView: View {
                         }
                         .padding(.vertical, 24)
                     }
-                    
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundStyle(Color.clear)
                 }
             }
+            .contentMargins(.top, 70)
             
             
-            VStack{
+            VStack(spacing: 0){
                 HStack{
                     SearchBarView(searchText: $viewModel.searchText)
-                    .padding(.vertical)
                     
                     Button {
                         viewModel.toggleSortWithCooldown()
                     } label: {
-                        
                         ZStack{
-                            
                             Circle()
                                 .ifAvailableGlassEffect()
                                 .frame(width: 50, height: 50)
-                            
                             
                             if viewModel.latest{
                                 Image(systemName: "arrow.up")
@@ -247,49 +236,51 @@ struct StatsView: View {
         let spacing : CGFloat = 10
         
         return ScrollView {
+            
             if let analyzer = viewModel.analyzer {
-                SectionStatsView(title: "Basic Stats", spacing: spacing) {
-                    HStack(spacing: spacing){
-                        StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)", infoText: "Number of players other than yourself you played with.")
-                        StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)", infoText: "Total holes played (including unfinished holes).")
+                VStack(spacing: 16){
+                    SectionStatsView(title: "Basic Stats", spacing: spacing) {
+                        HStack(spacing: spacing){
+                            StatCard(title: "Players Faced", value: "\(analyzer.totalPlayersFaced)", infoText: "Number of players other than yourself you played with.")
+                            StatCard(title: "Holes Played", value: "\(analyzer.totalHolesPlayed)", infoText: "Total holes played (including unfinished holes).")
+                        }
+                        
+                        StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", infoText: "Total games played.")
+                        
+                        HStack(spacing: spacing){
+                            StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame), infoText: "Average strokes per game.")
+                            StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole), infoText: "Average strokes per hole.")
+                        }
                     }
                     
-                    StatCard(title: "Games Played", value: "\(analyzer.totalGamesPlayed)", infoText: "Total games played.")
                     
-                    HStack(spacing: spacing){
-                        StatCard(title: "Strokes/Game", value: String(format: "%.1f", analyzer.averageStrokesPerGame), infoText: "Average strokes per game.")
-                        StatCard(title: "Strokes/Hole", value: String(format: "%.1f", analyzer.averageStrokesPerHole), infoText: "Average strokes per hole.")
+                    if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
+                        VStack{
+                            BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6344452429") // Replace with real one later
+                                .frame(height: 50)
+                                .padding()
+                        }
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 25))
+                        .padding(.top)
+                    }
+                    
+                    SectionStatsView(title: "Average 18-Hole Game", spacing: spacing){
+                        BarChartView(data: analyzer.averageHoles18, title: "Average Strokes")
+                    }
+                    
+                    SectionStatsView(title: "Misc Stats", spacing: spacing) {
+                        HStack(spacing: spacing){
+                            StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)", color: .green, infoText: "Lowest total strokes in a game.")
+                            StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)", color: .red, infoText: "Highest total strokes in a game.")
+                        }
+                        StatCard(title: "Holes-in-One", value: "\(analyzer.holeInOneCount)", infoText: "Number of holes with one stroke.")
+                    }
+                    
+                    SectionStatsView(title: "Average 9-Hole Game", spacing: spacing){
+                        BarChartView(data: analyzer.averageHoles9, title: "Average Strokes")
                     }
                 }
-                .padding(.top)
-                
-                if NetworkChecker.shared.isConnected && !authModel.userModel!.isPro {
-                    VStack{
-                        BannerAdView(adUnitID: "ca-app-pub-8261962597301587/6344452429") // Replace with real one later
-                            .frame(height: 50)
-                            .padding()
-                    }
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 25))
-                    .padding(.top)
-                }
-                
-                SectionStatsView(title: "Average 18-Hole Game", spacing: spacing){
-                    BarChartView(data: analyzer.averageHoles18, title: "Average Strokes")
-                }
-                .padding(.top)
-                SectionStatsView(title: "Misc Stats", spacing: spacing) {
-                    HStack(spacing: spacing){
-                        StatCard(title: "Best Game", value: "\(analyzer.bestGameStrokes ?? 0)", color: .green, infoText: "Lowest total strokes in a game.")
-                        StatCard(title: "Worst Game", value: "\(analyzer.worstGameStrokes ?? 0)", color: .red, infoText: "Highest total strokes in a game.")
-                    }
-                    StatCard(title: "Holes-in-One", value: "\(analyzer.holeInOneCount)", infoText: "Number of holes with one stroke.")
-                }
-                .padding(.top)
-                SectionStatsView(title: "Average 9-Hole Game", spacing: spacing){
-                    BarChartView(data: analyzer.averageHoles9, title: "Average Strokes")
-                }
-                .padding(.vertical)
             } else {
                 // Placeholder while analyzer initializes
                 Image("logoOpp")
