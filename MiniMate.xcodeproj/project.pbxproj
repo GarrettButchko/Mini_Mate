@@ -109,8 +109,6 @@
 				Views/PreViews/EmailPasswordView.swift,
 				Views/PreViews/SignInView.swift,
 				Views/PreViews/WelcomeView.swift,
-				Views/TabView/Game/GameReviewView.swift,
-				Views/TabView/MainView/ProfileView.swift,
 				Views/TabView/MainView/TitleView.swift,
 				Views/TabView/Stats/GameInfoView.swift,
 			);
