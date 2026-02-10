@@ -26,6 +26,7 @@ class AuthViewModel: ObservableObject {
     @Published var firebaseUser: FirebaseAuth.User?
     @Published var userModel: UserModel?
     @Published var authAction: AuthAction?
+    @Published var isLoadingUser: Bool = false
     
     enum AuthAction {
         case deletionSuccess
@@ -34,7 +35,13 @@ class AuthViewModel: ObservableObject {
 
     
     func setUserModel(_ user: UserModel) {
-        self.userModel = user
+        if Thread.isMainThread {
+            self.userModel = user
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.userModel = user
+            }
+        }
     }
     
     var currentNonce: String?

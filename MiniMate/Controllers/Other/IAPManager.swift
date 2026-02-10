@@ -9,11 +9,23 @@ import SwiftUI
 
 class IAPManager: ObservableObject {
    @Published var products: [Product] = []
+   private var isInitialized = false
    
    init() {
-       Task {
-           await self.retrieveProducts()
-           await self.listenForTransactions()
+       // Lightweight init - defer heavy operations
+   }
+   
+   // Call this after UI is rendered
+   func initialize() async {
+       print("Retrieving products")
+       guard !isInitialized else { return }
+       isInitialized = true
+       
+       await self.retrieveProducts()
+
+       // Listen in the background so init doesn't block forever.
+       Task { [weak self] in
+           await self?.listenForTransactions()
        }
    }
    
@@ -23,6 +35,7 @@ class IAPManager: ObservableObject {
             let productIDs = ["com.minimate.pro"]
             let fetchedProducts = try await Product.products(for: productIDs)
             self.products = fetchedProducts
+            print("Products retrieved: \(fetchedProducts.map { $0.displayName })")
         } catch {
             print("Failed to fetch products: \(error)")
         }

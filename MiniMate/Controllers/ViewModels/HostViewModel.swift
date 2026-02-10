@@ -7,18 +7,43 @@
 
 import SwiftUI
 import MapKit
+import CoreImage
+import CoreImage.CIFilterBuiltins
+import UIKit
 
 @MainActor
 final class HostViewModel: ObservableObject {
     @Published var timeRemaining: TimeInterval = 0
     @Published var playerToDelete: String?
     
+    @Published var showTextAndButtons = false
+    @Published var showAddPlayerAlert = false
+    @Published var showDeleteAlert = false
+    @Published var newPlayerName = ""
+    @Published var newPlayerEmail = ""
+    @Published var isRotating = false
+    @Published var showLocationButton: Bool = false
+    @Published var showQRCode: Bool = false
+    
+    @Published var qrCodeImage: UIImage? = nil
+    
     let courseRepo = CourseRepository()
     
     private let ttl: TimeInterval = 5 * 60
     private var lastUpdated = Date()
+    private var lastQRCodeId: String?
+    private var lastResetTime: Date?
+    private let resetCooldown: TimeInterval = 2.0 // Minimum 1 second between resets
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    // Custom binding for showTextAndButtons
+    var showTextAndButtonsBinding: Binding<Bool> {
+        Binding(
+            get: { self.showTextAndButtons },
+            set: { self.showTextAndButtons = $0 }
+        )
+    }
     
     init() {
         self.timeRemaining = ttl
@@ -38,16 +63,23 @@ final class HostViewModel: ObservableObject {
     
     func resetTimer(_ gameModel: GameViewModel) {
         guard gameModel.isOnline else { return }   // ✅ offline = don't reset timer
-
+        
+        // Prevent spam by enforcing cooldown
+        if let lastReset = lastResetTime,
+           Date().timeIntervalSince(lastReset) < resetCooldown {
+            return
+        }
+        
         lastUpdated = Date()
+        lastResetTime = Date()
         gameModel.setLastUpdated(lastUpdated)
         timeRemaining = ttl
     }
     
-    func addPlayer(newPlayerName: Binding<String>, newPlayerEmail: Binding<String>, gameModel: GameViewModel) {
-        gameModel.addLocalPlayer(named: newPlayerName.wrappedValue, email: newPlayerEmail.wrappedValue)
-        newPlayerName.wrappedValue = ""
-        newPlayerEmail.wrappedValue = ""
+    func addPlayer(gameModel: GameViewModel) {
+        gameModel.addLocalPlayer(named: newPlayerName, email: newPlayerEmail)
+        newPlayerName = ""
+        newPlayerEmail = ""
         resetTimer(gameModel)
     }
     
@@ -77,31 +109,38 @@ final class HostViewModel: ObservableObject {
         resetTimer(gameModel)
     }
     
-    func searchNearby(showTxtButtons: Binding<Bool>, gameModel: GameViewModel, handler: LocationHandler) {
+    func searchNearby(gameModel: GameViewModel, handler: LocationHandler) {
         gameModel.setHasLoaded(false)
-        gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+        gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTextAndButtonsBinding)
         resetTimer(gameModel)
     }
     
-    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>, gameModel: GameViewModel, handler: LocationHandler) {
-        isRotating.wrappedValue = true
-        searchNearby(showTxtButtons: showTxtButtons, gameModel: gameModel, handler: handler)
+    func retry(gameModel: GameViewModel, handler: LocationHandler) {
+        isRotating = true
+        searchNearby(gameModel: gameModel, handler: handler)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            isRotating.wrappedValue = false
+            self.isRotating = false
         }
         resetTimer(gameModel)
     }
     
-    func exit(showTxtButtons: Binding<Bool>, email: Binding<String>, gameModel: GameViewModel, handler: LocationHandler){
-        email.wrappedValue = ""
+    func exit(gameModel: GameViewModel, handler: LocationHandler){
+        newPlayerEmail = ""
         gameModel.resetCourse()
-        showTxtButtons.wrappedValue = false
+        showTextAndButtons = false
     }
     
-    func setUp(showTxtButtons: Binding<Bool>, gameModel: GameViewModel, handler: LocationHandler) {
+    func setUp(gameModel: GameViewModel, handler: LocationHandler) {
+        if lastQRCodeId != gameModel.id {
+            lastQRCodeId = gameModel.id
+            generateQRCode(from: gameModel.id)
+        }
+
+        guard showLocationButton else { return }
+        
         if gameModel.getCourse() == nil && !gameModel.getHasLoaded() {
-            gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+            gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTextAndButtonsBinding)
             gameModel.setHasLoaded(true)
         }
     }
@@ -112,5 +151,29 @@ final class HostViewModel: ObservableObject {
         let minutes = seconds / 60
         let secs = seconds % 60
         return String(format: "%d:%02d", minutes, secs)
+    }
+    
+    func generateQRCode(from string: String) {
+        // Offload heavy CoreImage work to avoid blocking first render.
+        Task.detached(priority: .utility) { [lastQRCodeId] in
+            let image = Self.makeQRCodeImage(from: string)
+            await MainActor.run {
+                guard lastQRCodeId == string else { return }
+                self.qrCodeImage = image
+            }
+        }
+    }
+
+    nonisolated private static func makeQRCodeImage(from string: String) -> UIImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+
+        filter.message = Data(string.utf8)
+        filter.correctionLevel = "M"
+
+        guard let outputImage = filter.outputImage else { return nil }
+        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }

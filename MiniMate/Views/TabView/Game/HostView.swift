@@ -13,33 +13,21 @@ struct HostView: View {
     @EnvironmentObject var locationHandler: LocationHandler
     
     @Binding var showHost: Bool
-    @State var showTextAndButtons = false
-    @State var showAddPlayerAlert = false
-    @State var showDeleteAlert = false
-    @State var newPlayerName = ""
-    @State var newPlayerEmail = ""
-    @State var isRotating = false
-    @State var showLocationButton: Bool = false
-    @State var showQRCode: Bool = false
     
     @EnvironmentObject var authModel: AuthViewModel
     @EnvironmentObject var viewManager: ViewManager
     
-    @StateObject var viewModel: HostViewModel
-    
+    @StateObject var VM: HostViewModel
+
     var isGuest: Bool
     
     init(
         showHost: Binding<Bool>,
-        isGuest: Bool = false,
-        showLocationButton: Bool = false
+        isGuest: Bool = false
     ) {
         self._showHost = showHost
         self.isGuest = isGuest
-        self.showLocationButton = showLocationButton
-        
-        // Correct way to initialize a StateObject with dependencies
-        _viewModel = StateObject(wrappedValue: HostViewModel())
+        _VM = StateObject(wrappedValue: HostViewModel())
     }
     
     var body: some View {
@@ -102,56 +90,62 @@ struct HostView: View {
                 }
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            VM.resetTimer(gameModel)
+        }
         .onChange(of: showHost) { _, newValue in
             if !newValue && !gameModel.started {
                 gameModel.dismissGame()
             }
         }
-        .alert("Add Local Player?", isPresented: $showAddPlayerAlert) {
+        .alert("Add Local Player?", isPresented: $VM.showAddPlayerAlert) {
             
-            TextField("Name", text: $newPlayerName)
-                .characterLimit($newPlayerName, maxLength: 18)
+            TextField("Name", text: $VM.newPlayerName)
+                .characterLimit($VM.newPlayerName, maxLength: 18)
             
             if gameModel.getCourse() != nil {
-                TextField("Email", text: $newPlayerEmail)
+                TextField("Email", text: $VM.newPlayerEmail)
                     .autocapitalization(.none)   // starts lowercase / no auto-cap
                     .keyboardType(.emailAddress)
             }
             
             Button("Add") {
-                viewModel.addPlayer(newPlayerName: $newPlayerName, newPlayerEmail: $newPlayerEmail, gameModel: gameModel)
+                VM.addPlayer(gameModel: gameModel)
             }
             .disabled(
                 gameModel.getCourse() != nil
                 ?
-                newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                newPlayerEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                ProfanityFilter.containsBlockedWord(newPlayerName) ||
-                !newPlayerEmail.isValidEmail
+                VM.newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                VM.newPlayerEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                ProfanityFilter.containsBlockedWord(VM.newPlayerName) ||
+                !VM.newPlayerEmail.isValidEmail
                 :
-                    newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                ProfanityFilter.containsBlockedWord(newPlayerName)
+                    VM.newPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                ProfanityFilter.containsBlockedWord(VM.newPlayerName)
             )
             .tint(.blue)
             
             Button("Cancel", role: .cancel) {}
         }
-        .alert("Delete Player?", isPresented: $showDeleteAlert) {
+        .alert("Delete Player?", isPresented: $VM.showDeleteAlert) {
             Button("Delete", role: .destructive) {
-                if let player = viewModel.playerToDelete {
+                if let player = VM.playerToDelete {
                     gameModel.removePlayer(userId: player)
                 }
             }
             Button("Cancel", role: .cancel) {}
         }
-        .onReceive(viewModel.timer) { _ in
-            viewModel.tick(showHost: $showHost, gameModel: gameModel)
+        .onReceive(VM.timer) { _ in
+            VM.tick(showHost: $showHost, gameModel: gameModel)
         }
+        .environmentObject(VM)
     }
     
     // MARK: - Sections
     private var gameInfoSection: some View {
-        Group {
+        let course = gameModel.getCourse()
+        return Group {
             Section {
                 if gameModel.isOnline {
                     VStack{
@@ -163,7 +157,7 @@ struct HostView: View {
                                 .font(.system(size: 20, weight: .medium))
                         }
                         
-                        Image(uiImage: generateQRCode(from: gameModel.gameValue.id))
+                        Image(uiImage: VM.qrCodeImage ?? UIImage(systemName: "xmark.circle") ?? UIImage())
                             .interpolation(.none)
                             .resizable()
                             .scaledToFit()
@@ -183,16 +177,16 @@ struct HostView: View {
                     HStack {
                         Text("Expires in:")
                         Spacer()
-                        Text(viewModel.timeString())
+                        Text(VM.timeString())
                             .monospacedDigit()
                     }
                 }
                 
                 if locationHandler.hasLocationAccess{
-                    locationSection
+                    LocationButtons()
                 }
                 
-                if let course = gameModel.getCourse() {
+                if let course {
                     if let pars = course.pars {
                         UserInfoRow(label: "Holes", value: String(pars.count))
                     } else {
@@ -220,133 +214,20 @@ struct HostView: View {
         }
     }
     
-    
-    // MARK: – Composed Section
-    
-    private var locationSection: some View {
-        Group {
-            if NetworkChecker.shared.isConnected {
-                HStack{
-                    VStack{
-                        HStack{
-                            Text("Location:")
-                            Spacer()
-                        }
-                        if showTextAndButtons {
-                            if let item = gameModel.getCourse()?.name {
-                                HStack{
-                                    Text(item)
-                                        .foregroundStyle(.secondary)
-                                        .truncationMode(.tail)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                    Spacer()
-                                }
-                            } else {
-                                HStack{
-                                    Text("No location found")
-                                        .foregroundStyle(.secondary)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    if showLocationButton {
-                        if !showTextAndButtons {
-                            Button {
-                                viewModel.searchNearby(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "magnifyingglass")
-                                    Text("Search Nearby")
-                                }
-                                .frame(width: 180, height: 50)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 20))
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
-                        } else {
-                            // Retry Button
-                            Button(action: {
-                                withAnimation(){
-                                    viewModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, gameModel: gameModel, handler: locationHandler)
-                                }
-                            }) {
-                                Image(systemName: "arrow.trianglehead.2.clockwise")
-                                    .rotationEffect(.degrees(isRotating ? 360 : 0))
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 50, height: 50)
-                                    .background(Color.blue)
-                                    .clipShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
-                            
-                            
-                            // Exit Button
-                            Button(action: {
-                                withAnimation {
-                                    viewModel.exit(showTxtButtons: $showTextAndButtons, email: $newPlayerEmail, gameModel: gameModel, handler: locationHandler)
-                                }
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 50, height: 50)
-                                    .background(Color.red)
-                                    .clipShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
-                        }
-                    } else {
-                        if let item = gameModel.getCourse()?.name {
-                            HStack{
-                                Spacer()
-                                Text(item)
-                                    .foregroundStyle(.secondary)
-                                    .truncationMode(.tail)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
-                            }
-                        } else {
-                            HStack{
-                                Spacer()
-                                Text("No location found")
-                                    .foregroundStyle(.secondary)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .onAppear {
-            if showLocationButton {
-                viewModel.setUp(showTxtButtons: $showTextAndButtons, gameModel: gameModel, handler: locationHandler)
-            }
-        }
-    }
-    
     private var playersSection: some View {
         Section(header: Text("Players: \(gameModel.gameValue.players.count)")) {
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(gameModel.gameValue.players) { player in
                         PlayerIconView(player: player, isRemovable: player.userId.count == 6) {
-                            viewModel.playerToDelete = player.userId
-                            viewModel.resetTimer(gameModel)
-                            showDeleteAlert = true
+                            VM.playerToDelete = player.userId
+                            VM.resetTimer(gameModel)
+                            VM.showDeleteAlert = true
                         }
                     }
                     Button(action: {
-                        showAddPlayerAlert = true
-                        viewModel.resetTimer(gameModel)
+                        VM.showAddPlayerAlert = true
+                        VM.resetTimer(gameModel)
                     }) {
                         VStack {
                             ZStack {
@@ -369,13 +250,18 @@ struct HostView: View {
                     }
                 }
             }
+            .simultaneousGesture(
+                DragGesture().onChanged { _ in
+                    VM.resetTimer(gameModel)
+                }
+            )
             .frame(height: 75)
         }
     }
     
     private var startGameSection: some View {
         Button {
-            viewModel.startGame(viewManager: viewManager, showHost: $showHost, isGuest: isGuest, gameModel: gameModel)
+            VM.startGame(viewManager: viewManager, showHost: $showHost, isGuest: isGuest, gameModel: gameModel)
             if isGuest{
                 LocalGameRepository(context: context).deleteGuestGame(){ _ in}
             }
@@ -394,5 +280,134 @@ struct HostView: View {
                     .padding(.horizontal)
             )
         }
+    }
+}
+
+struct LocationButtons: View {
+    
+    @EnvironmentObject var VM: HostViewModel
+    @EnvironmentObject var gameModel: GameViewModel
+    @EnvironmentObject var locationHandler: LocationHandler
+    
+    var body: some View {
+        Group {
+            if NetworkChecker.shared.isConnected {
+                HStack{
+                    VStack{
+                        HStack{
+                            Text("Location:")
+                            Spacer()
+                        }
+                        if VM.showTextAndButtons {
+                            if let item = gameModel.getCourse()?.name {
+                                HStack{
+                                    Text(item)
+                                        .foregroundStyle(.secondary)
+                                        .truncationMode(.tail)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                    Spacer()
+                                }
+                            } else {
+                                HStack{
+                                    Text("No location found")
+                                        .foregroundStyle(.secondary)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if VM.showLocationButton {
+                        if !VM.showTextAndButtons {
+                            searchNearbyButton
+                        } else {
+                            retryButton
+                            exitButton
+                        }
+                    } else {
+                        noButtons
+                    }
+                }
+            }
+        }
+        .onAppear {
+            VM.setUp(gameModel: gameModel, handler: locationHandler)
+        }
+    }
+    
+    var noButtons: some View{
+        Group{
+            if let item = gameModel.getCourse()?.name {
+                HStack{
+                    Spacer()
+                    Text(item)
+                        .foregroundStyle(.secondary)
+                        .truncationMode(.tail)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            } else {
+                HStack{
+                    Spacer()
+                    Text("No location found")
+                        .foregroundStyle(.secondary)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+        }
+    }
+    
+    var searchNearbyButton: some View {
+        Button {
+            VM.searchNearby(gameModel: gameModel, handler: locationHandler)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                Text("Search Nearby")
+            }
+            .frame(width: 180, height: 50)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
+        .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+    
+    var retryButton: some View {
+        Button(action: {
+            withAnimation(){
+                VM.retry(gameModel: gameModel, handler: locationHandler)
+            }
+        }) {
+            Image(systemName: "arrow.trianglehead.2.clockwise")
+                .rotationEffect(.degrees(VM.isRotating ? 360 : 0))
+                .font(.title2)
+                .foregroundColor(.white)
+                .frame(width: 50, height: 50)
+                .background(Color.blue)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+    
+    var exitButton: some View {
+        Button(action: {
+            withAnimation {
+                VM.exit(gameModel: gameModel, handler: locationHandler)
+            }
+        }) {
+            Image(systemName: "xmark")
+                .font(.title2)
+                .foregroundColor(.white)
+                .frame(width: 50, height: 50)
+                .background(Color.red)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 }

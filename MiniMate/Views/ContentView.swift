@@ -28,10 +28,23 @@ struct ContentView: View {
         let auth = AuthViewModel()
         _authModel = StateObject(wrappedValue: auth)
         
-        // 3) now inject both into your GameViewModel
+        // 2) Create placeholder Game for GameViewModel (lightweight)
+        let placeholderGame = Game(
+            id: "",
+            date: Date(),
+            completed: false,
+            numberOfHoles: 18,
+            started: false,
+            dismissed: false,
+            live: false,
+            lastUpdated: Date(),
+            players: []
+        )
+        
+        // 3) Inject with placeholder - actual game loaded when needed
         _gameModel = StateObject(
             wrappedValue: GameViewModel(
-                game: Game(),
+                game: placeholderGame,
                 authModel: auth,
                 course: nil
             )
@@ -61,7 +74,7 @@ struct ContentView: View {
                 case .signIn:
                     SignInView()
                 case .host:
-                    HostView(showHost: $showHost, isGuest: true, showLocationButton: true)
+                    HostView(showHost: $showHost, isGuest: true)
                 }
             
                 
@@ -123,36 +136,94 @@ struct MainTabView: View {
     private var userRepo: UserRepository { UserRepository(context: context)}
     
     @State var selectedTab: Int
+    @State private var loadedTabs: Set<Int> = [1] // Home tab loaded by default
+    @State private var initialLoadComplete = false
     
     init(selectedTab: Int){
         self.selectedTab = selectedTab
     }
     
     var body: some View {
-        
-        TabView(selection: $selectedTab) {
-            StatsView()
+        ZStack {
+            TabView(selection: $selectedTab) {
+                // Lazy load Stats tab
+                Group {
+                    if loadedTabs.contains(0) {
+                        StatsView()
+                    } else {
+                        Color.clear.onAppear {
+                            loadedTabs.insert(0)
+                        }
+                    }
+                }
                 .tabItem { Label("Stats", systemImage: "chart.bar.xaxis") }
                 .tag(0)
-            
-            MainView()
-                .tabItem { Label("Home", systemImage: "house.fill") }
-                .tag(1)
-            if NetworkChecker.shared.isConnected {
-                CourseView()
+                
+                // Home tab - always loaded
+                MainView()
+                    .tabItem { Label("Home", systemImage: "house.fill") }
+                    .tag(1)
+                
+                // Lazy load Course tab
+                if NetworkChecker.shared.isConnected {
+                    Group {
+                        if loadedTabs.contains(2) {
+                            CourseView()
+                        } else {
+                            Color.clear.onAppear {
+                                loadedTabs.insert(2)
+                            }
+                        }
+                    }
                     .tabItem { Label("Courses", systemImage: "figure.golf") }
                     .tag(2)
+                }
+            }
+            .onChange(of: selectedTab) { oldValue, newValue in
+                // Preload tab content when user switches
+                loadedTabs.insert(newValue)
+            }
+            
+            // Subtle loading overlay - only shows briefly during initial load
+            if authModel.isLoadingUser && !initialLoadComplete && authModel.userModel == nil {
+                Color.black.opacity(0.2)
+                    .ignoresSafeArea()
+                    .overlay(
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    )
+                    .transition(.opacity)
             }
         }
         .onAppear {
-            if let id = authModel.currentUserIdentifier{
-                userRepo.loadOrCreateUser(id: id, authModel: authModel) { done1, done2, creation in
-                    Task { await iapManager.isPurchasedPro(authModel: authModel)
-                        if done2{
-                            LocalGameRepository(context: context).deleteAllUnusedGames { _ in }
-                            StatsViewModel().refreshFromCloudIfNeeded(user: authModel.userModel!, context: context) {}
-                        }
-                    }
+            // Launch background tasks that don't block UI
+            // Using Task (not detached) to stay on main actor for ModelContext
+            Task(priority: .userInitiated) {
+                
+                guard let id = authModel.currentUserIdentifier else { return }
+                
+                // Initialize IAP manager first
+                await iapManager.initialize()
+                
+                // Load user data
+                let userRepo = UserRepository(context: context)
+                _ = await userRepo.loadOrCreateUserAsync(id: id, authModel: authModel)
+                
+                print("Runnnign after user data loaded - userModel is now: \(String(describing: authModel.userModel))")
+                
+                // Mark initial load complete
+                initialLoadComplete = true
+                
+                // Defer non-critical operations - yield to let UI update
+                await Task.yield()
+                
+                // Run these after initial load
+                await iapManager.isPurchasedPro(authModel: authModel)
+                
+                if let userModel = authModel.userModel {
+                    LocalGameRepository(context: context).deleteAllUnusedGames { _ in }
+                    StatsViewModel().refreshFromCloudIfNeeded(user: userModel, context: context) {}
                 }
             }
         }

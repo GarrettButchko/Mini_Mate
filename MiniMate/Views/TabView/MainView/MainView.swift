@@ -38,7 +38,6 @@ struct MainView: View {
     
     @State private var analyzer: UserStatsAnalyzer? = nil
     @State private var analyzerTask: Task<Void, Never>? = nil
-    @State private var showDeferredContent = false
 
     private var userGameIDs: [String] {
         authModel.userModel?.gameIDs ?? []
@@ -130,10 +129,8 @@ struct MainView: View {
                                     
                                     proStopper
 
-                                    if showDeferredContent {
-                                        ad
-                                        lastGameStats
-                                    }
+                                    ad
+                                    lastGameStats
                                 }
                             }
                             .scrollIndicators(.hidden)
@@ -353,10 +350,6 @@ struct MainView: View {
         .ignoresSafeArea(.keyboard)
         .task {
             updateFilteredGames()
-            if !showDeferredContent {
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                showDeferredContent = true
-            }
             if NetworkChecker.shared.isConnected {
                 gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
             }

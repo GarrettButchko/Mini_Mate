@@ -41,9 +41,110 @@ final class UserRepository {
             }
         }
 
-        // 2️⃣ Background reconcile phase
-        fetchRemote(id: id) { remote in
-            self.reconcile(
+        // 2️⃣ Background reconcile phase - run on background queue
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.fetchRemote(id: id) { remote in
+                self.reconcile(
+                    local: local,
+                    remote: remote,
+                    id: id,
+                    firebaseUser: firebaseUser,
+                    name: name,
+                    authModel: authModel,
+                    signInMethod: signInMethod,
+                    appleId: appleId,
+                    guestGame: guestGame
+                ) { result in
+                    completion(false, true, result) // ✅ reconcile finished
+                }
+            }
+        }
+    }
+    
+    // MARK: - Async/Await Version for Better Performance
+    func loadOrCreateUserAsync(
+        id: String,
+        firebaseUser: User? = nil,
+        name: String? = nil,
+        authModel: AuthViewModel,
+        signInMethod: SignInMethod? = nil,
+        appleId: String? = nil,
+        guestGame: Game? = nil
+    ) async -> (immediate: Bool, reconciled: Bool, created: Bool) {
+        await MainActor.run {
+            authModel.isLoadingUser = true
+        }
+        defer {
+            Task { @MainActor in
+                authModel.isLoadingUser = false
+            }
+        }
+        
+        
+        // 1️⃣ Immediate local phase - run synchronously on main
+        let local = fetchLocal(id: id)
+        
+        if let local {
+            print("✅ Found local user immediately")
+            authModel.setUserModel(local)
+            
+            // 2️⃣ Background reconcile phase - use regular Task to stay on main actor
+            Task(priority: .userInitiated) {
+                let remote = await self.fetchRemoteAsync(id: id)
+                _ = await self.reconcileAsync(
+                    local: local,
+                    remote: remote,
+                    id: id,
+                    firebaseUser: firebaseUser,
+                    name: name,
+                    authModel: authModel,
+                    signInMethod: signInMethod,
+                    appleId: appleId,
+                    guestGame: guestGame
+                )
+            }
+            
+            return (true, false, false)
+        }
+        
+        // No local user - need to fetch remote
+        let remote = await fetchRemoteAsync(id: id)
+        let created = await reconcileAsync(
+            local: nil,
+            remote: remote,
+            id: id,
+            firebaseUser: firebaseUser,
+            name: name,
+            authModel: authModel,
+            signInMethod: signInMethod,
+            appleId: appleId,
+            guestGame: guestGame
+        )
+        
+        return (false, true, created)
+    }
+    
+    private func fetchRemoteAsync(id: String) async -> UserModel? {
+        await withCheckedContinuation { continuation in
+            fetchRemote(id: id) { user in
+                continuation.resume(returning: user)
+            }
+        }
+    }
+    
+    private func reconcileAsync(
+        local: UserModel?,
+        remote: UserModel?,
+        id: String,
+        firebaseUser: User?,
+        name: String?,
+        authModel: AuthViewModel,
+        signInMethod: SignInMethod? = nil,
+        appleId: String? = nil,
+        guestGame: Game? = nil
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            reconcile(
                 local: local,
                 remote: remote,
                 id: id,
@@ -53,8 +154,8 @@ final class UserRepository {
                 signInMethod: signInMethod,
                 appleId: appleId,
                 guestGame: guestGame
-            ) { result in
-                completion(false, true, result) // ✅ reconcile finished
+            ) { created in
+                continuation.resume(returning: created)
             }
         }
     }
@@ -273,6 +374,9 @@ final class UserRepository {
 
     
     func fetchLocal(id: String) -> UserModel? {
+
+        
+        
         let descriptor = FetchDescriptor<UserModel>(
             predicate: #Predicate { $0.googleId == id }
         )
