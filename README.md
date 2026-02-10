@@ -1,62 +1,73 @@
-🏌️‍♂️ MiniMate
+# MiniMate
 
-MiniMate is a digital companion for mini golf businesses — offering branded App Clip experiences, digital scorecards, live leaderboards, and powerful customer insights. It’s built to modernize the mini golf experience for both players and course owners.
+MiniMate is a digital companion for mini golf businesses — designed to modernize the course experience with digital scorekeeping, leaderboards, and customer insights.
 
-🚀 Features
-⛳ For Players
+## Quick Summary
 
-Instant App Clip access via QR code — no full download needed
+- Digital scorecards and automated scoring
+- Live leaderboards and player stats
+- Business dashboard for insights and promotions
+- Built with modern iOS technologies and Firebase backend
 
-Digital scorecards with automatic scoring
+## Features
 
-Live leaderboards to compete with friends or other players
+### For Players
 
-Personalized stats for your games and achievements
+- Instant access via QR codes
+- Digital scorecards with automatic scoring
+- Live leaderboards to compete locally or globally
+- Personal game stats and achievements
 
-🏢 For Businesses
+### For Businesses
 
-Custom-branded App Clip with your logo and course details
+- Branded experience with course details and assets
+- Customer insights dashboard (play trends, engagement)
+- Promotions, seasonal campaigns, and optional ads
+- Leaderboard management and event features
 
-Customer insights dashboard (demographics, play trends, engagement)
+## Tech Stack
 
-Optional ads or promotions displayed in the app
+- App: SwiftUI, SwiftData
+- Backend: Firebase (Auth, Firestore, Functions) and/or custom APIs
+- Analytics: Apple App Analytics, custom metrics
 
-Add-on features like online leaderboards and seasonal campaigns
+## Architecture Overview
 
-💡 Why MiniMate
+1. Player device scans a QR code at the course and opens the app.
+2. The app records game data and updates live leaderboards via the backend.
+3. Course owners view aggregated metrics and manage promotions through a web dashboard.
 
-MiniMate helps mini golf businesses modernize their course experience:
+## Getting Started (for developers)
 
-Reduce paper waste with digital scorecards
+1. Open the Xcode workspace: MiniMate.xcworkspace
+2. Install CocoaPods or Swift packages if used by your environment.
+3. Configure Firebase by adding `GoogleService-Info.plist` to the appropriate targets.
+4. Select a scheme (MiniMate or MiniMate Manager) and run on a device or simulator.
 
-Engage players through competition and fun design
+Notes:
+- Ensure you have an Apple Developer account configured in Xcode for device testing.
+- For production analytics and backend features, configure Firebase project settings and authentication.
 
-Gather anonymized demographic insights
+## Local Functions (Cloud Functions)
 
-Boost visibility with a fast, branded iOS App Clip
+If using Firebase Functions, the `functions/` folder contains the server code. To run locally:
 
-🧰 Tech Stack
-Layer	Technologies
-Frontend (App)	SwiftUI, SwiftData
-Backend	Firebase / Custom API Integration
-App Clip	iOS App Clip Experience with Smart Banners
-Analytics	Apple App Analytics, custom metrics
-Website	CircuitLeaf
- landing page
-🧠 Architecture Overview
+```bash
+cd functions
+npm install
+firebase emulators:start --only functions
+```
 
-App Clip serves as a lightweight entry point for users scanning a QR code at a mini golf course.
+## Contributing
 
-Full App (optional) unlocks more features like play history, rewards, and player accounts.
+- Fork the repo and open a PR for changes
+- Follow the existing Swift style and project structure
+- Add tests where applicable and run the project locally before submitting
 
-Course Dashboard (web-based) gives business owners access to stats, leaderboards, and promotional tools.
+## License & Contact
 
-🧩 Planned Features
+This project is maintained privately. For questions or access, contact the maintainer.
 
-Multiplayer syncing between devices
+---
 
-AR-based hole previews
-
-API for integrating course management systems
-
-Enhanced player rewards system
+If you'd like, I can also: add a short development checklist, include example env files, or update the `functions/package.json` scripts. Which would you like next?
