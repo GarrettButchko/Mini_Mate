@@ -48,16 +48,6 @@ Notes:
 - Ensure you have an Apple Developer account configured in Xcode for device testing.
 - For production analytics and backend features, configure Firebase project settings and authentication.
 
-## Local Functions (Cloud Functions)
-
-If using Firebase Functions, the `functions/` folder contains the server code. To run locally:
-
-```bash
-cd functions
-npm install
-firebase emulators:start --only functions
-```
-
 ## Contributing
 
 - Fork the repo and open a PR for changes
