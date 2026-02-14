@@ -10,7 +10,7 @@ import SwiftUI
 extension Shape {
     @ViewBuilder
     func ifAvailableGlassEffect(strokeWidth: CGFloat = 1, opacity: CGFloat = 0.30, makeColor: Color? = nil) -> some View {
-        let fillColor = (makeColor ?? Color.subTwo).opacity(opacity)
+        let fillColor = (makeColor ?? Color.sub).opacity(opacity)
         let strokeColor = (makeColor ?? Color.subTwo)
 
         if #available(iOS 26.0, *) {
@@ -39,6 +39,19 @@ extension View {
         } else {
             self
                 .background(.ultraThinMaterial)
+        }
+    }
+}
+
+extension Shape {
+    @ViewBuilder
+    func subVsColor(makeColor: Color?) -> some View {
+        if let makeColor {
+            self
+                .fill(makeColor.opacity(0.50))
+        } else {
+            self
+                .fill(.sub)
         }
     }
 }

@@ -3,6 +3,14 @@ import _SwiftData_SwiftUI
 import StoreKit
 import MapKit
 
+// MARK: - Height Preference Key
+struct HeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct MainView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var locationHandler: LocationHandler
@@ -39,6 +47,7 @@ struct MainView: View {
     @State private var analyzer: UserStatsAnalyzer? = nil
     @State private var analyzerTask: Task<Void, Never>? = nil
     @State private var showLastGameStats = false
+    @State private var buttonsViewHeight: CGFloat = 0
 
     private var userGameIDs: [String] {
         authModel.userModel?.gameIDs ?? []
@@ -73,6 +82,11 @@ struct MainView: View {
         }
         .onChange(of: userGameIDs) { _, _ in
             updateFilteredGames()
+        }
+        .background{
+            Rectangle()
+                .fill(.bg)
+                .ignoresSafeArea()
         }
     }
     
@@ -150,7 +164,7 @@ struct MainView: View {
                 VStack {
                     Rectangle()
                         .fill(Color.clear)
-                        .frame(height: 175)
+                        .frame(height: 175) // added 25 for space at top of button views
                     
                     ScrollView {
                         VStack(spacing: 16) {
@@ -164,7 +178,7 @@ struct MainView: View {
                         }
                         .padding(.top, 16)
                     }
-                    .contentMargins(.top, 109)
+                    .contentMargins(.top, buttonsViewHeight - 25) // subtract 25 to allow some overlap for aesthetic
                     .scrollIndicators(.hidden)
                 }
             }
@@ -181,15 +195,27 @@ struct MainView: View {
                 gameModeButtons
             }
             .padding()
-            .background(content: {
-                RoundedRectangle(cornerRadius: 25)
-                    .ifAvailableGlassEffect(makeColor: course?.scoreCardColor)
-            })
+            .background(){
+                GeometryReader { proxy in
+                    RoundedRectangle(cornerRadius: 25)
+                        .ifAvailableGlassEffect(opacity: 0.6, makeColor: course?.scoreCardColor) // Create a transparent view matching the parent's size
+                        .task(id: proxy.size) {
+                            buttonsViewHeight = proxy.size.height // Capture the size and monitor changes
+                        }
+                }
+            }
             
             Spacer()
             
             proBuyButton
         }
+        .background(
+            GeometryReader { geometry in
+                Color.clear
+                    .preference(key: HeightPreferenceKey.self, value: geometry.size.height)
+            }
+        )
+        
     }
     
     private var headerControls: some View {
@@ -258,6 +284,7 @@ struct MainView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: isOnlineMode)
+        
     }
     
     private var onlineGameButtons: some View {
@@ -498,8 +525,10 @@ struct MainView: View {
                     }
                 }
                 .padding()
-                .ultraThinMaterialVsColor(makeColor: course?.scoreCardColor)
-                .clipShape(RoundedRectangle(cornerRadius: 25))
+                .background(){
+                    RoundedRectangle(cornerRadius: 25)
+                        .subVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                }
                 .compositingGroup()
             }
         }
@@ -511,8 +540,10 @@ struct MainView: View {
                 Text("You’ve reached the free limit. Upgrade to Pro to store more than 2 games.")
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 25))
+                    .background(){
+                        RoundedRectangle(cornerRadius: 25)
+                            .subVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                    }
                     .compositingGroup()
             }
         }
@@ -526,8 +557,10 @@ struct MainView: View {
                         .frame(height: 50)
                         .padding()
                 }
-                .ultraThinMaterialVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
-                .clipShape(RoundedRectangle(cornerRadius: 25))
+                .background(){
+                    RoundedRectangle(cornerRadius: 25)
+                        .subVsColor(makeColor: gameModel.getCourse()?.scoreCardColor)
+                }
                 .compositingGroup()
             }
         }

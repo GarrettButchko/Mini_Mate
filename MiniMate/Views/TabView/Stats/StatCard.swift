@@ -63,9 +63,7 @@ struct StatCard: View {
             }
         .padding()
         .frame(height: cardHeight)
-        .background(colorScheme == .light
-                    ? AnyShapeStyle(Color.white)
-                    : AnyShapeStyle(.ultraThinMaterial))
+        .background(.subTwo)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
     }
 }

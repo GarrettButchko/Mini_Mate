@@ -36,7 +36,7 @@ struct BarChartView: View {
         let yMax = maxStroke + 2
         let yAxisLines = yMax / 3
         let xDomain: ClosedRange<Int> = data.isEmpty ? 0...1 : 1...data.count
-        let backgroundStyle: AnyShapeStyle = {
+        let _: AnyShapeStyle = {
             switch backgroundType {
             case .clear:
                 return AnyShapeStyle(.clear)
@@ -109,7 +109,7 @@ struct BarChartView: View {
         .padding(.trailing, paddingReview ? 12 : 15)
         .background(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(backgroundStyle)
+                .fill(.subTwo)
         )
     }
 }

@@ -145,6 +145,10 @@ struct MainTabView: View {
     
     var body: some View {
         ZStack {
+            
+            Color(.red)
+                .ignoresSafeArea()
+            
             TabView(selection: $selectedTab) {
                 // Lazy load Stats tab
                 Group {

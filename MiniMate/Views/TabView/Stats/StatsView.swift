@@ -124,6 +124,7 @@ struct StatsView: View {
                 }
                 .animation(.easeInOut(duration: 0.3), value: viewModel.pickedSection)
             }
+            .background(.bg)
             .safeAreaPadding([.horizontal])
             .sheet(isPresented: $viewModel.isSharePresented) {
                 ActivityView(activityItems: [viewModel.shareContent])
@@ -376,7 +377,7 @@ struct GameGridView: View {
             
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .background(.sub)
         .clipShape(RoundedRectangle(cornerRadius: 25))
         .frame(height: 250)
     }

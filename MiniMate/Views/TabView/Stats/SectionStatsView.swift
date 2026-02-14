@@ -25,7 +25,9 @@ struct SectionStatsView<Content: View>: View {
             content()
         }
         .padding()
-        .ultraThinMaterialVsColor(makeColor: makeColor)
-        .clipShape(RoundedRectangle(cornerRadius: 25))
+        .background{
+            RoundedRectangle(cornerRadius: 25)
+                .fill(.sub)
+        }
     }
 }
