@@ -96,4 +96,16 @@ final class CourseViewModel: ObservableObject {
         let launchOptions = [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
         locationHandler.bindingForSelectedItem().wrappedValue?.openInMaps(launchOptions: launchOptions)
     }
+    
+    func getPostalAddress(from mapItem: MKMapItem) -> String {
+        let placemark = mapItem.placemark
+        var components: [String] = []
+        
+        if let subThoroughfare = placemark.subThoroughfare { components.append(subThoroughfare) }
+        if let thoroughfare = placemark.thoroughfare { components.append(thoroughfare) }
+        if let locality = placemark.locality { components.append(locality) }
+        if let administrativeArea = placemark.administrativeArea { components.append(administrativeArea) }
+        
+        return components.joined(separator: ", ")
+    }
 }

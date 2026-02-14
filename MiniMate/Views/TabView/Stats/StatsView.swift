@@ -23,12 +23,15 @@ struct StatsView: View {
     
     var games: [Game] {
         let filteredGames: [Game]
+        let searchLowercased = viewModel.searchText.lowercased()
         if viewModel.searchText.isEmpty {
             filteredGames = usersGames
         } else {
-            filteredGames = usersGames.filter { $0.date.formatted(date: .abbreviated, time: .shortened).lowercased().contains(viewModel.searchText.lowercased()) }
-        }
-        
+            filteredGames = usersGames.filter {
+                $0.date.formatted(date: .abbreviated, time: .shortened).lowercased().contains(searchLowercased)
+                || ($0.locationName != nil && $0.locationName!.contains(searchLowercased))
+                || ($0.players.contains(where: { $0.name.lowercased().contains(searchLowercased) }))
+            }}
         let sortedGames: [Game]
         if viewModel.latest {
             sortedGames = filteredGames.sorted { $0.date > $1.date }
@@ -173,11 +176,12 @@ struct StatsView: View {
                                         GameReviewView(game: game, showBackToStatsButton: true, gameReview: $gameReview)
                                             .presentationDragIndicator(.visible)
                                     }
+                                    .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
                             }
                             Image("logoOpp")
                                 .resizable()
                                 .frame(width: 50, height: 50)
-                                .padding()
+                                .padding(.bottom, 16)
                         } else {
                             ProgressView()
                         }
@@ -228,6 +232,7 @@ struct StatsView: View {
                         }
                     }
                 }
+                .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
                 Spacer()
             }
         }
@@ -431,24 +436,19 @@ struct GameRow: View {
             HStack{
                 GameGridView(editOn: $editOn, game: game)
                     .frame(width: proxy.size.width)
-                    .transition(.opacity)
-                    .swipeMod(
-                        editingID: $editingGameID,
-                        id: game.id,
+                    .transition(.opacity.combined(with: .blurReplace))
+                    .swipeMod(editingID: $editingGameID, id: game.id,
                         buttonPressFunction: {
                             gameReview = game
                         },
-                        buttonOne:
-                        NetworkChecker.shared.isConnected ?
-                        ButtonSkim(color: Color.blue, systemImage: "square.and.arrow.up", string: makeShareableSummary(for: game)) :
-                        nil
+                        buttonOne: NetworkChecker.shared.isConnected ? ButtonSkim(color: Color.blue, systemImage: "square.and.arrow.up", string: makeShareableSummary(for: game)) : nil
                     ) {
                         if let user = authModel.userModel {
                             withAnimation {
                                 user.gameIDs.removeAll(where: { $0 == game.id })
                             }
                             UserRepository().saveRemote(id: authModel.currentUserIdentifier!, userModel: user) { _ in }
-                                // Delete the SwiftData object *after* a delay
+                            // Delete the SwiftData object *after* a delay
                             remoteGameRepo.delete(id: game.id) { _ in }
                             
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -481,6 +481,21 @@ struct GameRow: View {
         lines.append("")
         lines.append("Download MiniMate: https://apps.apple.com/app/id6745438125")
         return lines.joined(separator: "\n")
+    }
+}
+
+struct DarkenOnPressButtonStyle: ButtonStyle {
+    var darkenOpacity: Double = 0.22
+    var animation: Animation = .easeInOut(duration: 0.12)
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .overlay(
+                Color.black
+                    .opacity(configuration.isPressed ? darkenOpacity : 0)
+                    .allowsHitTesting(false)
+            )
+            .animation(animation, value: configuration.isPressed)
     }
 }
 

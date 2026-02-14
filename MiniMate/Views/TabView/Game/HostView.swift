@@ -73,10 +73,6 @@ struct HostView: View {
                         .fontWeight(.bold)
                         .padding(.horizontal)
                         .padding(.vertical, 8)
-                        .background{
-                            RoundedRectangle(cornerRadius: 25)
-                                .ifAvailableGlassEffect()
-                        }
                         .padding(.top, 20)
                     
                     Spacer()
@@ -124,6 +120,9 @@ struct HostView: View {
                     .ignoresSafeArea(edges: .bottom)
                 )
             }
+        }
+        .onAppear {
+            VM.setUp(gameModel: gameModel, handler: locationHandler)
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -325,52 +324,56 @@ struct LocationButtons: View {
     @EnvironmentObject var locationHandler: LocationHandler
     
     var body: some View {
-        Group {
-            if NetworkChecker.shared.isConnected {
+        let item = gameModel.getCourse()?.name
+        let isConnected = NetworkChecker.shared.isConnected
+    
+        Group{
+            if VM.showLocationButton && isConnected {
                 HStack{
                     VStack{
                         HStack{
                             Text("Location:")
                             Spacer()
                         }
-                        if VM.showTextAndButtons {
-                            if let item = gameModel.getCourse()?.name {
-                                HStack{
-                                    Text(item)
-                                        .foregroundStyle(.secondary)
-                                        .truncationMode(.tail)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                    Spacer()
-                                }
-                            } else {
-                                HStack{
-                                    Text("No location found")
-                                        .foregroundStyle(.secondary)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                    Spacer()
-                                }
+                        
+                        if let item = item {
+                            HStack{
+                                Text(item)
+                                    .foregroundStyle(.secondary)
+                                    .truncationMode(.tail)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                Spacer()
+                            }
+                        } else {
+                            HStack{
+                                Text("No Location")
+                                    .foregroundStyle(.secondary)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                Spacer()
                             }
                         }
                     }
                     
                     Spacer()
                     
-                    if VM.showLocationButton {
-                        if !VM.showTextAndButtons {
-                            searchNearbyButton
-                        } else {
-                            retryButton
-                            exitButton
-                        }
+                    
+                    if item == nil {
+                        searchNearbyButton
                     } else {
-                        noButtons
+                        retryButton
+                        exitButton
                     }
+                }
+                
+            } else if let item = item, !VM.showLocationButton && isConnected {
+                HStack{
+                    Text("Location:")
+                    Spacer()
+                    Text(item)
                 }
             }
         }
-        .onAppear {
-            VM.setUp(gameModel: gameModel, handler: locationHandler)
-        }
+        
     }
     
     var noButtons: some View{

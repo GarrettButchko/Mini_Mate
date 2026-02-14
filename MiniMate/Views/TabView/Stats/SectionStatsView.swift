@@ -28,6 +28,8 @@ struct SectionStatsView<Content: View>: View {
         .background{
             RoundedRectangle(cornerRadius: 25)
                 .fill(.sub)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
         }
+        
     }
 }

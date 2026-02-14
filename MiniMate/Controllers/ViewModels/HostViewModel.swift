@@ -31,7 +31,6 @@ final class HostViewModel: ObservableObject {
     
     private let ttl: TimeInterval = 5 * 60
     private var lastUpdated = Date()
-    private var lastQRCodeId: String?
     private var lastResetTime: Date?
     private let resetCooldown: TimeInterval = 2.0 // Minimum 1 second between resets
     
@@ -111,7 +110,7 @@ final class HostViewModel: ObservableObject {
     
     func searchNearby(gameModel: GameViewModel, handler: LocationHandler) {
         gameModel.setHasLoaded(false)
-        gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTextAndButtonsBinding)
+        gameModel.findClosestLocationAndLoadCourse(locationHandler: handler)
         resetTimer(gameModel)
     }
     
@@ -132,15 +131,15 @@ final class HostViewModel: ObservableObject {
     }
     
     func setUp(gameModel: GameViewModel, handler: LocationHandler) {
-        if lastQRCodeId != gameModel.id {
-            lastQRCodeId = gameModel.id
-            generateQRCode(from: gameModel.id)
-        }
-
+        generateQRCode(from: gameModel.gameValue.id)
+        courseFind(gameModel: gameModel, handler: handler)
+    }
+    
+    func courseFind(gameModel: GameViewModel, handler: LocationHandler ) {
         guard showLocationButton else { return }
         
         if gameModel.getCourse() == nil && !gameModel.getHasLoaded() {
-            gameModel.findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTextAndButtonsBinding)
+            gameModel.findClosestLocationAndLoadCourse(locationHandler: handler)
             gameModel.setHasLoaded(true)
         }
     }
@@ -155,10 +154,9 @@ final class HostViewModel: ObservableObject {
     
     func generateQRCode(from string: String) {
         // Offload heavy CoreImage work to avoid blocking first render.
-        Task.detached(priority: .utility) { [lastQRCodeId] in
+        Task.detached(priority: .utility) {
             let image = Self.makeQRCodeImage(from: string)
             await MainActor.run {
-                guard lastQRCodeId == string else { return }
                 self.qrCodeImage = image
             }
         }

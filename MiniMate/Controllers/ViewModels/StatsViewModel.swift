@@ -45,6 +45,7 @@ final class StatsViewModel: ObservableObject {
         guard !isCooldown else { return }
 
         withAnimation {
+            editingGameID = nil
             latest.toggle()
         }
 

@@ -45,18 +45,15 @@ struct JoinView: View {
                         .fontWeight(.bold)
                         .padding(.horizontal)
                         .padding(.vertical, 8)
-                        .background{
-                            RoundedRectangle(cornerRadius: 25)
-                                .ifAvailableGlassEffect()
-                        }
                         .padding(.top, 20)
+                    
                     Spacer()
                 }
                 .padding(.bottom)
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.sub.opacity(1),
+                            Color.bg.opacity(1),
                             Color.clear
                         ]),
                         startPoint: .top,
@@ -118,7 +115,7 @@ struct JoinView: View {
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.sub.opacity(1),
+                            Color.bg.opacity(1),
                             Color.clear
                         ]),
                         startPoint: .bottom,
@@ -139,6 +136,7 @@ struct JoinView: View {
         .onChange(of: viewModel.gameModel.gameValue.dismissed) {
             viewModel.gameDidDismiss($1)
         }
+        .background(.bg)
     }
     
     // MARK: - Sections
@@ -187,9 +185,9 @@ struct JoinView: View {
             .padding(.vertical, 32)
             .padding(.horizontal, 24)
             .background {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.3), radius: 20, y: 6)
+                RoundedRectangle(cornerRadius: 25, style: .continuous)
+                    .fill(.sub)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
             }
             .padding(.horizontal, 20)
             .padding(.top, 25)

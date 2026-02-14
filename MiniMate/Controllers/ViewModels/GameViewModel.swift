@@ -657,7 +657,7 @@ final class GameViewModel: ObservableObject, Observable {
     
     // MARK: Course
 
-    func findClosestLocationAndLoadCourse(locationHandler: LocationHandler, showTextAndButtons: Binding<Bool>) {
+    func findClosestLocationAndLoadCourse(locationHandler: LocationHandler) {
         guard !hasLoaded else { return }
 
         // Use a Task to move the heavy lifting off the Main Thread
@@ -673,13 +673,13 @@ final class GameViewModel: ObservableObject, Observable {
 
                 // 3. Switch back to Main for UI and Firebase
                 Task { @MainActor in
-                    withAnimation { showTextAndButtons.wrappedValue = true }
-                    
                     let courseID = CourseIDGenerator.generateCourseID(from: closestPlace.toDTO())
                     
                     // Now fetch the course
                     self.courseRepo.fetchCourse(id: courseID) { course in
-                        self.course = course
+                        withAnimation {
+                            self.course = course
+                        }
                         self.hasLoaded = true
                     }
                 }
@@ -688,26 +688,25 @@ final class GameViewModel: ObservableObject, Observable {
     }
 
     
-    func setUp(showTxtButtons: Binding<Bool>, handler: LocationHandler) {
+    func setUp(handler: LocationHandler) {
         if getCourse() == nil && !getHasLoaded() {
-            findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+            findClosestLocationAndLoadCourse(locationHandler: handler)
             setHasLoaded(true)
         }
     }
     
-    func searchNearby(showTxtButtons: Binding<Bool>, handler: LocationHandler) {
+    func searchNearby(handler: LocationHandler) {
         setHasLoaded(false)
-        findClosestLocationAndLoadCourse(locationHandler: handler, showTextAndButtons: showTxtButtons)
+        findClosestLocationAndLoadCourse(locationHandler: handler)
     }
     
-    func exit(showTxtButtons: Binding<Bool>, handler: LocationHandler){
+    func exit(handler: LocationHandler){
         resetCourse()
-        showTxtButtons.wrappedValue = false
     }
     
-    func retry(showTxtButtons: Binding<Bool>, isRotating: Binding<Bool>, handler: LocationHandler) {
+    func retry(isRotating: Binding<Bool>, handler: LocationHandler) {
         isRotating.wrappedValue = true
-        searchNearby(showTxtButtons: showTxtButtons, handler: handler)
+        searchNearby(handler: handler)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             isRotating.wrappedValue = false

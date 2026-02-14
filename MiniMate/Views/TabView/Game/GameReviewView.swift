@@ -44,6 +44,7 @@ struct GameReviewView: View {
         .sheet(isPresented: $showInfoView) {
             GameInfoView(game: viewModel.game, isSheetPresent: $showInfoView)
         }
+        .background(.bg)
     }
     
     
@@ -85,20 +86,11 @@ struct GameReviewView: View {
             viewModel.loadCourse()
         }
         .background {
-            scoreCardBackground
+            RoundedRectangle(cornerRadius: 25)
+                .subVsColor(makeColor: viewModel.course?.scoreCardColor)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 25))
         .padding(.vertical, 10)
-    }
-    
-    private var scoreCardBackground: some View {
-        Group {
-            if let color = viewModel.course?.scoreCardColor {
-                Rectangle().fill(color)
-            } else {
-                Rectangle().fill(.ultraThinMaterial)
-            }
-        }
+        .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
     }
     
     /// Player Row

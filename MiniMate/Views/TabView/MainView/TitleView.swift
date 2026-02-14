@@ -45,10 +45,10 @@ struct TitleView: View {
             
             // Orbiting background
             OrbitingCirclesView(colors: colors)
-                .frame(width: 220, height: 220)
+                .frame(width: 220, height: 150)
                 .clipped()
         }
-        .frame(width: 220, height: 220)
+        .frame(width: 220, height: 150)
     }
 }
 

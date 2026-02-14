@@ -64,6 +64,7 @@ struct SwipeableRowModifier: ViewModifier {
     @State private var offsetX: CGFloat = 0
     @State private var lastOffsetX: CGFloat = 0
     @State private var hasVibrated = false
+    @State private var isPressed = false
     var id: String
     
     let pausePoint: CGFloat = -100
@@ -80,6 +81,13 @@ struct SwipeableRowModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
+            .overlay(
+                Color.main
+                    .opacity(isPressed ? 0.32 : 0)
+                    .mask(content)
+                    .allowsHitTesting(false)
+                    .animation(.easeInOut(duration: 0.12), value: isPressed)
+            )
             .background(alignment: .trailing) {
                 if editingID == id {
                     actionButtons
@@ -94,9 +102,27 @@ struct SwipeableRowModifier: ViewModifier {
             .simultaneousGesture(dragGesture)
             .onTapGesture {
                 if editingID != id {
+                    isPressed = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                        isPressed = false
+                    }
                     buttonPressFunction()
                 } else { /* If we are editing, let the taps pass through to buttons */ }
             }
+            .onLongPressGesture(
+                minimumDuration: 0.5,
+                maximumDistance: 10,
+                pressing: { pressing in
+                    withAnimation(.easeInOut(duration: 0.12)) {
+                        isPressed = pressing
+                    }
+                },
+                perform: {
+                    if editingID != id {
+                        buttonPressFunction() // long‑press completed action
+                    }
+                }
+            )
             .onChange(of: editingID) { oldValue, newValue in
                 if newValue != id {
                     withAnimation(.easeOut(duration: 0.2)){

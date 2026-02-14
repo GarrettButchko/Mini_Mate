@@ -92,6 +92,7 @@ struct CourseView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 30)
                 }
+                .environmentObject(courseViewModel)
             } else {
                 HStack(alignment: .center){
                     Spacer()
@@ -495,6 +496,7 @@ struct SearchResultRow: View {
     let userLocation: CLLocationCoordinate2D
     @State private var isSupported: Bool = false
     let courseRepo = CourseRepository()
+    @EnvironmentObject var VM: CourseViewModel
     
     var body: some View {
         HStack{
@@ -515,7 +517,7 @@ struct SearchResultRow: View {
                 
                 
                 MarqueeText(
-                    text: "\(String(format: "%.1f", distanceInMiles)) mi - \(getPostalAddress(from: item))",
+                    text: "\(String(format: "%.1f", distanceInMiles)) mi - \(VM.getPostalAddress(from: item))",
                     font: UIFont.preferredFont(forTextStyle: .subheadline),
                     leftFade: 16,
                     rightFade: 16,
@@ -548,18 +550,6 @@ struct SearchResultRow: View {
                 }
             }
         }
-    }
-    
-    private func getPostalAddress(from mapItem: MKMapItem) -> String {
-        let placemark = mapItem.placemark
-        var components: [String] = []
-        
-        if let subThoroughfare = placemark.subThoroughfare { components.append(subThoroughfare) }
-        if let thoroughfare = placemark.thoroughfare { components.append(thoroughfare) }
-        if let locality = placemark.locality { components.append(locality) }
-        if let administrativeArea = placemark.administrativeArea { components.append(administrativeArea) }
-        
-        return components.joined(separator: ", ")
     }
 }
 

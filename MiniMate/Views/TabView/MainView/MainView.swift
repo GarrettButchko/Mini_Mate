@@ -38,7 +38,6 @@ struct MainView: View {
     @State var editOn: Bool = false
     @State var showDonation: Bool = false
     @State var showInfo: Bool = false
-    @State var showTextAndButtons: Bool = false
     @State var isRotating: Bool = false
     @State var gameReview: Game? = nil
     
@@ -59,22 +58,21 @@ struct MainView: View {
         ZStack {
             VStack(spacing: 24) {
                 topBar
+                    .padding(.horizontal)
                 
                 ZStack {
                     scrollContent(course: course)
                     actionButtonsSection(course: course)
                 }
             }
-            .padding([.top, .horizontal])
+            .padding(.top)
+            .contentMargins(.horizontal, 16)
         }
         .ignoresSafeArea(.keyboard)
         .task {
             updateFilteredGames()
             if NetworkChecker.shared.isConnected {
-                gameModel.setUp(showTxtButtons: $showTextAndButtons, handler: locationHandler)
-            }
-            if course != nil {
-                showTextAndButtons = true
+                gameModel.setUp(handler: locationHandler)
             }
         }
         .onChange(of: allGames) { _, _ in
@@ -170,11 +168,15 @@ struct MainView: View {
                         VStack(spacing: 16) {
                             if NetworkChecker.shared.isConnected {
                                 locationButtons(course: course)
+                                    .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
                             }
                             
                             proStopper
+                                .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
                             ad
+                                .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
                             lastGameStats
+                                
                         }
                         .padding(.top, 16)
                     }
@@ -204,6 +206,9 @@ struct MainView: View {
                         }
                 }
             }
+            .clipped()
+            .padding(.horizontal)
+            .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
             
             Spacer()
             
@@ -219,11 +224,11 @@ struct MainView: View {
     }
     
     private var headerControls: some View {
-        HStack {
+        HStack(alignment: .top){
             ZStack {
                 if isOnlineMode {
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.35)) {
+                        withAnimation(.easeInOut) {
                             isOnlineMode = false
                         }
                     }) {
@@ -247,11 +252,14 @@ struct MainView: View {
             
             ZStack {
                 Text(isOnlineMode ? "Online Options" : "Start a Round")
+                    .id(isOnlineMode)
                     .font(.title)
                     .fontWeight(.bold)
-                    .transition(.opacity.combined(with: .scale))
+                    .lineLimit(1)
+                    .transition(.move(edge: .top).combined(with: .blurReplace).combined(with: .scale).combined(with: .opacity))
             }
-            .animation(.easeInOut(duration: 0.35), value: isOnlineMode)
+            .frame(maxWidth: .infinity)
+            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isOnlineMode)
             
             Spacer()
             
@@ -261,7 +269,7 @@ struct MainView: View {
                 Image(systemName: "info.circle")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 25, height: 25)
+                    .frame(width: 20, height: 20)
                     .foregroundStyle(.blue)
             }
             .alert("Info", isPresented: $showInfo) {
@@ -283,7 +291,7 @@ struct MainView: View {
                 offlineGameButtons
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: isOnlineMode)
+        .animation(.spring(response: 0.45, dampingFraction: 0.75), value: isOnlineMode)
         
     }
     
@@ -291,7 +299,9 @@ struct MainView: View {
         HStack(spacing: 16) {
             gameModeButton(title: "Host", icon: "antenna.radiowaves.left.and.right", color: .purple) {
                 gameModel.createGame(online: true)
-                showHost = true
+                withAnimation(.easeInOut) {
+                    showHost = true
+                }
             }
             .sheet(isPresented: $showHost) {
                 HostView(showHost: $showHost)
@@ -301,7 +311,9 @@ struct MainView: View {
             
             gameModeButton(title: "Join", icon: "person.2.fill", color: .orange) {
                 gameModel.resetGame()
-                showJoin = true
+                withAnimation(.easeInOut) {
+                    showJoin = true
+                }
             }
             .sheet(isPresented: $showJoin) {
                 JoinView(authModel: authModel, viewManager: viewManager, gameModel: gameModel, showHost: $showJoin)
@@ -309,10 +321,7 @@ struct MainView: View {
                     .presentationDragIndicator(.visible)
             }
         }
-        .transition(.asymmetric(
-            insertion: .move(edge: .trailing).combined(with: .opacity),
-            removal: .move(edge: .trailing).combined(with: .opacity)
-        ))
+        .transition(.move(edge: .trailing).combined(with: .opacity).combined(with: .blurReplace))
         .clipped()
     }
     
@@ -321,9 +330,9 @@ struct MainView: View {
             gameModeButton(title: "Quick", icon: "person.fill", color: .blue) {
                 if !disablePlaying {
                     gameModel.createGame(online: false)
-                    showHost = true
-                    withAnimation {
+                    withAnimation(.easeInOut) {
                         isOnlineMode = false
+                        showHost = true
                     }
                 } else {
                     showDonation = true
@@ -332,6 +341,7 @@ struct MainView: View {
             .sheet(isPresented: $showHost) {
                 HostView(showHost: $showHost)
                     .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
                 
             }
             
@@ -340,7 +350,7 @@ struct MainView: View {
             } else {
                 gameModeButton(title: "Connect", icon: "globe", color: .green) {
                     if !disablePlaying {
-                        withAnimation {
+                        withAnimation(.easeInOut) {
                             isOnlineMode = true
                         }
                     } else {
@@ -349,10 +359,7 @@ struct MainView: View {
                 }
             }
         }
-        .transition(.asymmetric(
-            insertion: .move(edge: .leading).combined(with: .opacity),
-            removal: .move(edge: .leading).combined(with: .opacity)
-        ))
+        .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .blurReplace))
     }
     
     private var disconnectedButton: some View {
@@ -450,22 +457,21 @@ struct MainView: View {
                             Text("Location:")
                             Spacer()
                         }
-                        if showTextAndButtons {
-                            if let item = course?.name {
-                                HStack{
-                                    Text(item)
-                                        .foregroundStyle(.secondary)
-                                        .truncationMode(.tail)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                    Spacer()
-                                }
-                            } else {
-                                HStack{
-                                    Text("No location found")
-                                        .foregroundStyle(.secondary)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                    Spacer()
-                                }
+                        
+                        if let item = course?.name {
+                            HStack{
+                                Text(item)
+                                    .foregroundStyle(.secondary)
+                                    .truncationMode(.tail)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                Spacer()
+                            }
+                        } else {
+                            HStack{
+                                Text("No Location")
+                                    .foregroundStyle(.secondary)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                Spacer()
                             }
                         }
                     }
@@ -473,9 +479,9 @@ struct MainView: View {
                     Spacer()
                     
                     
-                    if !showTextAndButtons {
+                    if course == nil {
                         Button {
-                            gameModel.searchNearby(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+                            gameModel.searchNearby(handler: locationHandler)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "magnifyingglass")
@@ -492,7 +498,7 @@ struct MainView: View {
                         // Retry Button
                         Button(action: {
                             withAnimation(){
-                                gameModel.retry(showTxtButtons: $showTextAndButtons, isRotating: $isRotating, handler: locationHandler)
+                                gameModel.retry(isRotating: $isRotating, handler: locationHandler)
                             }
                         }) {
                             Image(systemName: "arrow.trianglehead.2.clockwise")
@@ -510,7 +516,7 @@ struct MainView: View {
                         // Exit Button
                         Button(action: {
                             withAnimation {
-                                gameModel.exit(showTxtButtons: $showTextAndButtons, handler: locationHandler)
+                                gameModel.exit(handler: locationHandler)
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -608,6 +614,7 @@ struct MainView: View {
                         .frame(height: 150)
                 }
                 .padding(.bottom)
+                
             }
             .buttonStyle(.plain)
             .sheet(item: $gameReview) { game in
